@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Step 13 - Safety Stock, Reorder Level, Reorder Quantity</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@400&display=swap">
+<style>
+:root{
+  --sans:'IBM Plex Sans',ui-sans-serif,system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,monospace;
+  --serif:'IBM Plex Serif',Georgia,serif;
+  --bg:#eceff1; --surface:#ffffff; --ink:#151a1e; --muted:#5c6a72;
+  --line:#c3ced3; --accent:#0d6068; --accent-soft:#e2eff0;
+  --gate:#8a5d00; --gate-soft:#f8eed9; --code:#f2f5f6;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12171a; --surface:#1b2226; --ink:#e8eef0; --muted:#94a5ac;
+  --line:#323f45; --accent:#63c3c8; --accent-soft:#0f2c2e;
+  --gate:#d9a441; --gate-soft:#2b2416; --code:#151b1e;}}
+:root[data-theme="dark"]{
+  --bg:#12171a; --surface:#1b2226; --ink:#e8eef0; --muted:#94a5ac;
+  --line:#323f45; --accent:#63c3c8; --accent-soft:#0f2c2e;
+  --gate:#d9a441; --gate-soft:#2b2416; --code:#151b1e;}
+html,body{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);
+     -webkit-font-smoothing:antialiased;line-height:1.6}
+.shell{max-width:1140px;margin:0 auto;padding-inline:20px;padding-block:40px 72px;
+       display:grid;grid-template-columns:216px minmax(0,1fr);gap:34px;align-items:start}
+@media (max-width:840px){.shell{grid-template-columns:minmax(0,1fr);gap:22px}}
+
+nav{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow-y:auto}
+@media (max-width:840px){nav{position:static;max-height:none}}
+.nh{font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);
+    font-weight:600;margin:0 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+nav ul{list-style:none;padding:0;margin:0}
+nav a{display:grid;grid-template-columns:24px 1fr;gap:9px;align-items:baseline;
+      padding:6px 8px;border-radius:4px;text-decoration:none;color:var(--muted);
+      font-size:13px;line-height:1.35}
+nav a:hover{background:var(--accent-soft);color:var(--accent)}
+nav a.on{background:var(--accent-soft);color:var(--accent);font-weight:500}
+.nn{font-family:var(--mono);font-size:10.5px;color:var(--accent);font-variant-numeric:tabular-nums}
+
+main{min-width:0}
+.hero{margin-bottom:38px}
+.eyebrow{font-size:11px;letter-spacing:1.6px;text-transform:uppercase;color:var(--accent);
+         font-weight:600;margin:0 0 10px}
+h1.big{font-size:clamp(28px,5.5vw,40px);line-height:1.1;margin:0 0 15px;font-weight:600;
+       letter-spacing:-.02em;text-wrap:balance}
+.lede{font-family:var(--serif);font-size:16.5px;line-height:1.6;max-width:62ch;margin:0;
+      color:var(--ink)}
+.lede em{color:var(--accent);font-style:italic}
+
+.doc{background:var(--surface);border:1px solid var(--line);border-radius:7px;
+     padding:26px 28px 30px;margin-bottom:22px;scroll-margin-top:16px}
+@media (max-width:560px){.doc{padding:20px 18px 24px}}
+.dh{display:flex;align-items:center;justify-content:space-between;gap:14px;
+    padding-bottom:12px;margin-bottom:18px;border-bottom:1px solid var(--line)}
+.dfile{font-family:var(--mono);font-size:11px;color:var(--muted);margin:0}
+.copy{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:5px;
+      padding:6px 13px;font-family:var(--sans);font-size:12px;cursor:pointer;white-space:nowrap}
+.copy:hover{border-color:var(--accent);color:var(--accent)}
+.copy:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.copy.ok{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+
+.md h1{font-size:23px;font-weight:600;letter-spacing:-.01em;margin:0 0 16px;line-height:1.2}
+.md h2{font-size:12px;letter-spacing:1.3px;text-transform:uppercase;color:var(--muted);
+       font-weight:600;margin:30px 0 13px;padding-bottom:7px;border-bottom:1px solid var(--line)}
+.md h3{font-size:15px;font-weight:600;margin:22px 0 9px}
+.md p{font-size:14.5px;margin:0 0 13px;max-width:70ch}
+.md ul,.md ol{font-size:14.5px;margin:0 0 13px;padding-left:20px;max-width:70ch}
+.md li{margin-bottom:5px}
+.md li::marker{color:var(--accent)}
+.md strong{font-weight:600}
+.md a{color:var(--accent)}
+.md hr{border:none;border-top:1px solid var(--line);margin:26px 0}
+.md code{font-family:var(--mono);font-size:12.5px;background:var(--accent-soft);
+         color:var(--accent);padding:1.5px 5px;border-radius:3px}
+.md pre{background:var(--code);border:1px solid var(--line);border-radius:6px;
+        padding:14px 16px;overflow-x:auto;margin:0 0 15px}
+.md pre code{background:none;color:var(--ink);padding:0;font-size:12.5px;line-height:1.55}
+.md blockquote{border-left:3px solid var(--gate);background:var(--gate-soft);margin:0 0 16px;
+               padding:13px 16px;border-radius:0 5px 5px 0}
+.md blockquote p{margin:0 0 8px;font-size:13.5px;color:var(--muted)}
+.md blockquote p:last-child{margin:0}
+.md blockquote strong{color:var(--ink)}
+.tw{overflow-x:auto;margin:0 0 16px}
+.md table{width:100%;border-collapse:collapse;font-size:13px;min-width:min(100%,420px)}
+.md th{text-align:left;font-size:10px;letter-spacing:1px;text-transform:uppercase;
+       color:var(--muted);font-weight:600;padding:0 12px 7px 0;border-bottom:1px solid var(--line);
+       white-space:nowrap}
+.md td{padding:8px 12px 8px 0;border-bottom:1px solid var(--line);vertical-align:top}
+.md td code{font-size:12px}
+footer{grid-column:1/-1;margin-top:14px;padding-top:16px;border-top:1px solid var(--line);
+       font-size:12px;color:var(--muted);font-family:var(--mono)}
+
+.shell{grid-template-columns:minmax(0,1fr)}
+.solo{max-width:860px;margin:0 auto;padding-inline:20px;padding-block:36px 64px}
+.back{font-family:var(--mono);font-size:11.5px;color:var(--accent);text-decoration:none}
+.back:hover{text-decoration:underline}
+</style></head>
+<body><div class="solo">
+<p style="margin:0 0 18px"><a class="back" href="index.html">&larr; all prompts</a></p>
+<article class="doc"><header class="dh"><p class="dfile">Step13_Policy_Engine.md</p></header>
+<div class="md"><h1>Step 13 - Safety Stock, Reorder Level, Reorder Quantity</h1>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Builds</strong></td>
+<td><code>src/inventory/policy.py - src/inventory/simulation.py</code></td>
+</tr>
+<tr>
+<td><strong>Reads</strong></td>
+<td><code>forecast_protection</code>, <code>sku_classification</code>, <code>supply_reliability</code>, <code>lead_time_stats</code>, <code>stock_position</code></td>
+</tr>
+<tr>
+<td><strong>Writes</strong></td>
+<td><code>policy_params</code>, <code>policy_selection</code>, <code>simulation_results</code> -&gt; appended to <code>part_master_enriched</code></td>
+</tr>
+<tr>
+<td><strong>Format</strong></td>
+<td>Python modules under <code>src/</code>. Never a notebook. <code>run(ctx) -&gt; StageResult</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2>Objective</h2>
+<p>Compute dynamic safety stock, reorder level and reorder quantity for every part - chosen by simulation rather than by formula alone, and proven on a protected holdout.</p>
+<h2>This is the project's acceptance gate</h2>
+<p>Everything before it is preparation. If this step cannot beat the current way of ordering on the
+holdout, the project has not succeeded - and that must be reportable, not hidden.</p>
+<h1>Part A - safety stock</h1>
+<p>Three strategies. <strong>Bracketing is computed for every part</strong> as a cross-check, whichever is used.</p>
+<table>
+<thead>
+<tr>
+<th>Strategy</th>
+<th>Formula</th>
+<th>Applied to</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Bracketing</td>
+<td><code>SS = max_monthly_demand * L_max - d_bar * L_bar</code> (floor 0)</td>
+<td>baseline, cross-check, <code>insufficient_history</code></td>
+</tr>
+<tr>
+<td>Normal approx</td>
+<td><code>SS = z * sqrt(P * sigma_d^2 + d_bar^2 * sigma_L^2)</code></td>
+<td>smooth, erratic</td>
+</tr>
+<tr>
+<td>Empirical quantile</td>
+<td><code>SS = Q_tau(D_P) - mu_P</code> from the Step 08 bootstrap</td>
+<td><strong>intermittent, lumpy</strong></td>
+</tr>
+</tbody>
+</table>
+<p><code>P = L + R = 4</code> months. <code>sigma_d = sigma_P / sqrt(P)</code>, <code>d_bar = mu_P / P</code>, <code>sigma_L</code> from Step 05.</p>
+<p>Empirical quantile is preferred for intermittent and lumpy because the normal assumption is simply
+<strong>false</strong> there. Fitting a normal to a part that sells <code>0,0,0,7,0,0,3</code> produces a negative lower tail
+and an understated upper one.</p>
+<h2>Fill rate is not service level</h2>
+<p>With target fill rate <code>beta</code>, expected units short per cycle is <code>EUS = sigma_eff * G(z)</code>, where
+<code>G(z) = phi(z) - z*(1 - Phi(z))</code> is the unit normal loss. Solve numerically (scipy <code>brentq</code>) for z
+such that:</p>
+<pre><code>sigma_eff * G(z) / (d_bar * R)  &lt;=  1 - beta
+</code></pre>
+<p>Clamp <code>z</code> to [0, 4.5].</p>
+<blockquote>
+<p><strong>Do not substitute a cycle-service-level lookup table.</strong> CSL asks "what fraction of cycles avoid a
+stockout"; fill rate asks "what fraction of units are served". Swapping them over-stocks slow movers
+and under-stocks fast ones - and the error is largest exactly where the money is.</p>
+</blockquote>
+<h1>Part B - candidate policies</h1>
+<table>
+<thead>
+<tr>
+<th>Policy</th>
+<th>Rule</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>(R,S)</strong></td>
+<td><code>S = mu_P + SS</code>; order <code>max(0, S - IP)</code> every review</td>
+</tr>
+<tr>
+<td><strong>(R,s,S)</strong></td>
+<td>order only when <code>IP &lt;= s</code>, up to <code>S = s + delta_econ</code>, <code>delta_econ = max(EOQ, MOQ, pack)</code></td>
+</tr>
+<tr>
+<td><strong>On-demand</strong></td>
+<td>no cycle stock; order against firm requirements only</td>
+</tr>
+<tr>
+<td><strong>No-stock</strong></td>
+<td>stop ordering (dead parts, pending owner review)</td>
+</tr>
+</tbody>
+</table>
+<p>All four are <strong>monthly-executable</strong>. Continuous review, Min-Max, VMI and JIT are <strong>excluded</strong> - none
+can execute on a monthly order cycle against a ~3-month import lead.</p>
+<h3>Assignment (config-driven)</h3>
+<table>
+<thead>
+<tr>
+<th>Segment</th>
+<th>Candidates</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>smooth</td>
+<td>RS</td>
+</tr>
+<tr>
+<td>erratic, intermittent</td>
+<td>RS, RsS</td>
+</tr>
+<tr>
+<td>lumpy</td>
+<td>RsS, RS</td>
+</tr>
+<tr>
+<td>lumpy x C-class x FSN=S</td>
+<td>RsS, RS, ON_DEMAND</td>
+</tr>
+<tr>
+<td>FSN=N or C-class zero-movers</td>
+<td>ON_DEMAND, NO_STOCK</td>
+</tr>
+<tr>
+<td><code>insufficient_history</code></td>
+<td>RS with bracketing floor</td>
+</tr>
+<tr>
+<td><strong>criticality = high</strong></td>
+<td>always includes RS; never ON_DEMAND or NO_STOCK</td>
+</tr>
+</tbody>
+</table>
+<h1>Part C - simulate, select, validate</h1>
+<p>One walk-forward monthly simulator. <strong>Monthly loop, in this exact order:</strong></p>
+<ol>
+<li><strong>Receive</strong> - pipeline orders due at t arrive at <code>qty * beta_hat</code>; the short-shipped remainder is
+   logged and gone (lost-sales world).</li>
+<li><strong>Demand</strong> - realise actual demand (raw, not outlier-adjusted; the policy must survive real
+   spikes). Serve from on-hand; shortfall is lost sales, recorded in units and value.</li>
+<li><strong>Review and order</strong> - use parameters computed from data <strong>&lt;= t only</strong> (wire in the Step 07
+   rolling-origin artefacts; never refit inside the simulator). <code>IP = on_hand + pipeline</code>. <code>q_final</code>
+   from the Step 14 order function. Append to pipeline with a sampled lead time.</li>
+<li>Snapshot state.</li>
+</ol>
+<p><strong>(A) Score</strong> every (part x candidate) over the selection window.</p>
+<p><strong>(B) Select</strong> - feasibility first (achieved fill &gt;= target), then minimum holding + ordering cost.
+If nothing is feasible, take maximum fill. <strong>Hysteresis: a challenger replaces the incumbent only if
+it improves cost by &gt;= 5% while feasible</strong>, so the policy mix does not churn every quarter.</p>
+<p><strong>(C) Validate on holdout</strong> - selected portfolio vs baseline vs sensitivities (<code>beta_hat</code> +/- 10pp,
+lead time +1 month, fill target +/- 2pp), on the untouched final 12 months, same seed across runs.</p>
+<blockquote>
+<p><strong>Never re-open selection based on holdout results.</strong> That un-blinds the holdout and the number
+stops meaning anything. A failed holdout sends you back to Step 06/08 configuration with a <strong>fresh</strong>
+split, recorded in the report.</p>
+</blockquote>
+<h2>Reporting views</h2>
+<p><code>ROL = mu_L + SS_L</code> and <code>months_of_cover = S / d_bar</code>, published for business familiarity.</p>
+<h2>Validation gates</h2>
+<ol>
+<li><strong>Hand-traced toy world</strong> - 2 parts, 12 months, one RS and one RsS (triggering both sides of <code>s</code>),
+   worked by hand in the report; the simulator reproduces it exactly. Committed as a golden test.</li>
+<li><strong>Conservation</strong> - per part-run: <code>received - served - delta_on_hand = 0</code>, and
+   <code>ordered * beta_hat = received</code> within rounding. Asserted across all runs.</li>
+<li><strong>Two leakage audits</strong> - (a) three random (part, t) cells used only data &lt;= t; (b) recompute three
+   random selections from stored scores and confirm no holdout month contributed.</li>
+<li>z-solver reproduces textbook z for <code>beta = 0.95</code> within tolerance.</li>
+<li>Worked example: <code>d_bar = 50/month</code>, <code>L = 3</code>, <code>SS = 40</code> -&gt; <strong>ROL = 190</strong>. Committed as a test.</li>
+</ol>
+<h2>Acceptance criteria</h2>
+<p>Portfolio achieved fill rate <strong>&gt;= target per ABC class</strong> <em>and</em> average inventory value <strong>&lt;= baseline</strong>,
+on the holdout.</p>
+<p>If it wins on only one axis, present the frontier honestly and let the owner choose. <strong>Do not massage
+a single-axis win into a pass.</strong></p>
+<h2>Definition of Done</h2>
+<p>All gates pass; both leakage audits clean; holdout report reviewed with the owner and a <strong>go / no-go
+verdict recorded</strong>.</p>
+<h2>Protocol</h2>
+<p><strong>Clarify -&gt; Architect -&gt; Code -&gt; Validate.</strong> Ask the open questions below first. Present an
+architecture note and <strong>wait for confirmation</strong> before writing code. Finish with tests and a
+validation report reconciled against the source file.</p>
+<h2>Open questions</h2>
+<ol>
+<li><strong>What are the target fill rates per ABC class?</strong> Nothing here can be sized without them.</li>
+<li>What is the current baseline ordering rule, so there is something to beat?</li>
+<li>Annual holding cost rate (% of unit value) and cost per purchase order?</li>
+<li>Is there a total inventory value cap, or a budget per cycle?</li>
+<li>For <code>criticality = high</code>, is there a different fill target?</li>
+</ol></div></article>
+</div>
+<script>
+document.querySelectorAll('.md table').forEach(t=>{const w=document.createElement('div');
+w.className='tw';t.parentNode.insertBefore(w,t);w.appendChild(t);});
+</script></body></html>

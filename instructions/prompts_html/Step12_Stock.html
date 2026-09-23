@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Step 12 - Stock and Inventory Position</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@400&display=swap">
+<style>
+:root{
+  --sans:'IBM Plex Sans',ui-sans-serif,system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,monospace;
+  --serif:'IBM Plex Serif',Georgia,serif;
+  --bg:#eceff1; --surface:#ffffff; --ink:#151a1e; --muted:#5c6a72;
+  --line:#c3ced3; --accent:#0d6068; --accent-soft:#e2eff0;
+  --gate:#8a5d00; --gate-soft:#f8eed9; --code:#f2f5f6;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12171a; --surface:#1b2226; --ink:#e8eef0; --muted:#94a5ac;
+  --line:#323f45; --accent:#63c3c8; --accent-soft:#0f2c2e;
+  --gate:#d9a441; --gate-soft:#2b2416; --code:#151b1e;}}
+:root[data-theme="dark"]{
+  --bg:#12171a; --surface:#1b2226; --ink:#e8eef0; --muted:#94a5ac;
+  --line:#323f45; --accent:#63c3c8; --accent-soft:#0f2c2e;
+  --gate:#d9a441; --gate-soft:#2b2416; --code:#151b1e;}
+html,body{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);
+     -webkit-font-smoothing:antialiased;line-height:1.6}
+.shell{max-width:1140px;margin:0 auto;padding-inline:20px;padding-block:40px 72px;
+       display:grid;grid-template-columns:216px minmax(0,1fr);gap:34px;align-items:start}
+@media (max-width:840px){.shell{grid-template-columns:minmax(0,1fr);gap:22px}}
+
+nav{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow-y:auto}
+@media (max-width:840px){nav{position:static;max-height:none}}
+.nh{font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);
+    font-weight:600;margin:0 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+nav ul{list-style:none;padding:0;margin:0}
+nav a{display:grid;grid-template-columns:24px 1fr;gap:9px;align-items:baseline;
+      padding:6px 8px;border-radius:4px;text-decoration:none;color:var(--muted);
+      font-size:13px;line-height:1.35}
+nav a:hover{background:var(--accent-soft);color:var(--accent)}
+nav a.on{background:var(--accent-soft);color:var(--accent);font-weight:500}
+.nn{font-family:var(--mono);font-size:10.5px;color:var(--accent);font-variant-numeric:tabular-nums}
+
+main{min-width:0}
+.hero{margin-bottom:38px}
+.eyebrow{font-size:11px;letter-spacing:1.6px;text-transform:uppercase;color:var(--accent);
+         font-weight:600;margin:0 0 10px}
+h1.big{font-size:clamp(28px,5.5vw,40px);line-height:1.1;margin:0 0 15px;font-weight:600;
+       letter-spacing:-.02em;text-wrap:balance}
+.lede{font-family:var(--serif);font-size:16.5px;line-height:1.6;max-width:62ch;margin:0;
+      color:var(--ink)}
+.lede em{color:var(--accent);font-style:italic}
+
+.doc{background:var(--surface);border:1px solid var(--line);border-radius:7px;
+     padding:26px 28px 30px;margin-bottom:22px;scroll-margin-top:16px}
+@media (max-width:560px){.doc{padding:20px 18px 24px}}
+.dh{display:flex;align-items:center;justify-content:space-between;gap:14px;
+    padding-bottom:12px;margin-bottom:18px;border-bottom:1px solid var(--line)}
+.dfile{font-family:var(--mono);font-size:11px;color:var(--muted);margin:0}
+.copy{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:5px;
+      padding:6px 13px;font-family:var(--sans);font-size:12px;cursor:pointer;white-space:nowrap}
+.copy:hover{border-color:var(--accent);color:var(--accent)}
+.copy:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.copy.ok{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+
+.md h1{font-size:23px;font-weight:600;letter-spacing:-.01em;margin:0 0 16px;line-height:1.2}
+.md h2{font-size:12px;letter-spacing:1.3px;text-transform:uppercase;color:var(--muted);
+       font-weight:600;margin:30px 0 13px;padding-bottom:7px;border-bottom:1px solid var(--line)}
+.md h3{font-size:15px;font-weight:600;margin:22px 0 9px}
+.md p{font-size:14.5px;margin:0 0 13px;max-width:70ch}
+.md ul,.md ol{font-size:14.5px;margin:0 0 13px;padding-left:20px;max-width:70ch}
+.md li{margin-bottom:5px}
+.md li::marker{color:var(--accent)}
+.md strong{font-weight:600}
+.md a{color:var(--accent)}
+.md hr{border:none;border-top:1px solid var(--line);margin:26px 0}
+.md code{font-family:var(--mono);font-size:12.5px;background:var(--accent-soft);
+         color:var(--accent);padding:1.5px 5px;border-radius:3px}
+.md pre{background:var(--code);border:1px solid var(--line);border-radius:6px;
+        padding:14px 16px;overflow-x:auto;margin:0 0 15px}
+.md pre code{background:none;color:var(--ink);padding:0;font-size:12.5px;line-height:1.55}
+.md blockquote{border-left:3px solid var(--gate);background:var(--gate-soft);margin:0 0 16px;
+               padding:13px 16px;border-radius:0 5px 5px 0}
+.md blockquote p{margin:0 0 8px;font-size:13.5px;color:var(--muted)}
+.md blockquote p:last-child{margin:0}
+.md blockquote strong{color:var(--ink)}
+.tw{overflow-x:auto;margin:0 0 16px}
+.md table{width:100%;border-collapse:collapse;font-size:13px;min-width:min(100%,420px)}
+.md th{text-align:left;font-size:10px;letter-spacing:1px;text-transform:uppercase;
+       color:var(--muted);font-weight:600;padding:0 12px 7px 0;border-bottom:1px solid var(--line);
+       white-space:nowrap}
+.md td{padding:8px 12px 8px 0;border-bottom:1px solid var(--line);vertical-align:top}
+.md td code{font-size:12px}
+footer{grid-column:1/-1;margin-top:14px;padding-top:16px;border-top:1px solid var(--line);
+       font-size:12px;color:var(--muted);font-family:var(--mono)}
+
+.shell{grid-template-columns:minmax(0,1fr)}
+.solo{max-width:860px;margin:0 auto;padding-inline:20px;padding-block:36px 64px}
+.back{font-family:var(--mono);font-size:11.5px;color:var(--accent);text-decoration:none}
+.back:hover{text-decoration:underline}
+</style></head>
+<body><div class="solo">
+<p style="margin:0 0 18px"><a class="back" href="index.html">&larr; all prompts</a></p>
+<article class="doc"><header class="dh"><p class="dfile">Step12_Stock.md</p></header>
+<div class="md"><h1>Step 12 - Stock and Inventory Position</h1>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Builds</strong></td>
+<td><code>src/inventory/stock.py</code></td>
+</tr>
+<tr>
+<td><strong>Reads</strong></td>
+<td><code>current_stock.xlsx</code>, <code>On_Orders.xlsx</code>, <code>PN_Yamaha.xlsx</code>, <code>part_master</code></td>
+</tr>
+<tr>
+<td><strong>Writes</strong></td>
+<td><code>stock_position</code> -&gt; appended to <code>part_master_enriched</code></td>
+</tr>
+<tr>
+<td><strong>Format</strong></td>
+<td>Python modules under <code>src/</code>. Never a notebook. <code>run(ctx) -&gt; StageResult</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2>Objective</h2>
+<p>Establish what is on the shelf at the PDC and what is already coming, and compute the inventory position correctly. This is the most common place a replenishment system goes wrong.</p>
+<h2>What the files actually are</h2>
+<p><code>current_stock.xlsx</code>: <strong>26,288 rows x 8 columns</strong>, 19,830 distinct materials.</p>
+<pre><code>Name 1, Plant, Material Group, Material, Material Description,
+Storage Location, Descr. of Storage Loc., Unrestricted
+</code></pre>
+<p><strong>There is only one quantity column: <code>Unrestricted</code>.</strong> No Quality Inspection, Restricted, Blocked,
+Returns or Transit buckets exist in this export. So <code>on_hand = Unrestricted</code>, directly - and the run
+report should note that non-sellable stock is invisible here, in case it matters later.</p>
+<p><code>On_Orders.xlsx</code>, sheet <code>Sheet3</code>: <strong>2,820 rows x 10 columns</strong> - <code>PN</code>, <code>Desc</code>, then <code>Jan</code>...<code>Aug</code>.
+A month-column pivot, <strong>2026</strong>, totalling <strong>252,568 units</strong>.</p>
+<h2>Scope - PDC only</h2>
+<p><strong>16 plants</strong> are present. Seeduwa PDC (<code>W1B4</code>) holds <strong>471,137 of 544,372 units - 86.6%</strong>.</p>
+<p>Filter to <strong><code>Plant == "W1B4"</code></strong> (15,493 rows). Branch stock is out of scope for replenishment; publish
+it as visibility only if wanted, but it never enters inventory position.</p>
+<table>
+<thead>
+<tr>
+<th>Plant</th>
+<th>Location</th>
+<th>Units</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>W1B4</td>
+<td>Seeduwa - PDC-Parts</td>
+<td>471,137</td>
+</tr>
+<tr>
+<td>W734</td>
+<td>Anuradhapura-Agri-Auto</td>
+<td>10,331</td>
+</tr>
+<tr>
+<td>W124</td>
+<td>Borella-After Sales</td>
+<td>8,550</td>
+</tr>
+<tr>
+<td>W1O4</td>
+<td>Union Place-YMC</td>
+<td>7,322</td>
+</tr>
+<tr>
+<td>...12 more</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2>Cleaning order</h2>
+<ol>
+<li>Drop fully null columns, then fully null rows.</li>
+<li>Filter to plant <code>W1B4</code>.</li>
+<li><strong>Remove every material not present in <code>PN_Yamaha.xlsx</code></strong> - match on <code>Material</code> and on all ten
+   supersede columns before rejecting. Report the count and value removed; do not drop silently.</li>
+<li>Aggregate to <code>active_sku_id</code> (multiple storage locations within the PDC roll up).</li>
+</ol>
+<p>No negative quantities appear in the sample - assert this and fail if that changes.</p>
+<h2>On order</h2>
+<p>Reshape <code>On_Orders.xlsx</code> from wide to long: <code>PN</code>, <code>month</code> (2026), <code>qty</code>. Join to <code>active_sku_id</code>
+through the supersession chain, same as stock.</p>
+<blockquote>
+<p><strong>Interpretation flag.</strong> Treat the month columns as <strong>expected arrival month</strong> by default -
+<code>on_order_interpretation: "arrival"</code> in config. If procurement confirms they are the month the PO
+was raised, switch to <code>"raised"</code> and the loader adds the 3-month lead to derive arrival. Print the
+active interpretation in every run report; this single assumption shifts the entire pipeline
+position by a quarter.</p>
+</blockquote>
+<p>Only months <strong>&gt;= <code>ctx.as_of</code></strong> count as on-order. Earlier months have already arrived and are inside
+<code>on_hand</code>; counting them again double-counts the pipeline.</p>
+<h2>Inventory position</h2>
+<pre><code>IP = on_hand + on_order - backorders
+</code></pre>
+<p>With a 3-month lead and monthly review there can be <strong>three orders in flight</strong>. Comparing against
+on-hand instead of IP over-orders by roughly a lead time's worth of demand, every month, until the
+pipeline lands. Assert <code>on_order</code> is populated and report its share of IP.</p>
+<p>Backorders: if no source exists, set to zero and <strong>say so</strong> - do not leave it implicit.</p>
+<h2>Output</h2>
+<p><code>stock_position</code>: <code>active_sku_id</code> (pk), <code>on_hand</code>, <code>on_order</code>, <code>backorders</code>, <code>ip</code>, <code>value_unrestricted</code>,
+<code>storage_locations</code>, <code>as_of</code>. Appended to <code>part_master_enriched</code>.</p>
+<h2>Validation</h2>
+<ol>
+<li>Cleaned stock + open orders reconciles to full position for the cycle.</li>
+<li>Materials removed for absence from <code>PN_Yamaha</code> reported with count and value.</li>
+<li>On-order share of IP stated; if it is zero everywhere, that is a data problem, not a fact.</li>
+<li>PDC share of network stock reported so the scope decision stays visible.</li>
+</ol>
+<h2>Protocol</h2>
+<p><strong>Clarify -&gt; Architect -&gt; Code -&gt; Validate.</strong> Ask the open questions below first. Present an
+architecture note and <strong>wait for confirmation</strong> before writing code. Finish with tests and a
+validation report reconciled against the source file.</p>
+<h2>Open questions</h2>
+<ol>
+<li><strong>Are the <code>On_Orders</code> months expected arrival, or when the PO was raised?</strong> Everything in Step 14
+   shifts by a quarter on this answer.</li>
+<li>Is there a backorder / open-commitment source, or is <code>backorders = 0</code>?</li>
+<li>Is <code>current_stock.xlsx</code> a point-in-time snapshot? If so, as of what date - we need <code>as_of</code>.</li>
+<li>Do any parts ship direct to branches, bypassing the PDC?</li>
+</ol></div></article>
+</div>
+<script>
+document.querySelectorAll('.md table').forEach(t=>{const w=document.createElement('div');
+w.className='tw';t.parentNode.insertBefore(w,t);w.appendChild(t);});
+</script></body></html>

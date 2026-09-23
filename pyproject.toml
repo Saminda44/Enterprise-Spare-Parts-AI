@@ -58,6 +58,8 @@ dependencies = [
     "mlxtend>=0.23",
     "gensim>=4.4.0",
     "umap-learn>=0.5.12",
+    "seaborn>=0.13.2",
+    "chromadb>=1.5.9",
 ]
 
 [project.optional-dependencies]
@@ -102,15 +104,19 @@ packages = ["src"]
 line-length = 100
 target-version = "py312"
 src = ["src", "tests"]
+extend-exclude = ["legacy", "notebooks"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "TCH", "ANN"]
-ignore = ["ANN101", "ANN401"]
+# TC001-TC003 move imports into TYPE_CHECKING blocks; with pydantic-settings, pandera
+# and dataclasses resolving annotations at runtime that trades a lint tick for a runtime
+# risk, and stage signatures need PlanningContext importable either way.
+ignore = ["ANN401", "TC001", "TC002", "TC003"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["ANN"]
-"notebooks/**" = ["E402", "ANN", "F401"]
-"scripts/**" = ["ANN"]
+# typer declares CLI options as call-expression defaults; that is the idiom, not a bug.
+"src/cli.py" = ["B008"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -119,23 +125,12 @@ warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = true
 disallow_any_generics = false
+exclude = ["^legacy/", "^notebooks/"]
 
 [[tool.mypy.overrides]]
-module = ["src.models.*", "src.db.*"]
+# The foundation carries every later step's contracts, so it is held strictly.
+module = ["src.core.*", "src.io.*"]
 strict = true
-
-[[tool.mypy.overrides]]
-module = ["src.eda.*", "src.api.*", "src.config.*"]
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-# Pre-existing type-arg / no-redef errors in PDF extractor and catalogue agent;
-# excluded from strict check until those files are refactored.
-module = [
-    "src.models.master_data.pdf_catalogue_extractor",
-    "src.models.master_data.catalogue_agent",
-]
-ignore_errors = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -144,7 +139,7 @@ asyncio_mode = "auto"
 
 [tool.coverage.run]
 source = ["src"]
-omit = ["*/tests/*", "*/notebooks/*"]
+omit = ["*/tests/*", "*/notebooks/*", "legacy/*"]
 
 [tool.coverage.report]
 fail_under = 80

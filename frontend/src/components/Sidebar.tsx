@@ -1,8 +1,8 @@
 import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard, TrendingUp, Package, ShoppingCart,
-  Zap, BookOpen, BarChart2, FileText,
-  Activity, Search, GitMerge, ClipboardList,
+  BookOpen, FileText,
+  Activity, Search, Terminal,
 } from "lucide-react";
 // ── Overview ──────────────────────────────────────────────────────────────
 const NAV_OVERVIEW = [
@@ -18,21 +18,18 @@ const NAV_MOTO = [
 
 // ── Spare Parts ───────────────────────────────────────────────────────────
 const NAV_PARTS_ANALYSIS = [
-  { to: "/classification",          label: "Inventory Analysis",       Icon: Package       },
+  { to: "/eda",                     label: "Spare Parts Analysis",     Icon: Package       },
   { to: "/forecast",                label: "Demand Forecast",          Icon: TrendingUp    },
   { to: "/orders",                  label: "Order Plan",               Icon: ShoppingCart  },
-  { to: "/purchase-recommendation", label: "Purchase Recommendation",  Icon: ClipboardList },
-  { to: "/rl",                      label: "RL Policy",                Icon: Zap           },
 ];
 
 const NAV_PARTS_DATA = [
-  { to: "/eda",           label: "Spare Parts Analysis", Icon: BarChart2  },
-  { to: "/market-basket", label: "Market Basket",        Icon: GitMerge   },
   { to: "/parts",         label: "Part Master",          Icon: BookOpen   },
 ];
 
 const NAV_PARTS_CATALOG = [
-  { to: "/catalog", label: "Catalogues", Icon: FileText },
+  { to: "/catalog",   label: "Catalogues",      Icon: FileText  },
+  { to: "/pipeline",  label: "Pipeline Runner",  Icon: Terminal  },
 ];
 
 function NavItem({ to, label, Icon }: { to: string; label: string; Icon: React.ElementType }) {

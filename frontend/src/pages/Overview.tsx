@@ -234,9 +234,8 @@ export function Overview() {
               {[
                 { label: "Inventory Table",  to: "/inventory"      },
                 { label: "Order Plan",        to: "/orders"         },
-                { label: "Classification",    to: "/classification"  },
+                { label: "Classification",    to: "/eda?tab=classification" },
                 { label: "Demand Forecast",   to: "/forecast"       },
-                { label: "RL Policy",         to: "/rl"             },
               ].map(link => (
                 <button key={link.to} onClick={() => navigate(link.to)}
                   className="text-[11px] font-medium text-slate-500 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-md px-2.5 py-1 transition-colors">

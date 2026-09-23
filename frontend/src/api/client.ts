@@ -80,6 +80,7 @@ export interface ClassificationRow {
   total_issue_value_lkr: number;
   total_return_qty: number;
   last_issue_date: string | null;
+  part_type: string | null;
 }
 
 export interface ForecastRow {
@@ -247,6 +248,7 @@ export const fetchClassification = (params?: Record<string, unknown>) =>
     abc_counts: Record<string, number>; xyz_counts: Record<string, number>;
     fsn_counts: Record<string, number>; segment_counts: Record<string, number>;
     demand_category_counts: Record<string, number>; tier_counts: Record<string, number>;
+    part_type_counts: Record<string, number>;
   }>("/classification", { params }).then(r => r.data);
 
 export const fetchForecast = (params?: Record<string, unknown>) =>
@@ -510,6 +512,7 @@ export interface PartMasterRow {
   order_qty: number; eod_rate: number; stock: number; on_order: number;
   revised_order_qty: number; forecast_monthly_qty: number;
   superseded_from: string | null; has_supersession: boolean;
+  part_type: string | null;
 }
 export interface SupersessionRow {
   requested_pn: string; current_pn: string; hops: number;

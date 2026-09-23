@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Step 09 - Vehicle Unit Sales</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@400&display=swap">
+<style>
+:root{
+  --sans:'IBM Plex Sans',ui-sans-serif,system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,monospace;
+  --serif:'IBM Plex Serif',Georgia,serif;
+  --bg:#eceff1; --surface:#ffffff; --ink:#151a1e; --muted:#5c6a72;
+  --line:#c3ced3; --accent:#0d6068; --accent-soft:#e2eff0;
+  --gate:#8a5d00; --gate-soft:#f8eed9; --code:#f2f5f6;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12171a; --surface:#1b2226; --ink:#e8eef0; --muted:#94a5ac;
+  --line:#323f45; --accent:#63c3c8; --accent-soft:#0f2c2e;
+  --gate:#d9a441; --gate-soft:#2b2416; --code:#151b1e;}}
+:root[data-theme="dark"]{
+  --bg:#12171a; --surface:#1b2226; --ink:#e8eef0; --muted:#94a5ac;
+  --line:#323f45; --accent:#63c3c8; --accent-soft:#0f2c2e;
+  --gate:#d9a441; --gate-soft:#2b2416; --code:#151b1e;}
+html,body{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);
+     -webkit-font-smoothing:antialiased;line-height:1.6}
+.shell{max-width:1140px;margin:0 auto;padding-inline:20px;padding-block:40px 72px;
+       display:grid;grid-template-columns:216px minmax(0,1fr);gap:34px;align-items:start}
+@media (max-width:840px){.shell{grid-template-columns:minmax(0,1fr);gap:22px}}
+
+nav{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow-y:auto}
+@media (max-width:840px){nav{position:static;max-height:none}}
+.nh{font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);
+    font-weight:600;margin:0 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+nav ul{list-style:none;padding:0;margin:0}
+nav a{display:grid;grid-template-columns:24px 1fr;gap:9px;align-items:baseline;
+      padding:6px 8px;border-radius:4px;text-decoration:none;color:var(--muted);
+      font-size:13px;line-height:1.35}
+nav a:hover{background:var(--accent-soft);color:var(--accent)}
+nav a.on{background:var(--accent-soft);color:var(--accent);font-weight:500}
+.nn{font-family:var(--mono);font-size:10.5px;color:var(--accent);font-variant-numeric:tabular-nums}
+
+main{min-width:0}
+.hero{margin-bottom:38px}
+.eyebrow{font-size:11px;letter-spacing:1.6px;text-transform:uppercase;color:var(--accent);
+         font-weight:600;margin:0 0 10px}
+h1.big{font-size:clamp(28px,5.5vw,40px);line-height:1.1;margin:0 0 15px;font-weight:600;
+       letter-spacing:-.02em;text-wrap:balance}
+.lede{font-family:var(--serif);font-size:16.5px;line-height:1.6;max-width:62ch;margin:0;
+      color:var(--ink)}
+.lede em{color:var(--accent);font-style:italic}
+
+.doc{background:var(--surface);border:1px solid var(--line);border-radius:7px;
+     padding:26px 28px 30px;margin-bottom:22px;scroll-margin-top:16px}
+@media (max-width:560px){.doc{padding:20px 18px 24px}}
+.dh{display:flex;align-items:center;justify-content:space-between;gap:14px;
+    padding-bottom:12px;margin-bottom:18px;border-bottom:1px solid var(--line)}
+.dfile{font-family:var(--mono);font-size:11px;color:var(--muted);margin:0}
+.copy{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:5px;
+      padding:6px 13px;font-family:var(--sans);font-size:12px;cursor:pointer;white-space:nowrap}
+.copy:hover{border-color:var(--accent);color:var(--accent)}
+.copy:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.copy.ok{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+
+.md h1{font-size:23px;font-weight:600;letter-spacing:-.01em;margin:0 0 16px;line-height:1.2}
+.md h2{font-size:12px;letter-spacing:1.3px;text-transform:uppercase;color:var(--muted);
+       font-weight:600;margin:30px 0 13px;padding-bottom:7px;border-bottom:1px solid var(--line)}
+.md h3{font-size:15px;font-weight:600;margin:22px 0 9px}
+.md p{font-size:14.5px;margin:0 0 13px;max-width:70ch}
+.md ul,.md ol{font-size:14.5px;margin:0 0 13px;padding-left:20px;max-width:70ch}
+.md li{margin-bottom:5px}
+.md li::marker{color:var(--accent)}
+.md strong{font-weight:600}
+.md a{color:var(--accent)}
+.md hr{border:none;border-top:1px solid var(--line);margin:26px 0}
+.md code{font-family:var(--mono);font-size:12.5px;background:var(--accent-soft);
+         color:var(--accent);padding:1.5px 5px;border-radius:3px}
+.md pre{background:var(--code);border:1px solid var(--line);border-radius:6px;
+        padding:14px 16px;overflow-x:auto;margin:0 0 15px}
+.md pre code{background:none;color:var(--ink);padding:0;font-size:12.5px;line-height:1.55}
+.md blockquote{border-left:3px solid var(--gate);background:var(--gate-soft);margin:0 0 16px;
+               padding:13px 16px;border-radius:0 5px 5px 0}
+.md blockquote p{margin:0 0 8px;font-size:13.5px;color:var(--muted)}
+.md blockquote p:last-child{margin:0}
+.md blockquote strong{color:var(--ink)}
+.tw{overflow-x:auto;margin:0 0 16px}
+.md table{width:100%;border-collapse:collapse;font-size:13px;min-width:min(100%,420px)}
+.md th{text-align:left;font-size:10px;letter-spacing:1px;text-transform:uppercase;
+       color:var(--muted);font-weight:600;padding:0 12px 7px 0;border-bottom:1px solid var(--line);
+       white-space:nowrap}
+.md td{padding:8px 12px 8px 0;border-bottom:1px solid var(--line);vertical-align:top}
+.md td code{font-size:12px}
+footer{grid-column:1/-1;margin-top:14px;padding-top:16px;border-top:1px solid var(--line);
+       font-size:12px;color:var(--muted);font-family:var(--mono)}
+
+.shell{grid-template-columns:minmax(0,1fr)}
+.solo{max-width:860px;margin:0 auto;padding-inline:20px;padding-block:36px 64px}
+.back{font-family:var(--mono);font-size:11.5px;color:var(--accent);text-decoration:none}
+.back:hover{text-decoration:underline}
+</style></head>
+<body><div class="solo">
+<p style="margin:0 0 18px"><a class="back" href="index.html">&larr; all prompts</a></p>
+<article class="doc"><header class="dh"><p class="dfile">Step09_Unit_Sales.md</p></header>
+<div class="md"><h1>Step 09 - Vehicle Unit Sales</h1>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Builds</strong></td>
+<td><code>src/parc/unit_sales.py</code></td>
+</tr>
+<tr>
+<td><strong>Reads</strong></td>
+<td><code>MCSI.xlsx</code>, <code>dealers.xlsx</code></td>
+</tr>
+<tr>
+<td><strong>Writes</strong></td>
+<td><code>unit_sales</code>, <code>unit_performance</code></td>
+</tr>
+<tr>
+<td><strong>Format</strong></td>
+<td>Python modules under <code>src/</code>. Never a notebook. <code>run(ctx) -&gt; StageResult</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2>Objective</h2>
+<p>Build the VIN-level record of motorcycles sold, with model, colour, geography and time - the registration cohorts that feed the parc model.</p>
+<h2>What the file actually is</h2>
+<p><code>MCSI.xlsx</code>, sheet <code>Unit Sales</code>: <strong>56,211 rows x 58 columns</strong>, <strong>2025-2026 only</strong> (2025: 23,443;
+2026: 32,768). <strong>54,433 distinct VINs</strong>, 12 model codes, 13 model names.</p>
+<p>This is VIN-level retail registration - the best possible parc source, but it covers only the last two
+years. Everything before 2025 comes from <code>Sales Summery.xlsx</code> (Step 10).</p>
+<p>Useful columns beyond the standard SAP block:</p>
+<pre><code>VIN, Year, Month, Model, Model Name, Color, Type,
+Dealer code, Dealer Name, Province, District, RM, ASE,
+Customer Id, Age At Purchase, Age Today
+</code></pre>
+<p><code>Type</code> is Motorcycle (29,205) / Scooter (27,006).</p>
+<h2>Rules</h2>
+<ul>
+<li><code>SlsVolQty</code> negative = <strong>return</strong> (891 rows). Net them; do not drop them.</li>
+<li><code>Sales Organization</code> and <code>Sales Office</code> are glued code+label - use the Step 00 parser.</li>
+<li><code>Payer</code> here is a <strong>retail customer name</strong>, not a dealer. Do <strong>not</strong> join it to <code>dealers.xlsx</code>.</li>
+<li>Watch the dealer columns: in some rows <code>Dealer code</code>, <code>Dealer Name</code>, <code>Province</code>, <code>RM</code>, <code>ASE</code> and
+  <code>District</code> all carry the same value (e.g. <code>Borella</code>), which is the sales office leaking into them.
+  Detect and report this rather than treating it as geography.</li>
+<li><code>Customer Id</code>, <code>Age At Purchase</code>, <code>Age Today</code> contain the literal string <code>"No order record"</code> in some
+  rows - treat as null, not as a value.</li>
+</ul>
+<h2>Analysis to produce</h2>
+<ul>
+<li>Units by <strong>model</strong>, by <strong>model x colour</strong>, by <strong>dealer</strong></li>
+<li>By <strong>RM, ASE, Province, District</strong></li>
+<li><strong>Time series</strong> of unit sales by model - monthly, using <code>Year</code> and <code>Month</code></li>
+<li><strong>Price against unit sales</strong> by model, from <code>Net Sales</code> / <code>SlsVolQty</code></li>
+</ul>
+<h2>Output</h2>
+<p><code>unit_sales</code>: <code>vin</code>, <code>model_code</code>, <code>model_name</code>, <code>colour</code>, <code>type</code>, <code>year</code>, <code>month</code>, <code>dealer_code</code>,
+<code>province</code>, <code>district</code>, <code>rm</code>, <code>ase</code>, <code>qty</code>, <code>net_sales</code>, <code>cost</code>.</p>
+<p>This is the <strong>registration cohort feed</strong> for Step 10: each VIN is one vehicle entering the parc in a
+known month.</p>
+<h2>Validation</h2>
+<ol>
+<li>VIN uniqueness: 54,433 distinct across 56,211 rows - explain the difference (returns, amendments).</li>
+<li>Unit totals by year reconcile against <code>Sales Summery.xlsx</code> 2025 (22,084) and 2026 (32,344). <strong>They
+   will not match exactly</strong> - MCSI is retail, Sales Summery is the ZVOR order export. Quantify and
+   explain the gap; do not force them to agree.</li>
+<li>Model codes reconcile to the <code>Model Classification</code> sheet.</li>
+</ol>
+<h2>Protocol</h2>
+<p><strong>Clarify -&gt; Architect -&gt; Code -&gt; Validate.</strong> Ask the open questions below first. Present an
+architecture note and <strong>wait for confirmation</strong> before writing code. Finish with tests and a
+validation report reconciled against the source file.</p>
+<h2>Open questions</h2>
+<ol>
+<li>MCSI covers 2025-2026 and shows 12 model codes; <code>Model Classification</code> lists 113. Confirm MCSI is
+   current-range only.</li>
+<li>MCSI 2025 = 23,443 rows vs Sales Summery 2025 = 22,084 units. Which is authoritative for the parc?</li>
+<li>Do the corrupted dealer columns (all fields = <code>Borella</code>) affect many rows, and is there a clean
+   dealer field to use instead?</li>
+<li>Is there a VIN-level source before 2025, or is annual Sales Summery the only pre-2025 history?</li>
+</ol></div></article>
+</div>
+<script>
+document.querySelectorAll('.md table').forEach(t=>{const w=document.createElement('div');
+w.className='tw';t.parentNode.insertBefore(w,t);w.appendChild(t);});
+</script></body></html>

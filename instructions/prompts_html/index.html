@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Build Prompts - Yamaha Spare Parts Intelligence</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@400&display=swap">
+<style>
+:root{
+  --sans:'IBM Plex Sans',ui-sans-serif,system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,monospace;
+  --serif:'IBM Plex Serif',Georgia,serif;
+  --bg:#eceff1; --surface:#ffffff; --ink:#151a1e; --muted:#5c6a72;
+  --line:#c3ced3; --accent:#0d6068; --accent-soft:#e2eff0;
+  --gate:#8a5d00; --gate-soft:#f8eed9; --code:#f2f5f6;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12171a; --surface:#1b2226; --ink:#e8eef0; --muted:#94a5ac;
+  --line:#323f45; --accent:#63c3c8; --accent-soft:#0f2c2e;
+  --gate:#d9a441; --gate-soft:#2b2416; --code:#151b1e;}}
+:root[data-theme="dark"]{
+  --bg:#12171a; --surface:#1b2226; --ink:#e8eef0; --muted:#94a5ac;
+  --line:#323f45; --accent:#63c3c8; --accent-soft:#0f2c2e;
+  --gate:#d9a441; --gate-soft:#2b2416; --code:#151b1e;}
+html,body{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);
+     -webkit-font-smoothing:antialiased;line-height:1.6}
+.shell{max-width:1140px;margin:0 auto;padding-inline:20px;padding-block:40px 72px;
+       display:grid;grid-template-columns:216px minmax(0,1fr);gap:34px;align-items:start}
+@media (max-width:840px){.shell{grid-template-columns:minmax(0,1fr);gap:22px}}
+
+nav{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow-y:auto}
+@media (max-width:840px){nav{position:static;max-height:none}}
+.nh{font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);
+    font-weight:600;margin:0 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+nav ul{list-style:none;padding:0;margin:0}
+nav a{display:grid;grid-template-columns:24px 1fr;gap:9px;align-items:baseline;
+      padding:6px 8px;border-radius:4px;text-decoration:none;color:var(--muted);
+      font-size:13px;line-height:1.35}
+nav a:hover{background:var(--accent-soft);color:var(--accent)}
+nav a.on{background:var(--accent-soft);color:var(--accent);font-weight:500}
+.nn{font-family:var(--mono);font-size:10.5px;color:var(--accent);font-variant-numeric:tabular-nums}
+
+main{min-width:0}
+.hero{margin-bottom:38px}
+.eyebrow{font-size:11px;letter-spacing:1.6px;text-transform:uppercase;color:var(--accent);
+         font-weight:600;margin:0 0 10px}
+h1.big{font-size:clamp(28px,5.5vw,40px);line-height:1.1;margin:0 0 15px;font-weight:600;
+       letter-spacing:-.02em;text-wrap:balance}
+.lede{font-family:var(--serif);font-size:16.5px;line-height:1.6;max-width:62ch;margin:0;
+      color:var(--ink)}
+.lede em{color:var(--accent);font-style:italic}
+
+.doc{background:var(--surface);border:1px solid var(--line);border-radius:7px;
+     padding:26px 28px 30px;margin-bottom:22px;scroll-margin-top:16px}
+@media (max-width:560px){.doc{padding:20px 18px 24px}}
+.dh{display:flex;align-items:center;justify-content:space-between;gap:14px;
+    padding-bottom:12px;margin-bottom:18px;border-bottom:1px solid var(--line)}
+.dfile{font-family:var(--mono);font-size:11px;color:var(--muted);margin:0}
+.copy{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:5px;
+      padding:6px 13px;font-family:var(--sans);font-size:12px;cursor:pointer;white-space:nowrap}
+.copy:hover{border-color:var(--accent);color:var(--accent)}
+.copy:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.copy.ok{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+
+.md h1{font-size:23px;font-weight:600;letter-spacing:-.01em;margin:0 0 16px;line-height:1.2}
+.md h2{font-size:12px;letter-spacing:1.3px;text-transform:uppercase;color:var(--muted);
+       font-weight:600;margin:30px 0 13px;padding-bottom:7px;border-bottom:1px solid var(--line)}
+.md h3{font-size:15px;font-weight:600;margin:22px 0 9px}
+.md p{font-size:14.5px;margin:0 0 13px;max-width:70ch}
+.md ul,.md ol{font-size:14.5px;margin:0 0 13px;padding-left:20px;max-width:70ch}
+.md li{margin-bottom:5px}
+.md li::marker{color:var(--accent)}
+.md strong{font-weight:600}
+.md a{color:var(--accent)}
+.md hr{border:none;border-top:1px solid var(--line);margin:26px 0}
+.md code{font-family:var(--mono);font-size:12.5px;background:var(--accent-soft);
+         color:var(--accent);padding:1.5px 5px;border-radius:3px}
+.md pre{background:var(--code);border:1px solid var(--line);border-radius:6px;
+        padding:14px 16px;overflow-x:auto;margin:0 0 15px}
+.md pre code{background:none;color:var(--ink);padding:0;font-size:12.5px;line-height:1.55}
+.md blockquote{border-left:3px solid var(--gate);background:var(--gate-soft);margin:0 0 16px;
+               padding:13px 16px;border-radius:0 5px 5px 0}
+.md blockquote p{margin:0 0 8px;font-size:13.5px;color:var(--muted)}
+.md blockquote p:last-child{margin:0}
+.md blockquote strong{color:var(--ink)}
+.tw{overflow-x:auto;margin:0 0 16px}
+.md table{width:100%;border-collapse:collapse;font-size:13px;min-width:min(100%,420px)}
+.md th{text-align:left;font-size:10px;letter-spacing:1px;text-transform:uppercase;
+       color:var(--muted);font-weight:600;padding:0 12px 7px 0;border-bottom:1px solid var(--line);
+       white-space:nowrap}
+.md td{padding:8px 12px 8px 0;border-bottom:1px solid var(--line);vertical-align:top}
+.md td code{font-size:12px}
+footer{grid-column:1/-1;margin-top:14px;padding-top:16px;border-top:1px solid var(--line);
+       font-size:12px;color:var(--muted);font-family:var(--mono)}
+
+.shell{grid-template-columns:minmax(0,1fr)}
+.solo{max-width:860px;margin:0 auto;padding-inline:20px;padding-block:36px 64px}
+.back{font-family:var(--mono);font-size:11.5px;color:var(--accent);text-decoration:none}
+.back:hover{text-decoration:underline}
+</style></head>
+<body><div class="solo">
+<p style="margin:0 0 18px"><a class="back" href="index.html">&larr; all prompts</a></p>
+<article class="doc"><header class="dh"><p class="dfile">00_README.md</p></header>
+<div class="md"><h1>Build Prompts - Yamaha Spare Parts Intelligence</h1>
+<p>Sixteen prompts, one per step. Each is self-contained: give a coding agent <strong>one</strong> file and it has
+the objective, the real data shape, the rules, the output contract, the validation gates and the
+questions to ask first.</p>
+<p>Written against the <strong>actual data files</strong>, inspected 2026-09-22 - not against assumptions.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>File</th>
+<th>Builds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>00</td>
+<td><code>Step00_Foundation.md</code></td>
+<td>repo, contracts, orchestration, the SAP column parser</td>
+</tr>
+<tr>
+<td>01</td>
+<td><code>Step01_Catalogue_Reader.md</code></td>
+<td>PDF extraction with the full colour-variant ruleset</td>
+</tr>
+<tr>
+<td>02</td>
+<td><code>Step02_Part_Master.md</code></td>
+<td>supersession chain, <code>active_sku_id</code>, vector search</td>
+</tr>
+<tr>
+<td>03</td>
+<td><code>Step03_Cleaned_Orders.md</code></td>
+<td>demand history and measured lost sales</td>
+</tr>
+<tr>
+<td>04</td>
+<td><code>Step04_Parts_Sales.md</code></td>
+<td>billed sales, revenue, margin, geography</td>
+</tr>
+<tr>
+<td>05</td>
+<td><code>Step05_Order_Analysis.md</code></td>
+<td>fulfilment, supply reliability, lead time</td>
+</tr>
+<tr>
+<td>06</td>
+<td><code>Step06_Classification.md</code></td>
+<td>behaviour, ADI/CV2, ABC/XYZ/FSN</td>
+</tr>
+<tr>
+<td>07</td>
+<td><code>Step07_Model_Selection.md</code></td>
+<td>rolling-origin backtest, champion per segment</td>
+</tr>
+<tr>
+<td>08</td>
+<td><code>Step08_Material_Forecast.md</code></td>
+<td>parc-driven forecast, lambda(p,a), uncertainty</td>
+</tr>
+<tr>
+<td>09</td>
+<td><code>Step09_Unit_Sales.md</code></td>
+<td>VIN-level registrations from MCSI</td>
+</tr>
+<tr>
+<td>10</td>
+<td><code>Step10_UIO_Cohorts.md</code></td>
+<td>UIO by age bucket, survival, roll-forward</td>
+</tr>
+<tr>
+<td>11</td>
+<td><code>Step11_Targets.md</code></td>
+<td>unit forecast and target simulator</td>
+</tr>
+<tr>
+<td>12</td>
+<td><code>Step12_Stock.md</code></td>
+<td>PDC stock, on-order, inventory position</td>
+</tr>
+<tr>
+<td>13</td>
+<td><code>Step13_Policy_Engine.md</code></td>
+<td>SS, ROL, ROQ - simulated and selected</td>
+</tr>
+<tr>
+<td>14</td>
+<td><code>Step14_Monthly_Order.md</code></td>
+<td>the buyer-ready order, marts, explainability</td>
+</tr>
+<tr>
+<td>15</td>
+<td><code>Step15_FastAPI_Service.md</code></td>
+<td>the service layer</td>
+</tr>
+</tbody>
+</table>
+<h2>Scope decisions locked in these prompts</h2>
+<table>
+<thead>
+<tr>
+<th>Decision</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Output format</td>
+<td>Python modules under <code>src/</code>. <strong>Never notebooks.</strong></td>
+</tr>
+<tr>
+<td>Stock scope</td>
+<td><strong>PDC only</strong> (<code>Plant == "W1B4"</code>), cleaned against <code>PN_Yamaha.xlsx</code></td>
+</tr>
+<tr>
+<td>History</td>
+<td>Full <code>orders.xlsx</code> is <strong>~3 years</strong>; the 8-month file supplied is a sample</td>
+</tr>
+<tr>
+<td>On-order months</td>
+<td><strong>2026</strong>, read as expected arrival (config flag, printed every run)</td>
+</tr>
+<tr>
+<td>Delivery</td>
+<td><strong>FastAPI only</strong> - no Streamlit</td>
+</tr>
+<tr>
+<td>Lead time</td>
+<td>3 months. Review 1 month. Protection interval <strong>P = 4 months</strong></td>
+</tr>
+<tr>
+<td>Policies</td>
+<td>(R,S), (R,s,S), on-demand, no-stock. <strong>No VMI, JIT or continuous review</strong></td>
+</tr>
+</tbody>
+</table>
+<h2>What the data actually contains</h2>
+<p>Verified by reading all eight files.</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Rows</th>
+<th>Coverage</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>orders.xlsx</code></td>
+<td>46,514 x 102</td>
+<td>Jan-Aug 2026 (sample)</td>
+<td>fill rate <strong>0.745</strong>; 32% of lines fully rejected</td>
+</tr>
+<tr>
+<td><code>sales.xlsx</code></td>
+<td>21,301 x 41</td>
+<td>Jan-Aug 2026</td>
+<td><strong>May missing</strong>; <code>Payer</code> and <code>Material</code> are glued code+label</td>
+</tr>
+<tr>
+<td><code>MCSI.xlsx</code></td>
+<td>56,211 x 58</td>
+<td>2025-2026</td>
+<td>VIN-level, 12 model codes</td>
+</tr>
+<tr>
+<td><code>Sales Summery.xlsx</code></td>
+<td>20 sheets</td>
+<td>2014-2021, 2025-2026</td>
+<td><strong>278,732 units</strong>; 113 models classified</td>
+</tr>
+<tr>
+<td><code>current_stock.xlsx</code></td>
+<td>26,288 x 8</td>
+<td>snapshot</td>
+<td>16 plants; <strong>only an <code>Unrestricted</code> column</strong></td>
+</tr>
+<tr>
+<td><code>On_Orders.xlsx</code></td>
+<td>2,820 x 10</td>
+<td>2026 Jan-Aug</td>
+<td>wide month pivot; 252,568 units</td>
+</tr>
+<tr>
+<td><code>PN_Yamaha.xlsx</code></td>
+<td>30,216 x 16</td>
+<td>-</td>
+<td><code>Latest SS</code> already resolved</td>
+</tr>
+<tr>
+<td><code>dealers.xlsx</code></td>
+<td>414 x 12</td>
+<td>-</td>
+<td>Type MC/OBM, RM, ASE, Province, District</td>
+</tr>
+</tbody>
+</table>
+<h2>Three things the data settled</h2>
+<p><strong>1. <code>Payer</code> was never a contradiction.</strong> It holds both: <code>"26198      Yamaha Sales Center"</code>. So does
+<code>Material</code>: <code>"676-42115-00       SHAFT STEERING YAMAHA 40 HP"</code>. One shared parser, applied per column
+per file - <code>orders.xlsx</code> does not use this encoding.</p>
+<p><strong>2. The revenue formula needed no fixing.</strong> <code>Revenue Re</code> and <code>Cost Reduc</code> are zero in all 21,301
+rows, and <code>Net Sales = Sales Pric + Discount</code> holds exactly. Revenue is <code>Net Sales</code>; margin is
+<code>Net Sales - Cost</code>.</p>
+<p><strong>3. The parc has a four-year hole, and it is real.</strong> 2020: 26,701 units. 2021: <strong>85</strong>. 2022-2024:
+none. 2025: 22,084. That is Sri Lanka's vehicle import ban. The fleet is bimodal - a large 2014-2020
+block now aged 6-12, sitting in the high-consumption band, and a young 2025-2026 block that will
+demand little for years. Step 08 and Step 10 both depend on modelling this rather than smoothing it.</p>
+<h2>How to use these</h2>
+<p>Hand a coding agent one step's file. It will ask its questions, propose an architecture, wait, then
+build. Do not hand it several at once - each step has a validation gate that should pass before the
+next begins.</p>
+<p>Steps 01 and 02 can start immediately. Step 03 onward wants the full 3-year <code>orders.xlsx</code>.</p></div></article>
+</div>
+<script>
+document.querySelectorAll('.md table').forEach(t=>{const w=document.createElement('div');
+w.className='tw';t.parentNode.insertBefore(w,t);w.appendChild(t);});
+</script></body></html>

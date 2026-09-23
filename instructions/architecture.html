@@ -1,0 +1,272 @@
+<title>Parts Intelligence Architecture</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@400&display=swap">
+<style>
+:root{
+  --sans:'IBM Plex Sans',ui-sans-serif,system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,monospace;
+  --serif:'IBM Plex Serif',Georgia,serif;
+  --bg:#eceff1; --surface:#ffffff; --ink:#151a1e; --muted:#5c6a72;
+  --line:#c3ced3; --accent:#0d6068; --accent-soft:#e2eff0;
+  --gate:#8a5d00; --gate-soft:#f8eed9;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12171a; --surface:#1b2226; --ink:#e8eef0; --muted:#94a5ac;
+  --line:#323f45; --accent:#63c3c8; --accent-soft:#0f2c2e;
+  --gate:#d9a441; --gate-soft:#2b2416;}}
+:root[data-theme="dark"]{
+  --bg:#12171a; --surface:#1b2226; --ink:#e8eef0; --muted:#94a5ac;
+  --line:#323f45; --accent:#63c3c8; --accent-soft:#0f2c2e;
+  --gate:#d9a441; --gate-soft:#2b2416;}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);
+     -webkit-font-smoothing:antialiased;line-height:1.55}
+.wrap{max-width:880px;margin:0 auto;padding-inline:20px;padding-block:44px 72px}
+.eyebrow{font-size:11px;letter-spacing:1.6px;text-transform:uppercase;color:var(--accent);
+         font-weight:600;margin:0 0 10px}
+h1{font-size:clamp(30px,6vw,44px);line-height:1.08;margin:0 0 18px;font-weight:600;
+   letter-spacing:-.02em;text-wrap:balance}
+.lede{font-family:var(--serif);font-size:17px;line-height:1.6;max-width:62ch;margin:0}
+.lede em{color:var(--accent);font-style:italic}
+h2{font-size:13px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);
+   font-weight:600;margin:0 0 18px;padding-bottom:9px;border-bottom:1px solid var(--line)}
+section{margin-top:56px}
+p{max-width:66ch;font-size:15px}
+code,.m{font-family:var(--mono);font-size:.92em}
+code{background:var(--accent-soft);color:var(--accent);padding:1px 5px;border-radius:3px}
+figure{margin:0}
+.scroll{overflow-x:auto;background:var(--surface);border:1px solid var(--line);
+        border-radius:6px;padding:20px 16px}
+.scroll svg{display:block;min-width:600px;width:100%;height:auto}
+figcaption{font-size:12.5px;color:var(--muted);margin-top:12px;max-width:66ch}
+.tscroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;font-size:10.5px;letter-spacing:1.1px;text-transform:uppercase;color:var(--muted);
+   font-weight:600;padding:0 12px 8px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:11px 12px 11px 0;border-bottom:1px solid var(--line);vertical-align:top}
+td.n{font-family:var(--mono);color:var(--accent);font-weight:600;width:30px;
+     font-variant-numeric:tabular-nums}
+td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.st{font-weight:600;font-size:14px;white-space:nowrap}
+.sm{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:2px}
+td.d{color:var(--muted);font-size:13.5px;line-height:1.5}
+.rules{list-style:none;padding:0;margin:0;display:grid;gap:13px}
+.rules li{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start;
+          font-size:14.5px;color:var(--muted)}
+.rules b{color:var(--ink);font-weight:600}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--accent);margin-top:7px}
+.gate{border-left:3px solid var(--gate);background:var(--gate-soft);padding:16px 18px;
+      border-radius:0 5px 5px 0;margin-bottom:14px}
+.gate h3{margin:0 0 5px;font-size:14px;font-weight:600}
+.gate p{margin:0;font-size:13.5px;color:var(--muted);max-width:none}
+footer{margin-top:60px;padding-top:18px;border-top:1px solid var(--line);
+       font-size:12px;color:var(--muted);font-family:var(--mono)}
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">AMW · Yamaha spare parts · architecture guide</p>
+  <h1>Parts Intelligence Architecture</h1>
+  <p class="lede">A modular monolith in sixteen steps, each a Python module with a typed contract at its
+  boundary. Written against the <em>real</em> files — every row count, date range and column quirk below
+  came from opening them, not from the data dictionary.</p>
+
+  <section>
+    <h2>The data, as it actually is</h2>
+    <div class="tscroll">
+    <table>
+      <thead><tr><th>File</th><th>Size</th><th>Coverage</th><th>What matters</th></tr></thead>
+      <tbody>
+        <tr><td class="m">orders.xlsx</td><td class="num">46,514 × 102</td><td class="num">Jan–Aug 2026*</td><td class="d">Fill rate <strong>0.745</strong>. 15,055 lines (32%) fully rejected. Full file ≈ 3 years.</td></tr>
+        <tr><td class="m">sales.xlsx</td><td class="num">21,301 × 41</td><td class="num">Jan–Aug 2026</td><td class="d"><strong>May absent.</strong> <span class="m">Payer</span> and <span class="m">Material</span> glue code and label together.</td></tr>
+        <tr><td class="m">MCSI.xlsx</td><td class="num">56,211 × 58</td><td class="num">2025–2026</td><td class="d">VIN-level, 54,433 VINs, 12 model codes. The registration cohort feed.</td></tr>
+        <tr><td class="m">Sales Summery.xlsx</td><td class="num">20 sheets</td><td class="num">2014–21, 25–26</td><td class="d"><strong>278,732 units.</strong> 113 models classified by family, type, segment, cc.</td></tr>
+        <tr><td class="m">current_stock.xlsx</td><td class="num">26,288 × 8</td><td class="num">snapshot</td><td class="d">16 plants; PDC holds 86.6%. <strong>Only an <span class="m">Unrestricted</span> column.</strong></td></tr>
+        <tr><td class="m">On_Orders.xlsx</td><td class="num">2,820 × 10</td><td class="num">2026</td><td class="d">Wide month pivot, 252,568 units. No PO dates.</td></tr>
+        <tr><td class="m">PN_Yamaha.xlsx</td><td class="num">30,216 × 16</td><td class="num">—</td><td class="d"><span class="m">Latest SS</span> already resolved; verify against the chain, don't recompute.</td></tr>
+        <tr><td class="m">dealers.xlsx</td><td class="num">414 × 12</td><td class="num">—</td><td class="d">Type MC/OBM plus RM, ASE, province, district.</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p style="font-size:12.5px;color:var(--muted);margin-top:12px">* the supplied file is a sample; the production export covers roughly three years.</p>
+  </section>
+
+  <section>
+    <h2>Three things the files settled</h2>
+    <ul class="rules">
+      <li><span class="dot"></span><span><b>The <span class="m">Payer</span> contradiction was never a contradiction.</b> The column holds both: <span class="m">"26198&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Yamaha Sales Center"</span>. So does <span class="m">Material</span>. One parser, applied per column per file — <span class="m">orders.xlsx</span> doesn't use this encoding at all.</span></li>
+      <li><span class="dot"></span><span><b>The revenue formula needed no bracket-fixing.</b> <span class="m">Revenue Re</span> and <span class="m">Cost Reduc</span> are zero in all 21,301 rows, and <span class="m">Net Sales = Sales Pric + Discount</span> holds to 0.0. Revenue is <span class="m">Net Sales</span>; margin is <span class="m">Net Sales − Cost</span>.</span></li>
+      <li><span class="dot"></span><span><b>The parc has a four-year hole, and it is real.</b> 2020: 26,701 units. 2021: <strong>85</strong>. 2022–24: none. 2025: 22,084. That is the vehicle import ban. The fleet is bimodal — a 2014–20 block now aged 6–12 sitting in the high-consumption band, and a young block that will demand little for years.</span></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Architecture</h2>
+    <figure>
+      <div class="scroll">
+        <svg viewBox="0 0 640 510" role="img" aria-label="Layered architecture: eight source files and a PDF folder feed an io layer that writes parquet; six domain modules read it and write marts; FastAPI serves the marts to buyers and analysts; ChromaDB sits beside the catalogue and parts modules as a search index only.">
+          <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" fill="var(--line)"/></marker></defs>
+          <text x="40" y="14" font-family="var(--sans)" font-size="9.5" fill="var(--muted)" letter-spacing="1.3">SOURCE FILES</text>
+<rect x="40" y="22" width="104" height="26" rx="3" fill="none" stroke="var(--line)" stroke-width="1.2" stroke-dasharray="3 2.5"/>
+<text x="92" y="39" text-anchor="middle" font-family="var(--mono)" font-size="9.5" fill="var(--muted)">orders.xlsx</text>
+<rect x="154" y="22" width="104" height="26" rx="3" fill="none" stroke="var(--line)" stroke-width="1.2" stroke-dasharray="3 2.5"/>
+<text x="206" y="39" text-anchor="middle" font-family="var(--mono)" font-size="9.5" fill="var(--muted)">sales.xlsx</text>
+<rect x="268" y="22" width="104" height="26" rx="3" fill="none" stroke="var(--line)" stroke-width="1.2" stroke-dasharray="3 2.5"/>
+<text x="320" y="39" text-anchor="middle" font-family="var(--mono)" font-size="9.5" fill="var(--muted)">MCSI.xlsx</text>
+<rect x="382" y="22" width="104" height="26" rx="3" fill="none" stroke="var(--line)" stroke-width="1.2" stroke-dasharray="3 2.5"/>
+<text x="434" y="39" text-anchor="middle" font-family="var(--mono)" font-size="9.5" fill="var(--muted)">Sales Summery</text>
+<rect x="496" y="22" width="104" height="26" rx="3" fill="none" stroke="var(--line)" stroke-width="1.2" stroke-dasharray="3 2.5"/>
+<text x="548" y="39" text-anchor="middle" font-family="var(--mono)" font-size="9.5" fill="var(--muted)">current_stock</text>
+<rect x="97" y="54" width="104" height="26" rx="3" fill="none" stroke="var(--line)" stroke-width="1.2" stroke-dasharray="3 2.5"/>
+<text x="149" y="71" text-anchor="middle" font-family="var(--mono)" font-size="9.5" fill="var(--muted)">On_Orders</text>
+<rect x="211" y="54" width="104" height="26" rx="3" fill="none" stroke="var(--line)" stroke-width="1.2" stroke-dasharray="3 2.5"/>
+<text x="263" y="71" text-anchor="middle" font-family="var(--mono)" font-size="9.5" fill="var(--muted)">PN_Yamaha</text>
+<rect x="325" y="54" width="104" height="26" rx="3" fill="none" stroke="var(--line)" stroke-width="1.2" stroke-dasharray="3 2.5"/>
+<text x="377" y="71" text-anchor="middle" font-family="var(--mono)" font-size="9.5" fill="var(--muted)">dealers.xlsx</text>
+<rect x="439" y="54" width="104" height="26" rx="3" fill="none" stroke="var(--line)" stroke-width="1.2" stroke-dasharray="3 2.5"/>
+<text x="491" y="71" text-anchor="middle" font-family="var(--mono)" font-size="9.5" fill="var(--muted)">pdf_catalogues</text>
+<line x1="320" y1="80" x2="320" y2="104" stroke="var(--line)" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="40" y="104" width="560" height="44" rx="4" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"/>
+<text x="54" y="123" font-family="var(--sans)" font-size="12.5" fill="var(--ink)" font-weight="600">src/io</text>
+<text x="54" y="139" font-family="var(--mono)" font-size="10" fill="var(--muted)">read once - split glued SAP code+label - write parquet</text>
+<line x1="320" y1="148" x2="320" y2="176" stroke="var(--line)" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="40" y="176" width="560" height="26" rx="4" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="5 3"/>
+<text x="54" y="193.0" font-family="var(--sans)" font-size="12.5" fill="var(--ink)" font-weight="600">data/raw  ·  data/staging</text>
+<line x1="320" y1="202" x2="320" y2="224" stroke="var(--line)" stroke-width="1.5" marker-end="url(#a)"/>
+<text x="40" y="218" font-family="var(--sans)" font-size="9.5" fill="var(--accent)" letter-spacing="1.3">DOMAIN MODULES</text>
+<rect x="40" y="224" width="124" height="46" rx="4" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/>
+<text x="51" y="243" font-family="var(--mono)" font-size="11" fill="var(--ink)" font-weight="600">src/catalogue</text>
+<text x="51" y="259" font-family="var(--mono)" font-size="9" fill="var(--muted)">steps 01</text>
+<rect x="178" y="224" width="124" height="46" rx="4" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/>
+<text x="189" y="243" font-family="var(--mono)" font-size="11" fill="var(--ink)" font-weight="600">src/parts</text>
+<text x="189" y="259" font-family="var(--mono)" font-size="9" fill="var(--muted)">steps 02 06</text>
+<rect x="316" y="224" width="124" height="46" rx="4" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/>
+<text x="327" y="243" font-family="var(--mono)" font-size="11" fill="var(--ink)" font-weight="600">src/demand</text>
+<text x="327" y="259" font-family="var(--mono)" font-size="9" fill="var(--muted)">steps 03 04 05</text>
+<rect x="40" y="282" width="124" height="46" rx="4" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/>
+<text x="51" y="301" font-family="var(--mono)" font-size="11" fill="var(--ink)" font-weight="600">src/forecast</text>
+<text x="51" y="317" font-family="var(--mono)" font-size="9" fill="var(--muted)">steps 07 08</text>
+<rect x="178" y="282" width="124" height="46" rx="4" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/>
+<text x="189" y="301" font-family="var(--mono)" font-size="11" fill="var(--ink)" font-weight="600">src/parc</text>
+<text x="189" y="317" font-family="var(--mono)" font-size="9" fill="var(--muted)">steps 09 10 11</text>
+<rect x="316" y="282" width="124" height="46" rx="4" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/>
+<text x="327" y="301" font-family="var(--mono)" font-size="11" fill="var(--ink)" font-weight="600">src/inventory</text>
+<text x="327" y="317" font-family="var(--mono)" font-size="9" fill="var(--muted)">steps 12 13 14</text>
+<rect x="458" y="224" width="142" height="104" rx="4" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5" stroke-dasharray="4 3"/>
+<text x="469" y="246" font-family="var(--mono)" font-size="11" fill="var(--ink)" font-weight="600">ChromaDB</text>
+<text x="469" y="266" font-family="var(--sans)" font-size="10" fill="var(--muted)">search index only</text>
+<text x="469" y="281" font-family="var(--sans)" font-size="10" fill="var(--muted)">never a contract</text>
+<text x="469" y="303" font-family="var(--mono)" font-size="9" fill="var(--accent)">catalogue · parts</text>
+<path d="M 164 247 H 452" fill="none" stroke="var(--line)" stroke-width="1.2" stroke-dasharray="3 3" marker-end="url(#a)"/>
+<line x1="320" y1="328" x2="320" y2="352" stroke="var(--line)" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="40" y="352" width="560" height="26" rx="4" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="5 3"/>
+<text x="54" y="369.0" font-family="var(--sans)" font-size="12.5" fill="var(--ink)" font-weight="600">data/facts  ·  data/marts</text>
+<line x1="320" y1="378" x2="320" y2="400" stroke="var(--line)" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="40" y="400" width="560" height="44" rx="4" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+<text x="54" y="419" font-family="var(--sans)" font-size="12.5" fill="var(--ink)" font-weight="600">src/api  —  FastAPI</text>
+<text x="54" y="435" font-family="var(--mono)" font-size="10" fill="var(--muted)">serves marts only · computes nothing · no SAP write-back</text>
+<line x1="320" y1="444" x2="320" y2="466" stroke="var(--line)" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="200" y="466" width="240" height="28" rx="14" fill="var(--ink)"/>
+<text x="320" y="484" text-anchor="middle" font-family="var(--mono)" font-size="10" fill="var(--bg)">buyer · analyst · scheduled job</text>
+        </svg>
+      </div>
+      <figcaption>Data flows one way. Chroma hangs off to the side deliberately: it is a search index,
+      never a contract — no pipeline decision reads from it, so a re-index can never change a
+      number.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>Rules that hold everywhere</h2>
+    <ul class="rules">
+      <li><span class="dot"></span><span><b>One identity per part.</b> <span class="m">active_sku_id</span> resolves the supersession chain. Aggregate on anything else and one physical part's demand splits across its old and new numbers, understating every forecast.</span></li>
+      <li><span class="dot"></span><span><b>Contracts at every boundary.</b> pandera schemas; a violation raises. These are SAP exports whose column meanings are not self-evident — fail closed or propagate garbage.</span></li>
+      <li><span class="dot"></span><span><b>Read each workbook once.</b> 20 MB and 18 MB files converted to parquet up front; every step reads parquet. Re-reading per stage costs minutes per run.</span></li>
+      <li><span class="dot"></span><span><b>Idempotent stages.</b> <code>run(ctx) → StageResult</code>, no module-level mutable state, same input same output. Python modules under <span class="m">src/</span>, never notebooks.</span></li>
+      <li><span class="dot"></span><span><b>The final 12 months are sealed.</b> Split in step 07, opened once in step 13, never re-opened. A holdout you re-optimise against has stopped being a holdout.</span></li>
+      <li><span class="dot"></span><span><b>Every number was computed in a step</b>, tested, and written to a mart. The API computes nothing.</span></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>The sixteen steps</h2>
+    <div class="tscroll">
+    <table>
+      <thead><tr><th>#</th><th>Step</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td class="n">00</td><td><div class="st">Foundation</div><div class="sm">src/core · src/io</div></td><td class="d">Repo, pandera contracts, fail-closed DAG, and the one shared parser for SAP's glued <span class='m'>code+label</span> columns. No business logic.</td></tr>
+        <tr><td class="n">01</td><td><div class="st">PDF Catalogue Reader</div><div class="sm">src/catalogue</div></td><td class="d">Extract parts tables from mixed PDF layouts and resolve colour variants: FOREWARD colour table, then remarks (<span class='m'>UR</span>/<span class='m'>FOR</span> include, <span class='m'>EXCEPT</span> inverts), numeric suffixes, description fallback, and the multimodal rule where a colour shown for one model only is that model's variant. Every row records which rule fired.</td></tr>
+        <tr><td class="n">02</td><td><div class="st">Part Master</div><div class="sm">src/parts</div></td><td class="d">Supersession chain across <span class='m'>Material</span> + 10 supersede columns → one <span class='m'>active_sku_id</span>. Vector search tolerant of typos; lookup labels every hit QUERIED / CURRENT / OLDER / RELATED. Everything downstream aggregates on this id.</td></tr>
+        <tr><td class="n">03</td><td><div class="st">Order Cleaning</div><div class="sm">src/demand</div></td><td class="d">46,514 order lines → monthly demand history. Dealer join, <span class='m'>C</span>/<span class='m'>H</span> split, material category, and the measured <span class='m'>Lost Quantity</span> — the most valuable column in the project.</td></tr>
+        <tr><td class="n">04</td><td><div class="st">Parts Sales</div><div class="sm">src/demand</div></td><td class="d">Billed sales, revenue and margin. <span class='m'>Net Sales = Sales Pric + Discount</span> (verified exact); margin is <span class='m'>Net Sales − Cost</span>. Performance by dealer, RM, ASE, province, district.</td></tr>
+        <tr><td class="n">05</td><td><div class="st">Order Analysis</div><div class="sm">src/demand</div></td><td class="d">Fulfilment classes, supply reliability β̂ with shrinkage for thin parts, and the lead-time <em>distribution</em> — the σ, not just the mean.</td></tr>
+        <tr><td class="n">06</td><td><div class="st">Classification</div><div class="sm">src/parts</div></td><td class="d">Behaviour class (service / wear / crash / cosmetic / engine) by trained classifier scored on macro-F1; ADI/CV² quadrants; ABC, XYZ, FSN, criticality. These are routing keys, not reports.</td></tr>
+        <tr><td class="n">07</td><td><div class="st">Model Selection</div><div class="sm">src/forecast</div></td><td class="d">Rolling-origin backtest, horizon 4 months. MASE for smooth, pinball for intermittent, never MAPE. Champion per segment. Final 12 months split off and sealed.</td></tr>
+        <tr><td class="n">08</td><td><div class="st">Material Forecast</div><div class="sm">src/forecast</div></td><td class="d">Own-history forecast and parc-driven demand, reconciled. λ(p,a) by penalised NNLS pooled on behaviour class, with confidence intervals because cohort collinearity makes single coefficients weak.</td></tr>
+        <tr><td class="n">09</td><td><div class="st">Unit Sales</div><div class="sm">src/parc</div></td><td class="d">56,211 VIN-level registrations, 2025–26. Watch the rows where dealer, province and RM all carry the sales-office name.</td></tr>
+        <tr><td class="n">10</td><td><div class="st">UIO Cohorts</div><div class="sm">src/parc</div></td><td class="d">Units in operation per model, month and yearly age bucket, rolled forward with age-specific survival. The 2021–24 zero must survive into the age histogram.</td></tr>
+        <tr><td class="n">11</td><td><div class="st">Targets</div><div class="sm">src/parc</div></td><td class="d">Unit forecast for active models plus a scenario simulator. A +10% unit target must <em>not</em> produce +10% parts demand — the lag through the age profile is the test that the mechanism is wired up.</td></tr>
+        <tr><td class="n">12</td><td><div class="st">Stock Position</div><div class="sm">src/inventory</div></td><td class="d">PDC only (<span class='m'>W1B4</span>, 86.6% of units), cleaned against PN_Yamaha. <span class='m'>on_hand = Unrestricted</span> — the only bucket the export has. <span class='m'>IP = on_hand + on_order − backorders</span>.</td></tr>
+        <tr><td class="n">13</td><td><div class="st">Policy Engine</div><div class="sm">src/inventory</div></td><td class="d">Three safety-stock strategies routed by quadrant; fill-rate→z through the unit normal loss, not a CSL table; four monthly-executable policies scored by walk-forward simulation, selected on cost subject to service, proven once on the sealed holdout.</td></tr>
+        <tr><td class="n">14</td><td><div class="st">Monthly Order</div><div class="sm">src/inventory</div></td><td class="d">EOQ floor, MOQ, pack rounding, and supply inflation <strong>off by default</strong> because 1/β̂ is a feedback loop. Every line carries why it was proposed.</td></tr>
+        <tr><td class="n">15</td><td><div class="st">FastAPI Service</div><div class="sm">src/api</div></td><td class="d">Parts search, forecasts, parc, policy, order proposal, run triggers. Serves marts, computes nothing, and never writes a PO back to SAP.</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Scope, locked</h2>
+    <div class="tscroll">
+    <table>
+      <tbody>
+        <tr><td style="width:180px"><b>Stock scope</b></td><td class="d">PDC only — <span class="m">Plant == "W1B4"</span>, cleaned against PN_Yamaha. Branch stock is visibility, never inventory position.</td></tr>
+        <tr><td><b>History</b></td><td class="d">Full orders export ≈ 3 years. Never hard-code the 8-month sample window.</td></tr>
+        <tr><td><b>On-order</b></td><td class="d">Month columns are 2026, read as <strong>expected arrival</strong>. Config flag, printed in every run report — this one assumption shifts the pipeline by a quarter.</td></tr>
+        <tr><td><b>Delivery</b></td><td class="d">FastAPI only. No Streamlit.</td></tr>
+        <tr><td><b>Timing</b></td><td class="d">Lead 3 months, review 1 month, protection interval <strong>P = 4</strong>.</td></tr>
+        <tr><td><b>Policies</b></td><td class="d">(R,S), (R,s,S), on-demand, no-stock. No VMI, JIT or continuous review — none executes on a monthly cycle against a 3-month import lead.</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Gates</h2>
+    <div class="gate">
+      <h3>Step 13 is the acceptance gate</h3>
+      <p>Achieved fill rate at or above target per ABC class <strong>and</strong> average inventory value
+      at or below baseline, on the sealed holdout. A win on one axis only is a frontier to show the
+      owner, not a pass to claim.</p>
+    </div>
+    <div class="gate">
+      <h3>Step 01 needs an accuracy report, not a parser</h3>
+      <p>The colour rules are ambiguous by nature. Sample at least 30 parts per PDF layout, verify by
+      eye, and report precision per rule. Anything unresolved goes to exceptions with its raw remark —
+      never guessed into a variant.</p>
+    </div>
+    <div class="gate">
+      <h3>Survival may be assumption, not measurement</h3>
+      <p>Without de-registration records, vehicle retirement is not observed. If that is the case, say so
+      and run the policy under at least two survival curves, so the sensitivity is visible rather than
+      buried in a single number.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Open questions, by step</h2>
+    <div class="tscroll">
+    <table>
+      <tbody>
+        <tr><td class="n">03</td><td class="d">32% of order lines fully rejected — genuine unavailability, or do some <span class="m">Reason for Rejection</span> codes mean credit block or dealer cancellation? Only true stockouts are lost sales.</td></tr>
+        <tr><td class="n">04</td><td class="d">Is May 2026 genuinely missing from sales, or an export error?</td></tr>
+        <tr><td class="n">05</td><td class="d">Are <span class="m">Delivery Date</span> and <span class="m">Material Availability Date</span> reliably populated? They are the only route to a measured lead-time σ.</td></tr>
+        <tr><td class="n">10</td><td class="d">Do de-registration or scrappage records exist anywhere? This is the single biggest uncertainty in the parc model.</td></tr>
+        <tr><td class="n">12</td><td class="d">Are the On_Orders months expected arrival or PO-raised? Is there a backorder source, and what is the stock snapshot date?</td></tr>
+        <tr><td class="n">13</td><td class="d"><strong>Target fill rates per ABC class</strong>, the current baseline rule to beat, annual holding rate and cost per order. Nothing can be sized without these.</td></tr>
+        <tr><td class="n">14</td><td class="d">Are MOQ and pack size available anywhere? They are not in PN_Yamaha, and a silent default of 1 produces unplaceable orders.</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <footer>16 step prompts · verified against source files 2026-09-22</footer>
+</div>

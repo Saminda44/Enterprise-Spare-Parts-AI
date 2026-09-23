@@ -10,11 +10,10 @@ __pycache__/
 build/
 /dist/
 
-# Data — never commit real data
-data/raw/
-data/interim/
-data/processed/
-data/outputs/
+# Data — never commit real data.
+# Every layer, not just the source files: facts/ and marts/ hold real dealer names,
+# part numbers and order values derived from them.
+data/
 
 # MLflow artifacts
 mlruns/
@@ -72,6 +71,17 @@ spare-parts-api/
 
 # ML training logs
 lightning_logs/
+
+# Knowledge graph — generated, rebuild with `graphify update .`
+graphify-out/
+src/graphify-out/
+.claude/settings.json.graphify-bak
+
+# Archived previous build — kept locally for reference, not published
+legacy/
+
+# Process id files written by the dev servers
+*.pid
 
 # Built static assets (frontend build output lives in frontend/dist, not static/)
 static/

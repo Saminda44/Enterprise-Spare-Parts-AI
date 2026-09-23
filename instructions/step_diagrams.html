@@ -1,0 +1,747 @@
+<title>Sixteen Step Diagrams</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@400&display=swap">
+<style>
+:root{
+  --sans:'IBM Plex Sans',ui-sans-serif,system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,monospace;
+  --serif:'IBM Plex Serif',Georgia,serif;
+  --bg:#eceff1; --surface:#ffffff; --ink:#151a1e; --muted:#5c6a72;
+  --line:#c3ced3; --accent:#0d6068; --accent-soft:#e2eff0;
+  --gate:#8a5d00; --gate-soft:#f8eed9;
+  --good:#2d6e46; --bad:#9e4035; --bad-soft:#f7e7e4;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12171a; --surface:#1b2226; --ink:#e8eef0; --muted:#94a5ac;
+  --line:#3a474d; --accent:#63c3c8; --accent-soft:#0f2c2e;
+  --gate:#d9a441; --gate-soft:#2b2416;
+  --good:#6cc08d; --bad:#e08b7f; --bad-soft:#2e1f1d;}}
+:root[data-theme="dark"]{
+  --bg:#12171a; --surface:#1b2226; --ink:#e8eef0; --muted:#94a5ac;
+  --line:#3a474d; --accent:#63c3c8; --accent-soft:#0f2c2e;
+  --gate:#d9a441; --gate-soft:#2b2416;
+  --good:#6cc08d; --bad:#e08b7f; --bad-soft:#2e1f1d;}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);
+     -webkit-font-smoothing:antialiased;line-height:1.55}
+.wrap{max-width:1140px;margin:0 auto;padding-inline:20px;padding-block:44px 72px}
+.eyebrow{font-size:11px;letter-spacing:1.6px;text-transform:uppercase;color:var(--accent);
+         font-weight:600;margin:0 0 10px}
+h1{font-size:clamp(28px,5.5vw,42px);line-height:1.08;margin:0 0 16px;font-weight:600;
+   letter-spacing:-.02em;text-wrap:balance}
+.lede{font-family:var(--serif);font-size:16.5px;line-height:1.6;max-width:62ch;margin:0 0 36px}
+.lede em{color:var(--accent);font-style:italic}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(430px,1fr));gap:20px}
+@media (max-width:560px){.grid{grid-template-columns:1fr}}
+.card{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:8px;
+      padding:20px 20px 22px;display:flex;flex-direction:column}
+.ch{display:flex;gap:13px;align-items:flex-start;margin-bottom:14px}
+.cn{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--accent);
+    background:var(--accent-soft);border-radius:4px;padding:4px 8px;line-height:1;
+    margin-top:2px;flex:0 0 auto}
+.ct{margin:0;font-size:15.5px;font-weight:600;line-height:1.25}
+.cl{margin:3px 0 0;font-size:13px;color:var(--accent);line-height:1.4}
+.cv{overflow-x:auto;margin-bottom:13px}
+.cv svg{display:block;width:100%;min-width:430px;height:auto}
+@media (max-width:560px){.cv svg{min-width:400px}}
+figcaption{font-size:12.5px;color:var(--muted);line-height:1.55;margin-top:auto}
+footer{margin-top:48px;padding-top:18px;border-top:1px solid var(--line);
+       font-size:12px;color:var(--muted);font-family:var(--mono)}
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">AMW · Yamaha spare parts</p>
+  <h1>Sixteen Step Diagrams</h1>
+  <p class="lede">One picture per step — each drawing the mechanism the step actually turns on, rather
+  than a box with its name in it. Where the numbers are real they come from the source files:
+  <em>74.5% fill rate</em>, one genuine sales line, and thirteen years of registrations with the import
+  ban in the middle of them.</p>
+
+  <div class="grid">
+
+  <figure class="card" id="s00">
+    <div class="ch">
+      <span class="cn">00</span>
+      <div><h3 class="ct">Foundation</h3><p class="cl">One parser, applied per column — not per file</p></div>
+    </div>
+    <div class="cv">
+      <svg viewBox="0 0 520 232" role="img" aria-label="One parser, applied per column — not per file">
+        <defs><marker id="a00" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,1.5 L9,5 L0,8.5 z" fill="var(--line)"/></marker></defs>
+        <rect x="16" y="26" width="224" height="30" rx="4" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+<text x="28" y="45" font-family="var(--mono)" font-size="10.5" text-anchor="start" fill="var(--ink)">"26198      Yamaha Sales Center"</text>
+<text x="16" y="18" font-family="var(--sans)" font-size="9" text-anchor="start" fill="var(--muted)" font-weight="600">ONE COLUMN</text>
+<line x1="244" y1="41" x2="286" y2="41" stroke="var(--line)" stroke-width="1.4" marker-end="url(#a00)"/>
+<text x="265" y="33" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">split</text>
+<rect x="292" y="22" width="88" height="20" rx="4" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+<text x="300" y="36" font-family="var(--mono)" font-size="10" text-anchor="start" fill="var(--accent)" font-weight="600">26198</text>
+<text x="292" y="16" font-family="var(--sans)" font-size="8.5" text-anchor="start" fill="var(--muted)">code</text>
+<rect x="292" y="48" width="196" height="20" rx="4" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+<text x="300" y="62" font-family="var(--mono)" font-size="10" text-anchor="start" fill="var(--ink)">Yamaha Sales Center</text>
+<line x1="16" y1="92" x2="504" y2="92" stroke="var(--line)" stroke-width="1"/>
+<text x="16" y="110" font-family="var(--sans)" font-size="9" text-anchor="start" fill="var(--muted)" font-weight="600">THE JOIN</text>
+<rect x="16" y="120" width="224" height="26" rx="4" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="2"/>
+<text x="28" y="137" font-family="var(--mono)" font-size="10" text-anchor="start" fill="var(--ink)">"26198      Yamaha…"</text>
+<line x1="244" y1="133" x2="300" y2="133" stroke="var(--bad)" stroke-width="1.4" marker-end="url(#a00)"/>
+<path d="M312,129 l8,8 M320,129 l-8,8" stroke="var(--bad)" stroke-width="2" stroke-linecap="round"/>
+<rect x="332" y="120" width="172" height="26" rx="4" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+<text x="342" y="137" font-family="var(--mono)" font-size="9.5" text-anchor="start" fill="var(--muted)">dealers.Dealer Code</text>
+<text x="28" y="160" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--bad)">raw string never matches</text>
+<rect x="16" y="180" width="224" height="26" rx="4" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+<text x="28" y="197" font-family="var(--mono)" font-size="10" text-anchor="start" fill="var(--ink)">"26198"</text>
+<line x1="244" y1="193" x2="300" y2="193" stroke="var(--good)" stroke-width="1.4" marker-end="url(#a00)"/>
+<path d="M312,193 l3,3.2 l6,-7" fill="none" stroke="var(--good)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="332" y="180" width="172" height="26" rx="4" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+<text x="342" y="197" font-family="var(--mono)" font-size="9.5" text-anchor="start" fill="var(--muted)">dealers.Dealer Code</text>
+<text x="28" y="220" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--good)">extracted code joins cleanly</text>
+      </svg>
+    </div>
+    <figcaption>Five columns across sales.xlsx and MCSI.xlsx pack a code and a label into one string. orders.xlsx does not — so the parser is applied per column from a declared map, never blanket across a dataframe.</figcaption>
+  </figure>
+
+  <figure class="card" id="s01">
+    <div class="ch">
+      <span class="cn">01</span>
+      <div><h3 class="ct">PDF Catalogue Reader</h3><p class="cl">EXCEPT inverts against what was confirmed</p></div>
+    </div>
+    <div class="cv">
+      <svg viewBox="0 0 520 260" role="img" aria-label="EXCEPT inverts against what was confirmed">
+        <defs><marker id="a01" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,1.5 L9,5 L0,8.5 z" fill="var(--line)"/></marker></defs>
+        <text x="16" y="16" font-family="var(--sans)" font-size="9" text-anchor="start" fill="var(--muted)" font-weight="600">CONFIRMED VARIANTS FOR THIS PDF</text>
+<rect x="16" y="24" width="152" height="24" rx="4" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+<text x="26" y="40" font-family="var(--mono)" font-size="10" text-anchor="start" fill="var(--accent)" font-weight="600">YB</text>
+<text x="72" y="40" font-family="var(--sans)" font-size="9" text-anchor="start" fill="var(--muted)">Yamaha Black</text>
+<rect x="182" y="24" width="152" height="24" rx="4" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+<text x="192" y="40" font-family="var(--mono)" font-size="10" text-anchor="start" fill="var(--accent)" font-weight="600">DPRMG</text>
+<text x="238" y="40" font-family="var(--sans)" font-size="9" text-anchor="start" fill="var(--muted)">Dark Purplish Red</text>
+<rect x="348" y="24" width="152" height="24" rx="4" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+<text x="358" y="40" font-family="var(--mono)" font-size="10" text-anchor="start" fill="var(--accent)" font-weight="600">DBNM8</text>
+<text x="404" y="40" font-family="var(--sans)" font-size="9" text-anchor="start" fill="var(--muted)">Dark Bluish Grey</text>
+<text x="16" y="76" font-family="var(--sans)" font-size="9" text-anchor="start" fill="var(--muted)" font-weight="600">REMARK ON A PART ROW</text>
+<rect x="16" y="86" width="128" height="26" rx="4" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+<text x="26" y="103" font-family="var(--mono)" font-size="10" text-anchor="start" fill="var(--ink)">YB</text>
+<line x1="150" y1="99" x2="196" y2="99" stroke="var(--line)" stroke-width="1.4" marker-end="url(#a01)"/>
+<rect x="202" y="86" width="218" height="26" rx="4" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+<text x="212" y="103" font-family="var(--mono)" font-size="9.5" text-anchor="start" fill="var(--ink)">belongs to  YB</text>
+<text x="430" y="103" font-family="var(--sans)" font-size="9" text-anchor="start" fill="var(--muted)">rule B</text>
+<rect x="16" y="122" width="128" height="26" rx="4" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+<text x="26" y="139" font-family="var(--mono)" font-size="10" text-anchor="start" fill="var(--ink)">UR DPRMG</text>
+<line x1="150" y1="135" x2="196" y2="135" stroke="var(--line)" stroke-width="1.4" marker-end="url(#a01)"/>
+<rect x="202" y="122" width="218" height="26" rx="4" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+<text x="212" y="139" font-family="var(--mono)" font-size="9.5" text-anchor="start" fill="var(--ink)">belongs to  DPRMG</text>
+<text x="430" y="139" font-family="var(--sans)" font-size="9" text-anchor="start" fill="var(--muted)">rule B</text>
+<rect x="16" y="158" width="128" height="26" rx="4" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+<text x="26" y="175" font-family="var(--mono)" font-size="10" text-anchor="start" fill="var(--ink)">EXCEPT YB</text>
+<line x1="150" y1="171" x2="196" y2="171" stroke="var(--line)" stroke-width="1.4" marker-end="url(#a01)"/>
+<rect x="202" y="158" width="218" height="26" rx="4" fill="var(--gate-soft)" stroke="var(--gate)" stroke-width="2"/>
+<text x="212" y="175" font-family="var(--mono)" font-size="9.5" text-anchor="start" fill="var(--ink)">belongs to  DPRMG, DBNM8</text>
+<text x="430" y="175" font-family="var(--sans)" font-size="9" text-anchor="start" fill="var(--muted)">rule B — inverts</text>
+<rect x="16" y="194" width="128" height="26" rx="4" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+<text x="26" y="211" font-family="var(--mono)" font-size="10" text-anchor="start" fill="var(--ink)">…-3</text>
+<line x1="150" y1="207" x2="196" y2="207" stroke="var(--line)" stroke-width="1.4" marker-end="url(#a01)"/>
+<rect x="202" y="194" width="218" height="26" rx="4" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+<text x="212" y="211" font-family="var(--mono)" font-size="9.5" text-anchor="start" fill="var(--ink)">shared, variant 3</text>
+<text x="430" y="211" font-family="var(--sans)" font-size="9" text-anchor="start" fill="var(--muted)">rule C — suffix</text>
+<text x="16" y="248" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--gate)" font-weight="600">EXCEPT inverts against the confirmed set — never the full FOREWARD table</text>
+      </svg>
+    </div>
+    <figcaption>The FOREWARD table is the universe of possible colours, not the variant list. A variant is confirmed only once its abbreviation is actually observed in the parts table — so EXCEPT inverts against three confirmed colours here, not against every colour the table lists.</figcaption>
+  </figure>
+
+  <figure class="card" id="s02">
+    <div class="ch">
+      <span class="cn">02</span>
+      <div><h3 class="ct">Part Master</h3><p class="cl">Three part numbers, one part, one demand series</p></div>
+    </div>
+    <div class="cv">
+      <svg viewBox="0 0 520 266" role="img" aria-label="Three part numbers, one part, one demand series">
+        <defs><marker id="a02" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,1.5 L9,5 L0,8.5 z" fill="var(--line)"/></marker></defs>
+        <text x="16" y="16" font-family="var(--sans)" font-size="9" text-anchor="start" fill="var(--muted)" font-weight="600">SUPERSESSION CHAIN</text>
+<rect x="16" y="24" width="132" height="26" rx="4" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+<text x="26" y="41" font-family="var(--mono)" font-size="10" text-anchor="start" fill="var(--ink)">5VL-F341E-00</text>
+<line x1="150" y1="37" x2="170" y2="37" stroke="var(--line)" stroke-width="1.4" marker-end="url(#a02)"/>
+<rect x="174" y="24" width="132" height="26" rx="4" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+<text x="184" y="41" font-family="var(--mono)" font-size="10" text-anchor="start" fill="var(--ink)">5VL-F341E-01</text>
+<line x1="308" y1="37" x2="328" y2="37" stroke="var(--line)" stroke-width="1.4" marker-end="url(#a02)"/>
+<rect x="332" y="24" width="132" height="26" rx="4" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+<text x="342" y="41" font-family="var(--mono)" font-size="10" text-anchor="start" fill="var(--ink)">5VL-F341E-10</text>
+<text x="332" y="64" font-family="var(--sans)" font-size="8.5" text-anchor="start" fill="var(--accent)" font-weight="600">Latest SS</text>
+<line x1="260" y1="56" x2="260" y2="80" stroke="var(--accent)" stroke-width="1.4" marker-end="url(#a02)"/>
+<rect x="180" y="84" width="160" height="26" rx="4" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+<text x="190" y="101" font-family="var(--mono)" font-size="10" text-anchor="start" fill="var(--accent)" font-weight="600">active_sku_id</text>
+<line x1="16" y1="128" x2="504" y2="128" stroke="var(--line)" stroke-width="1"/>
+<text x="16" y="146" font-family="var(--sans)" font-size="9" text-anchor="start" fill="var(--muted)" font-weight="600">MONTHLY DEMAND FOR ONE PHYSICAL PART</text>
+<text x="16" y="164" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--bad)" font-weight="600">aggregated on raw Material</text>
+<rect x="16.0" y="196.0" width="34.0" height="26.0" rx="2" fill="var(--bad)" opacity="0.75"/>
+<text x="33" y="236" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">00</text>
+<rect x="62.0" y="204.0" width="34.0" height="18.0" rx="2" fill="var(--bad)" opacity="0.75"/>
+<text x="79" y="236" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">01</text>
+<rect x="108.0" y="188.0" width="34.0" height="34.0" rx="2" fill="var(--bad)" opacity="0.75"/>
+<text x="125" y="236" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">10</text>
+<text x="16" y="254" font-family="var(--sans)" font-size="9" text-anchor="start" fill="var(--bad)">three short bars — understated</text>
+<text x="286" y="164" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--good)" font-weight="600">aggregated on active_sku_id</text>
+<rect x="286.0" y="182.0" width="34.0" height="40.0" rx="2" fill="var(--good)" opacity="0.85"/>
+<text x="303" y="236" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">10</text>
+<text x="286" y="254" font-family="var(--sans)" font-size="9" text-anchor="start" fill="var(--good)">one true series</text>
+<line x1="206" y1="202" x2="274" y2="202" stroke="var(--line)" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#a02)"/>
+<line x1="16" y1="222" x2="504" y2="222" stroke="var(--line)" stroke-width="1.1"/>
+      </svg>
+    </div>
+    <figcaption>Latest SS is already resolved in PN_Yamaha — verify it against the chain rather than recomputing it. Aggregate on anything but active_sku_id and one physical part's demand splits across its own numbers.</figcaption>
+  </figure>
+
+  <figure class="card" id="s03">
+    <div class="ch">
+      <span class="cn">03</span>
+      <div><h3 class="ct">Order Cleaning</h3><p class="cl">A quarter of demand went unserved — and it is written down</p></div>
+    </div>
+    <div class="cv">
+      <svg viewBox="0 0 520 258" role="img" aria-label="A quarter of demand went unserved — and it is written down">
+        <defs><marker id="a03" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,1.5 L9,5 L0,8.5 z" fill="var(--line)"/></marker></defs>
+        <text x="16" y="18" font-family="var(--sans)" font-size="9" text-anchor="start" fill="var(--muted)" font-weight="600">ORDERED QUANTITY — 8 MONTHS</text>
+<text x="504" y="18" font-family="var(--mono)" font-size="10" text-anchor="end" fill="var(--ink)" font-weight="600">592,829</text>
+<rect x="16.0" y="30.0" width="351.7" height="38.0" rx="3" fill="var(--good)" opacity="0.85"/>
+<rect x="367.7" y="30.0" width="120.3" height="38.0" rx="3" fill="var(--bad)" opacity="0.85"/>
+<text x="191.85160644975196" y="54" font-family="var(--sans)" font-size="11" text-anchor="middle" fill="#fff" font-weight="600">confirmed</text>
+<text x="427.85160644975196" y="54" font-family="var(--sans)" font-size="11" text-anchor="middle" fill="#fff" font-weight="600">lost</text>
+<text x="191.85160644975196" y="84" font-family="var(--mono)" font-size="10" text-anchor="middle" fill="var(--good)" font-weight="600">441,737  ·  74.5%</text>
+<text x="427.85160644975196" y="84" font-family="var(--mono)" font-size="10" text-anchor="middle" fill="var(--bad)" font-weight="600">151,092</text>
+<text x="427.85160644975196" y="98" font-family="var(--mono)" font-size="10" text-anchor="middle" fill="var(--bad)">25.5%</text>
+<line x1="16" y1="120" x2="504" y2="120" stroke="var(--line)" stroke-width="1"/>
+<rect x="16" y="136" width="220" height="30" rx="4" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+<text x="28" y="155" font-family="var(--mono)" font-size="9.5" text-anchor="start" fill="var(--ink)">Order Quantity (Item)</text>
+<text x="244" y="155" font-family="var(--sans)" font-size="13" text-anchor="middle" fill="var(--muted)">−</text>
+<rect x="258" y="136" width="246" height="30" rx="4" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+<text x="270" y="155" font-family="var(--mono)" font-size="9.5" text-anchor="start" fill="var(--ink)">Confirmed Quantity (Item)</text>
+<line x1="260" y1="172" x2="260" y2="194" stroke="var(--accent)" stroke-width="1.4" marker-end="url(#a03)"/>
+<rect x="180" y="200" width="160" height="28" rx="4" fill="var(--gate-soft)" stroke="var(--gate)" stroke-width="2"/>
+<text x="190" y="219" font-family="var(--mono)" font-size="10" text-anchor="start" fill="var(--gate)" font-weight="600">Lost Quantity</text>
+<text x="16" y="248" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--ink)" font-weight="600">Measured on every line — not inferred from gaps in demand</text>
+      </svg>
+    </div>
+    <figcaption>Most inventory systems must infer stockouts from demand that never appears. Here the shortfall is recorded on every order line, which is what makes this dataset unusually good for replenishment work.</figcaption>
+  </figure>
+
+  <figure class="card" id="s04">
+    <div class="ch">
+      <span class="cn">04</span>
+      <div><h3 class="ct">Parts Sales</h3><p class="cl">Revenue is Net Sales; margin is Net Sales − Cost</p></div>
+    </div>
+    <div class="cv">
+      <svg viewBox="0 0 520 282" role="img" aria-label="Revenue is Net Sales; margin is Net Sales − Cost">
+        <defs><marker id="a04" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,1.5 L9,5 L0,8.5 z" fill="var(--line)"/></marker></defs>
+        <text x="16" y="14" font-family="var(--sans)" font-size="9" text-anchor="start" fill="var(--muted)" font-weight="600">ONE REAL LINE FROM sales.xlsx</text>
+<rect x="22.0" y="44.0" width="70.0" height="160.0" rx="2" fill="var(--muted)" opacity="0.55"/>
+<text x="57" y="220" font-family="var(--sans)" font-size="9.5" text-anchor="middle" fill="var(--ink)" font-weight="600">Sales Pric</text>
+<text x="57" y="234" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">2,449.15</text>
+<line x1="92" y1="44.0" x2="120" y2="44.0" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 2"/>
+<rect x="120.0" y="44.0" width="70.0" height="40.0" rx="2" fill="var(--bad)" opacity="0.8"/>
+<text x="155" y="220" font-family="var(--sans)" font-size="9.5" text-anchor="middle" fill="var(--ink)" font-weight="600">Discount</text>
+<text x="155" y="234" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--bad)">-612.29</text>
+<line x1="190" y1="84.00016332196884" x2="218" y2="84.00016332196884" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 2"/>
+<rect x="218.0" y="84.0" width="70.0" height="120.0" rx="2" fill="var(--accent)" opacity="0.85"/>
+<text x="253" y="220" font-family="var(--sans)" font-size="9.5" text-anchor="middle" fill="var(--ink)" font-weight="600">Net Sales</text>
+<text x="253" y="234" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--accent)">1,836.86</text>
+<line x1="288" y1="84.00016332196886" x2="316" y2="84.00016332196886" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 2"/>
+<rect x="316.0" y="84.0" width="70.0" height="67.6" rx="2" fill="var(--bad)" opacity="0.8"/>
+<text x="351" y="220" font-family="var(--sans)" font-size="9.5" text-anchor="middle" fill="var(--ink)" font-weight="600">Cost</text>
+<text x="351" y="234" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--bad)">-1,035.03</text>
+<line x1="386" y1="151.61741828797744" x2="414" y2="151.61741828797744" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 2"/>
+<rect x="414.0" y="151.6" width="70.0" height="52.4" rx="2" fill="var(--good)" opacity="0.85"/>
+<text x="449" y="220" font-family="var(--sans)" font-size="9.5" text-anchor="middle" fill="var(--ink)" font-weight="600">Margin</text>
+<text x="449" y="234" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--good)">801.83</text>
+<line x1="16" y1="204" x2="504" y2="204" stroke="var(--line)" stroke-width="1.2"/>
+<rect x="348" y="22" width="156" height="24" rx="4" fill="none" stroke="var(--line)" stroke-width="1.4" stroke-dasharray="4 3"/>
+<text x="358" y="38" font-family="var(--mono)" font-size="9.5" text-anchor="start" fill="var(--muted)">Tax  330.63</text>
+<text x="358" y="58" font-family="var(--sans)" font-size="9" text-anchor="start" fill="var(--muted)">outside Net Sales</text>
+<text x="16" y="254" font-family="var(--mono)" font-size="10" text-anchor="start" fill="var(--accent)" font-weight="600">Net Sales = Sales Pric + Discount   —  exact to 0.0 across 21,301 rows</text>
+<text x="16" y="272" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--muted)">Revenue Re and Cost Reduc are zero in every row.</text>
+      </svg>
+    </div>
+    <figcaption>The old data dictionary gave Revenue = Net Sales − (Tax − Revenue Re − Dealer Commission − Cost of Sales), which as bracketed adds cost to revenue. The columns it names are either absent or always zero. This is what the file actually does.</figcaption>
+  </figure>
+
+  <figure class="card" id="s05">
+    <div class="ch">
+      <span class="cn">05</span>
+      <div><h3 class="ct">Order Analysis</h3><p class="cl">A third of lines served nothing at all</p></div>
+    </div>
+    <div class="cv">
+      <svg viewBox="0 0 520 286" role="img" aria-label="A third of lines served nothing at all">
+        <defs><marker id="a05" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,1.5 L9,5 L0,8.5 z" fill="var(--line)"/></marker></defs>
+        <text x="16" y="16" font-family="var(--sans)" font-size="9" text-anchor="start" fill="var(--muted)" font-weight="600">ORDER LINES BY FULFILMENT CLASS</text>
+<text x="504" y="16" font-family="var(--mono)" font-size="10" text-anchor="end" fill="var(--ink)" font-weight="600">46,521 lines</text>
+<rect x="16.0" y="26.0" width="310.0" height="34.0" rx="2" fill="var(--good)" opacity="0.85"/>
+<text x="170.99469056985018" y="48" font-family="var(--sans)" font-size="10.5" text-anchor="middle" fill="#fff" font-weight="600">65.7%</text>
+<rect x="326.0" y="26.0" width="9.3" height="34.0" rx="2" fill="var(--gate)" opacity="0.85"/>
+<rect x="335.3" y="26.0" width="152.7" height="34.0" rx="2" fill="var(--bad)" opacity="0.85"/>
+<text x="411.62631929666173" y="48" font-family="var(--sans)" font-size="10.5" text-anchor="middle" fill="#fff" font-weight="600">32.4%</text>
+<text x="16" y="80" font-family="var(--mono)" font-size="10" text-anchor="start" fill="var(--good)" font-weight="600">30,553</text>
+<text x="16" y="94" font-family="var(--sans)" font-size="9" text-anchor="start" fill="var(--muted)">Order = Confirmed</text>
+<text x="310" y="80" font-family="var(--mono)" font-size="10" text-anchor="start" fill="var(--gate)" font-weight="600">913</text>
+<text x="310" y="94" font-family="var(--sans)" font-size="9" text-anchor="start" fill="var(--muted)">0 < Conf < Order</text>
+<text x="414" y="80" font-family="var(--mono)" font-size="10" text-anchor="start" fill="var(--bad)" font-weight="600">15,055</text>
+<text x="414" y="94" font-family="var(--sans)" font-size="9" text-anchor="start" fill="var(--muted)">Confirmed = 0</text>
+<line x1="16" y1="116" x2="504" y2="116" stroke="var(--line)" stroke-width="1"/>
+<text x="16" y="136" font-family="var(--sans)" font-size="9" text-anchor="start" fill="var(--muted)" font-weight="600">LEAD TIME DISTRIBUTION</text>
+<polygon points="44,234 44.0,233.7 53.2,233.4 62.4,232.8 71.6,232.0 80.8,230.7 90.0,228.7 99.2,225.9 108.4,222.0 117.6,217.1 126.8,211.1 136.0,204.2 145.2,196.7 154.4,189.2 163.6,182.4 172.8,176.8 182.0,173.2 191.2,172.0 200.4,173.2 209.6,176.8 218.8,182.4 228.0,189.2 237.2,196.7 246.4,204.2 255.6,211.1 264.8,217.1 274.0,222.0 283.2,225.9 292.4,228.7 301.6,230.7 310.8,232.0 320.0,232.8 329.2,233.4 338.4,233.7 347.6,233.8 356.8,233.9 366.0,234.0 375.2,234.0 384.4,234.0 393.6,234.0 402.8,234.0 412.0,234.0 421.2,234.0 430.4,234.0 439.6,234.0 448.8,234.0 458.0,234.0 467.2,234.0 476.4,234.0 485.6,234.0 485.6,234" fill="var(--accent)" opacity="0.15"/>
+<polyline points="44.0,233.7 53.2,233.4 62.4,232.8 71.6,232.0 80.8,230.7 90.0,228.7 99.2,225.9 108.4,222.0 117.6,217.1 126.8,211.1 136.0,204.2 145.2,196.7 154.4,189.2 163.6,182.4 172.8,176.8 182.0,173.2 191.2,172.0 200.4,173.2 209.6,176.8 218.8,182.4 228.0,189.2 237.2,196.7 246.4,204.2 255.6,211.1 264.8,217.1 274.0,222.0 283.2,225.9 292.4,228.7 301.6,230.7 310.8,232.0 320.0,232.8 329.2,233.4 338.4,233.7 347.6,233.8 356.8,233.9 366.0,234.0 375.2,234.0 384.4,234.0 393.6,234.0 402.8,234.0 412.0,234.0 421.2,234.0 430.4,234.0 439.6,234.0 448.8,234.0 458.0,234.0 467.2,234.0 476.4,234.0 485.6,234.0" fill="none" stroke="var(--accent)" stroke-width="2"/>
+<line x1="44" y1="234" x2="504" y2="234" stroke="var(--line)" stroke-width="1.2"/>
+<line x1="44.0" y1="234" x2="44.0" y2="238" stroke="var(--line)" stroke-width="1"/>
+<text x="44.0" y="249" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">1</text>
+<line x1="117.6" y1="234" x2="117.6" y2="238" stroke="var(--line)" stroke-width="1"/>
+<text x="117.6" y="249" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">2</text>
+<line x1="191.2" y1="234" x2="191.2" y2="238" stroke="var(--line)" stroke-width="1"/>
+<text x="191.2" y="249" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">3</text>
+<line x1="264.79999999999995" y1="234" x2="264.79999999999995" y2="238" stroke="var(--line)" stroke-width="1"/>
+<text x="264.79999999999995" y="249" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">4</text>
+<line x1="338.4" y1="234" x2="338.4" y2="238" stroke="var(--line)" stroke-width="1"/>
+<text x="338.4" y="249" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">5</text>
+<line x1="412.0" y1="234" x2="412.0" y2="238" stroke="var(--line)" stroke-width="1"/>
+<text x="412.0" y="249" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">6</text>
+<text x="280" y="264" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">months</text>
+<line x1="191" y1="166" x2="191" y2="234" stroke="var(--accent)" stroke-width="1.4" stroke-dasharray="3 3"/>
+<text x="191" y="152" font-family="var(--mono)" font-size="9.5" text-anchor="middle" fill="var(--accent)" font-weight="600">mean 3.0</text>
+<line x1="146" y1="206" x2="236" y2="206" stroke="var(--gate)" stroke-width="2.4"/>
+<text x="250" y="210" font-family="var(--mono)" font-size="12" text-anchor="start" fill="var(--gate)" font-weight="600">σ</text>
+<text x="16" y="276" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--gate)" font-weight="600">A point estimate cannot size a buffer — the spread is what step 13 needs.</text>
+      </svg>
+    </div>
+    <figcaption>Lead time here is illustrative until Delivery Date and Material Availability Date are confirmed as reliably populated. If they are not, the 3-month planning assumption stands and the run report must say so loudly.</figcaption>
+  </figure>
+
+  <figure class="card" id="s06">
+    <div class="ch">
+      <span class="cn">06</span>
+      <div><h3 class="ct">Classification</h3><p class="cl">Four quadrants, four different treatments</p></div>
+    </div>
+    <div class="cv">
+      <svg viewBox="0 0 520 298" role="img" aria-label="Four quadrants, four different treatments">
+        <defs><marker id="a06" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,1.5 L9,5 L0,8.5 z" fill="var(--line)"/></marker></defs>
+        <rect x="62.0" y="26.0" width="182.3" height="86.5" rx="0" fill="var(--accent)" opacity="0.06"/>
+<rect x="244.3" y="26.0" width="251.7" height="86.5" rx="0" fill="var(--gate)" opacity="0.1"/>
+<rect x="62.0" y="112.5" width="182.3" height="101.5" rx="0" fill="var(--accent)" opacity="0.13"/>
+<rect x="244.3" y="112.5" width="251.7" height="101.5" rx="0" fill="var(--bad)" opacity="0.1"/>
+<line x1="244.28" y1="26" x2="244.28" y2="214" stroke="var(--accent)" stroke-width="1.6" stroke-dasharray="5 3"/>
+<line x1="62" y1="112.48" x2="496" y2="112.48" stroke="var(--accent)" stroke-width="1.6" stroke-dasharray="5 3"/>
+<rect x="62" y="26" width="434" height="188" fill="none" stroke="var(--line)" stroke-width="1.4"/>
+<text x="153.14" y="64" font-family="var(--sans)" font-size="13" text-anchor="middle" fill="var(--ink)" font-weight="600">erratic</text>
+<text x="153.14" y="81" font-family="var(--mono)" font-size="9.5" text-anchor="middle" fill="var(--muted)">RS, RsS</text>
+<text x="370.14" y="64" font-family="var(--sans)" font-size="13" text-anchor="middle" fill="var(--ink)" font-weight="600">lumpy</text>
+<text x="370.14" y="81" font-family="var(--mono)" font-size="9.5" text-anchor="middle" fill="var(--muted)">RsS, RS</text>
+<text x="153.14" y="156.48000000000002" font-family="var(--sans)" font-size="13" text-anchor="middle" fill="var(--ink)" font-weight="600">smooth</text>
+<text x="153.14" y="173.48000000000002" font-family="var(--mono)" font-size="9.5" text-anchor="middle" fill="var(--muted)">RS</text>
+<text x="370.14" y="156.48000000000002" font-family="var(--sans)" font-size="13" text-anchor="middle" fill="var(--ink)" font-weight="600">intermittent</text>
+<text x="370.14" y="173.48000000000002" font-family="var(--mono)" font-size="9.5" text-anchor="middle" fill="var(--muted)">RS, RsS</text>
+<text x="244.28" y="229" font-family="var(--mono)" font-size="9.5" text-anchor="middle" fill="var(--accent)" font-weight="600">1.32</text>
+<text x="279" y="246" font-family="var(--sans)" font-size="9.5" text-anchor="middle" fill="var(--muted)">ADI  →</text>
+<text x="54" y="115.48" font-family="var(--mono)" font-size="9.5" text-anchor="end" fill="var(--accent)" font-weight="600">0.49</text>
+<text x="22" y="120" font-family="var(--sans)" font-size="9.5" fill="var(--muted)" text-anchor="middle" transform="rotate(-90 22 120)">CV²  →</text>
+<text x="16" y="272" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--ink)" font-weight="600">Not a report — a routing key. It picks the forecast family</text>
+<text x="16" y="288" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--ink)" font-weight="600">and the safety-stock strategy.</text>
+      </svg>
+    </div>
+    <figcaption>Syntetos–Boylan cutoffs at ADI 1.32 and CV² 0.49. Each quadrant carries its candidate policies through to step 13; the intermittent and lumpy halves are where the normal assumption fails and the empirical bootstrap takes over.</figcaption>
+  </figure>
+
+  <figure class="card" id="s07">
+    <div class="ch">
+      <span class="cn">07</span>
+      <div><h3 class="ct">Model Selection</h3><p class="cl">Time never runs backwards in a backtest</p></div>
+    </div>
+    <div class="cv">
+      <svg viewBox="0 0 520 258" role="img" aria-label="Time never runs backwards in a backtest">
+        <defs><marker id="a07" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,1.5 L9,5 L0,8.5 z" fill="var(--line)"/></marker></defs>
+        <text x="16" y="16" font-family="var(--sans)" font-size="9" text-anchor="start" fill="var(--muted)" font-weight="600">EXPANDING WINDOW — ORIGIN STEPS FORWARD ONE MONTH</text>
+<rect x="16.0" y="30.0" width="139.2" height="18.0" rx="2" fill="var(--accent)" opacity="0.3"/>
+<rect x="155.2" y="30.0" width="46.4" height="18.0" rx="2" fill="var(--gate)" opacity="0.75"/>
+<text x="85.6" y="43" font-family="var(--sans)" font-size="9.5" text-anchor="middle" fill="var(--accent)" font-weight="600">train</text>
+<text x="178.39999999999998" y="43" font-family="var(--sans)" font-size="9" text-anchor="middle" fill="#fff" font-weight="600">test</text>
+<rect x="16.0" y="60.0" width="162.4" height="18.0" rx="2" fill="var(--accent)" opacity="0.3"/>
+<rect x="178.4" y="60.0" width="46.4" height="18.0" rx="2" fill="var(--gate)" opacity="0.75"/>
+<rect x="16.0" y="90.0" width="185.6" height="18.0" rx="2" fill="var(--accent)" opacity="0.3"/>
+<rect x="201.6" y="90.0" width="46.4" height="18.0" rx="2" fill="var(--gate)" opacity="0.75"/>
+<rect x="16.0" y="120.0" width="208.8" height="18.0" rx="2" fill="var(--accent)" opacity="0.3"/>
+<rect x="224.8" y="120.0" width="46.4" height="18.0" rx="2" fill="var(--gate)" opacity="0.75"/>
+<rect x="16.0" y="150.0" width="232.0" height="18.0" rx="2" fill="var(--accent)" opacity="0.3"/>
+<rect x="248.0" y="150.0" width="46.4" height="18.0" rx="2" fill="var(--gate)" opacity="0.75"/>
+<text x="16" y="184" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--gate)" font-weight="600">horizon = lead 3 + review 1 = 4 months</text>
+<rect x="311.8" y="30.0" width="139.2" height="138.0" rx="3" fill="var(--bad)" opacity="0.1"/>
+<rect x="311.8" y="30" width="139.2" height="138" fill="none" stroke="var(--bad)" stroke-width="1.8" stroke-dasharray="5 3" rx="3"/>
+<text x="381.4" y="94" font-family="var(--sans)" font-size="10" text-anchor="middle" fill="var(--bad)" font-weight="600">SEALED</text>
+<text x="381.4" y="110" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--bad)">12 months</text>
+<text x="381.4" y="184" font-family="var(--sans)" font-size="9.5" text-anchor="middle" fill="var(--bad)" font-weight="600">opened once, in step 13</text>
+<line x1="16" y1="204" x2="504" y2="204" stroke="var(--line)" stroke-width="1"/>
+<text x="16" y="226" font-family="var(--mono)" font-size="10" text-anchor="start" fill="var(--accent)" font-weight="600">MASE</text>
+<text x="62" y="226" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--muted)">smooth · erratic</text>
+<text x="176" y="226" font-family="var(--mono)" font-size="10" text-anchor="start" fill="var(--accent)" font-weight="600">pinball</text>
+<text x="226" y="226" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--muted)">intermittent · lumpy</text>
+<text x="16" y="248" font-family="var(--mono)" font-size="10" text-anchor="start" fill="var(--bad)" font-weight="600">never MAPE</text>
+<text x="96" y="248" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--muted)">undefined on zeros</text>
+      </svg>
+    </div>
+    <figcaption>A random split would leak the future into the past. The origin steps forward one month at a time and the model only ever sees data up to it — and the last twelve months never enter selection at all.</figcaption>
+  </figure>
+
+  <figure class="card" id="s08">
+    <div class="ch">
+      <span class="cn">08</span>
+      <div><h3 class="ct">Material Forecast</h3><p class="cl">Demand peaks in the middle of the fleet</p></div>
+    </div>
+    <div class="cv">
+      <svg viewBox="0 0 520 282" role="img" aria-label="Demand peaks in the middle of the fleet">
+        <defs><marker id="a08" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,1.5 L9,5 L0,8.5 z" fill="var(--line)"/></marker></defs>
+        <text x="16" y="16" font-family="var(--sans)" font-size="10" text-anchor="start" fill="var(--ink)" font-weight="600">Units in operation</text>
+<text x="16" y="206" font-family="var(--mono)" font-size="8.5" text-anchor="start" fill="var(--muted)">cohort size by age →</text>
+<line x1="16" y1="186" x2="156" y2="186" stroke="var(--line)" stroke-width="1.2"/>
+<rect x="21.0" y="87.2" width="6.4" height="98.8" rx="1" fill="var(--muted)" opacity="0.55"/>
+<rect x="29.6" y="91.0" width="6.4" height="95.0" rx="1" fill="var(--muted)" opacity="0.55"/>
+<rect x="38.2" y="96.3" width="6.4" height="89.7" rx="1" fill="var(--muted)" opacity="0.55"/>
+<rect x="46.8" y="102.4" width="6.4" height="83.6" rx="1" fill="var(--muted)" opacity="0.55"/>
+<rect x="55.4" y="110.0" width="6.4" height="76.0" rx="1" fill="var(--muted)" opacity="0.55"/>
+<rect x="64.0" y="117.6" width="6.4" height="68.4" rx="1" fill="var(--muted)" opacity="0.55"/>
+<rect x="72.6" y="125.2" width="6.4" height="60.8" rx="1" fill="var(--muted)" opacity="0.55"/>
+<rect x="81.2" y="132.8" width="6.4" height="53.2" rx="1" fill="var(--muted)" opacity="0.55"/>
+<rect x="89.8" y="140.4" width="6.4" height="45.6" rx="1" fill="var(--muted)" opacity="0.55"/>
+<rect x="98.4" y="148.0" width="6.4" height="38.0" rx="1" fill="var(--muted)" opacity="0.55"/>
+<rect x="107.0" y="154.1" width="6.4" height="31.9" rx="1" fill="var(--muted)" opacity="0.55"/>
+<rect x="115.6" y="160.2" width="6.4" height="25.8" rx="1" fill="var(--muted)" opacity="0.55"/>
+<rect x="124.2" y="165.5" width="6.4" height="20.5" rx="1" fill="var(--muted)" opacity="0.55"/>
+<rect x="132.8" y="170.8" width="6.4" height="15.2" rx="1" fill="var(--muted)" opacity="0.55"/>
+<rect x="141.4" y="175.4" width="6.4" height="10.6" rx="1" fill="var(--muted)" opacity="0.55"/>
+<text x="190" y="16" font-family="var(--sans)" font-size="10" text-anchor="start" fill="var(--ink)" font-weight="600">Consumption λ(p,a)</text>
+<text x="190" y="206" font-family="var(--mono)" font-size="8.5" text-anchor="start" fill="var(--muted)">wear rises with age →</text>
+<line x1="190" y1="186" x2="330" y2="186" stroke="var(--line)" stroke-width="1.2"/>
+<polyline points="198.2,178.1 206.8,174.1 215.4,168.6 224.0,162.3 232.6,154.4 241.2,146.5 249.8,137.0 258.4,126.7 267.0,116.4 275.6,107.0 284.2,99.1 292.8,92.7 301.4,88.0 310.0,84.8 318.6,83.2" fill="none" stroke="var(--accent)" stroke-width="2.4"/>
+<text x="364" y="16" font-family="var(--sans)" font-size="10" text-anchor="start" fill="var(--ink)" font-weight="600">Demand contribution</text>
+<text x="364" y="206" font-family="var(--mono)" font-size="8.5" text-anchor="start" fill="var(--muted)">peaks at age 8–9 →</text>
+<line x1="364" y1="186" x2="504" y2="186" stroke="var(--line)" stroke-width="1.2"/>
+<rect x="369.0" y="166.5" width="6.4" height="19.5" rx="1" fill="var(--accent)" opacity="0.85"/>
+<rect x="377.6" y="157.9" width="6.4" height="28.1" rx="1" fill="var(--accent)" opacity="0.85"/>
+<rect x="386.2" y="147.1" width="6.4" height="38.9" rx="1" fill="var(--accent)" opacity="0.85"/>
+<rect x="394.8" y="136.6" width="6.4" height="49.4" rx="1" fill="var(--accent)" opacity="0.85"/>
+<rect x="403.4" y="126.1" width="6.4" height="59.9" rx="1" fill="var(--accent)" opacity="0.85"/>
+<rect x="412.0" y="118.6" width="6.4" height="67.4" rx="1" fill="var(--accent)" opacity="0.85"/>
+<rect x="420.6" y="111.8" width="6.4" height="74.2" rx="1" fill="var(--accent)" opacity="0.85"/>
+<rect x="429.2" y="107.4" width="6.4" height="78.6" rx="1" fill="var(--accent)" opacity="0.85"/>
+<rect x="437.8" y="107.0" width="6.4" height="79.0" rx="1" fill="var(--accent)" opacity="0.85"/>
+<rect x="446.4" y="111.2" width="6.4" height="74.8" rx="1" fill="var(--accent)" opacity="0.85"/>
+<rect x="455.0" y="116.8" width="6.4" height="69.2" rx="1" fill="var(--accent)" opacity="0.85"/>
+<rect x="463.6" y="125.9" width="6.4" height="60.1" rx="1" fill="var(--accent)" opacity="0.85"/>
+<rect x="472.2" y="135.9" width="6.4" height="50.1" rx="1" fill="var(--accent)" opacity="0.85"/>
+<rect x="480.8" y="147.7" width="6.4" height="38.3" rx="1" fill="var(--accent)" opacity="0.85"/>
+<rect x="489.4" y="158.8" width="6.4" height="27.2" rx="1" fill="var(--accent)" opacity="0.85"/>
+<line x1="441.0" y1="98.96" x2="441.0" y2="70" stroke="var(--gate)" stroke-width="1.5"/>
+<text x="441.0" y="64" font-family="var(--mono)" font-size="9.5" text-anchor="middle" fill="var(--gate)" font-weight="600">peak</text>
+<text x="174" y="110" font-family="var(--sans)" font-size="17" text-anchor="middle" fill="var(--muted)">×</text>
+<text x="348" y="110" font-family="var(--sans)" font-size="17" text-anchor="middle" fill="var(--muted)">=</text>
+<text x="16" y="234" font-family="var(--mono)" font-size="11" text-anchor="start" fill="var(--accent)" font-weight="600">D(p,t) = Σ UIO(m,a,t) · λ(p,a) · s(t) · k(p)</text>
+<text x="16" y="256" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--ink)" font-weight="600">Biggest cohorts are youngest, highest rates are oldest —</text>
+<text x="16" y="272" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--ink)" font-weight="600">so demand comes from neither end.</text>
+      </svg>
+    </div>
+    <figcaption>λ is fitted by penalised non-negative least squares pooled on behaviour class. Cohort sizes move together over time, so the fitted curve is trustworthy while any single age coefficient is weakly identified — always report confidence intervals.</figcaption>
+  </figure>
+
+  <figure class="card" id="s09">
+    <div class="ch">
+      <span class="cn">09</span>
+      <div><h3 class="ct">Unit Sales</h3><p class="cl">Four years with no registrations at all</p></div>
+    </div>
+    <div class="cv">
+      <svg viewBox="0 0 520 284" role="img" aria-label="Four years with no registrations at all">
+        <defs><marker id="a09" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,1.5 L9,5 L0,8.5 z" fill="var(--line)"/></marker></defs>
+        <text x="16" y="16" font-family="var(--sans)" font-size="9" text-anchor="start" fill="var(--muted)" font-weight="600">VEHICLE REGISTRATIONS</text>
+<text x="504" y="16" font-family="var(--mono)" font-size="10" text-anchor="end" fill="var(--ink)" font-weight="600">278,732 units</text>
+<rect x="30.0" y="173.2" width="30.0" height="22.8" rx="2" fill="var(--accent)" opacity="0.85"/>
+<text x="45.0" y="211" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">14</text>
+<text x="45.0" y="167.2481807046617" font-family="var(--mono)" font-size="8.5" text-anchor="middle" fill="var(--accent)" font-weight="600">8k</text>
+<rect x="66.0" y="154.0" width="30.0" height="42.0" rx="2" fill="var(--accent)" opacity="0.85"/>
+<text x="81.0" y="211" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">15</text>
+<text x="81.0" y="148.03382808559695" font-family="var(--mono)" font-size="8.5" text-anchor="middle" fill="var(--accent)" font-weight="600">16k</text>
+<rect x="102.0" y="135.9" width="30.0" height="60.1" rx="2" fill="var(--accent)" opacity="0.85"/>
+<text x="117.0" y="211" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">16</text>
+<text x="117.0" y="129.9091072843865" font-family="var(--mono)" font-size="8.5" text-anchor="middle" fill="var(--accent)" font-weight="600">23k</text>
+<rect x="138.0" y="94.9" width="30.0" height="101.1" rx="2" fill="var(--accent)" opacity="0.85"/>
+<text x="153.0" y="211" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">17</text>
+<text x="153.0" y="88.8995604870668" font-family="var(--mono)" font-size="8.5" text-anchor="middle" fill="var(--accent)" font-weight="600">39k</text>
+<rect x="174.0" y="54.0" width="30.0" height="142.0" rx="2" fill="var(--accent)" opacity="0.85"/>
+<text x="189.0" y="211" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">18</text>
+<text x="189.0" y="48.0" font-family="var(--mono)" font-size="8.5" text-anchor="middle" fill="var(--accent)" font-weight="600">55k</text>
+<rect x="210.0" y="58.7" width="30.0" height="137.3" rx="2" fill="var(--accent)" opacity="0.85"/>
+<text x="225.0" y="211" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">19</text>
+<text x="225.0" y="52.693601844513296" font-family="var(--mono)" font-size="8.5" text-anchor="middle" fill="var(--accent)" font-weight="600">53k</text>
+<rect x="246.0" y="127.7" width="30.0" height="68.3" rx="2" fill="var(--accent)" opacity="0.85"/>
+<text x="261.0" y="211" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">20</text>
+<text x="261.0" y="121.70361697528641" font-family="var(--mono)" font-size="8.5" text-anchor="middle" fill="var(--accent)" font-weight="600">26k</text>
+<rect x="282.0" y="195.8" width="30.0" height="0.2" rx="2" fill="var(--accent)" opacity="0.85"/>
+<text x="297.0" y="211" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">21</text>
+<text x="333.0" y="211" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">22</text>
+<text x="369.0" y="211" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">23</text>
+<text x="405.0" y="211" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">24</text>
+<rect x="426.0" y="139.5" width="30.0" height="56.5" rx="2" fill="var(--accent)" opacity="0.85"/>
+<text x="441.0" y="211" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">25</text>
+<text x="441.0" y="133.51307731104546" font-family="var(--mono)" font-size="8.5" text-anchor="middle" fill="var(--accent)" font-weight="600">22k</text>
+<rect x="462.0" y="113.3" width="30.0" height="82.7" rx="2" fill="var(--accent)" opacity="0.85"/>
+<text x="477.0" y="211" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">26</text>
+<text x="477.0" y="107.26983212046977" font-family="var(--mono)" font-size="8.5" text-anchor="middle" fill="var(--accent)" font-weight="600">32k</text>
+<line x1="16" y1="196" x2="504" y2="196" stroke="var(--line)" stroke-width="1.2"/>
+<rect x="279" y="36" width="144" height="160" fill="var(--bad)" fill-opacity="0.07" stroke="var(--bad)" stroke-width="1.4" stroke-dasharray="4 3" rx="3"/>
+<text x="351.0" y="56" font-family="var(--sans)" font-size="9.5" text-anchor="middle" fill="var(--bad)" font-weight="600">IMPORT BAN</text>
+<text x="351.0" y="70" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--bad)">85 · 0 · 0 · 0</text>
+<text x="16" y="238" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--ink)" font-weight="600">Real, not missing data. The fleet is bimodal — a 2014–20</text>
+<text x="16" y="254" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--ink)" font-weight="600">block now aged 6–12, and a young 2025–26 block.</text>
+<text x="16" y="274" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--muted)">MCSI is VIN-level but covers 2025–26 only; earlier years are annual.</text>
+      </svg>
+    </div>
+    <figcaption>The 2014–20 block sits squarely in the high-consumption age band, so wear parts for those models are where demand is now. The 2025–26 block will demand almost nothing for several years, then step up sharply.</figcaption>
+  </figure>
+
+  <figure class="card" id="s10">
+    <div class="ch">
+      <span class="cn">10</span>
+      <div><h3 class="ct">UIO Cohorts</h3><p class="cl">Each cohort moves one bucket per year, losing some</p></div>
+    </div>
+    <div class="cv">
+      <svg viewBox="0 0 520 258" role="img" aria-label="Each cohort moves one bucket per year, losing some">
+        <defs><marker id="a10" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,1.5 L9,5 L0,8.5 z" fill="var(--line)"/></marker></defs>
+        <text x="16" y="16" font-family="var(--sans)" font-size="9" text-anchor="start" fill="var(--muted)" font-weight="600">A COHORT AGES DIAGONALLY, AND SHRINKS</text>
+<text x="56" y="55" font-family="var(--mono)" font-size="9.5" text-anchor="end" fill="var(--muted)">0-1</text>
+<line x1="64" y1="68" x2="436" y2="68" stroke="var(--line)" stroke-width="0.8" stroke-dasharray="2 3"/>
+<text x="56" y="89" font-family="var(--mono)" font-size="9.5" text-anchor="end" fill="var(--muted)">1-2</text>
+<line x1="64" y1="102" x2="436" y2="102" stroke="var(--line)" stroke-width="0.8" stroke-dasharray="2 3"/>
+<text x="56" y="123" font-family="var(--mono)" font-size="9.5" text-anchor="end" fill="var(--muted)">2-3</text>
+<line x1="64" y1="136" x2="436" y2="136" stroke="var(--line)" stroke-width="0.8" stroke-dasharray="2 3"/>
+<text x="56" y="157" font-family="var(--mono)" font-size="9.5" text-anchor="end" fill="var(--muted)">3-4</text>
+<line x1="64" y1="170" x2="436" y2="170" stroke="var(--line)" stroke-width="0.8" stroke-dasharray="2 3"/>
+<text x="95.0" y="188" font-family="var(--mono)" font-size="9.5" text-anchor="middle" fill="var(--muted)">t</text>
+<text x="157.0" y="188" font-family="var(--mono)" font-size="9.5" text-anchor="middle" fill="var(--muted)">t+1</text>
+<text x="219.0" y="188" font-family="var(--mono)" font-size="9.5" text-anchor="middle" fill="var(--muted)">t+2</text>
+<text x="281.0" y="188" font-family="var(--mono)" font-size="9.5" text-anchor="middle" fill="var(--muted)">t+3</text>
+<text x="343.0" y="188" font-family="var(--mono)" font-size="9.5" text-anchor="middle" fill="var(--muted)">t+4</text>
+<text x="405.0" y="188" font-family="var(--mono)" font-size="9.5" text-anchor="middle" fill="var(--muted)">t+5</text>
+<rect x="72.0" y="41.0" width="46.0" height="20.0" rx="2" fill="var(--accent)" opacity="0.85"/>
+<text x="95.0" y="55.0" font-family="var(--mono)" font-size="8.5" text-anchor="middle" fill="#fff" font-weight="600">new</text>
+<rect x="135.4" y="75.6" width="43.2" height="18.8" rx="2" fill="var(--accent)" opacity="0.85"/>
+<text x="157.0" y="89.0" font-family="var(--mono)" font-size="8.5" text-anchor="middle" fill="#fff" font-weight="600">0.94</text>
+<rect x="198.5" y="110.1" width="40.9" height="17.8" rx="2" fill="var(--accent)" opacity="0.85"/>
+<text x="219.0" y="123.0" font-family="var(--mono)" font-size="8.5" text-anchor="middle" fill="#fff" font-weight="600">0.89</text>
+<rect x="261.9" y="144.7" width="38.2" height="16.6" rx="2" fill="var(--accent)" opacity="0.85"/>
+<text x="281.0" y="157.0" font-family="var(--mono)" font-size="8.5" text-anchor="middle" fill="#fff" font-weight="600">0.83</text>
+<rect x="134.0" y="41.0" width="46.0" height="20.0" rx="2" fill="var(--accent)" opacity="0.32"/>
+<rect x="197.4" y="75.6" width="43.2" height="18.8" rx="2" fill="var(--accent)" opacity="0.32"/>
+<rect x="260.5" y="110.1" width="40.9" height="17.8" rx="2" fill="var(--accent)" opacity="0.32"/>
+<rect x="196.0" y="41.0" width="46.0" height="20.0" rx="2" fill="var(--accent)" opacity="0.32"/>
+<rect x="259.4" y="75.6" width="43.2" height="18.8" rx="2" fill="var(--accent)" opacity="0.32"/>
+<rect x="258.0" y="41.0" width="46.0" height="20.0" rx="2" fill="var(--accent)" opacity="0.32"/>
+<line x1="121.0" y1="57.0" x2="153.0" y2="77.0" stroke="var(--accent)" stroke-width="1.4" marker-end="url(#a10)"/>
+<line x1="183.0" y1="91.0" x2="215.0" y2="111.0" stroke="var(--accent)" stroke-width="1.4" marker-end="url(#a10)"/>
+<line x1="245.0" y1="125.0" x2="277.0" y2="145.0" stroke="var(--accent)" stroke-width="1.4" marker-end="url(#a10)"/>
+<text x="16" y="206" font-family="var(--mono)" font-size="10.5" text-anchor="start" fill="var(--accent)" font-weight="600">UIO(m, a+1, t+1) = UIO(m, a, t) · survival(m, a)</text>
+<text x="16" y="232" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--ink)" font-weight="600">Survival must be age-specific. A flat annual rate says a 1-year-old and a 14-year-old retire</text>
+<text x="16" y="248" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--ink)" font-weight="600">at the same pace — which flattens the very structure the demand model depends on.</text>
+      </svg>
+    </div>
+    <figcaption>Without de-registration records, retirement is an assumption calibrated against indirect signal rather than a measurement. Say which it is, and run the downstream policy under at least two survival curves.</figcaption>
+  </figure>
+
+  <figure class="card" id="s11">
+    <div class="ch">
+      <span class="cn">11</span>
+      <div><h3 class="ct">Targets</h3><p class="cl">The response lags, and arrives smaller</p></div>
+    </div>
+    <div class="cv">
+      <svg viewBox="0 0 520 268" role="img" aria-label="The response lags, and arrives smaller">
+        <defs><marker id="a11" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,1.5 L9,5 L0,8.5 z" fill="var(--line)"/></marker></defs>
+        <text x="16" y="16" font-family="var(--sans)" font-size="9" text-anchor="start" fill="var(--muted)" font-weight="600">A +10% UNIT TARGET DOES NOT MOVE PARTS DEMAND BY +10%</text>
+<line x1="40" y1="150" x2="496" y2="150" stroke="var(--line)" stroke-width="1.2"/>
+<polyline points="40.0,150.0 81.5,150.0 122.9,150.0 164.4,150.0 205.8,56.0 247.3,56.0 288.7,56.0 330.2,56.0 371.6,56.0 413.1,56.0 454.5,56.0 496.0,56.0" fill="none" stroke="var(--gate)" stroke-width="2.4"/>
+<polyline points="40.0,150.0 81.5,150.0 122.9,150.0 164.4,150.0 205.8,146.2 247.3,139.7 288.7,131.2 330.2,122.7 371.6,116.2 413.1,110.5 454.5,106.8 496.0,103.9" fill="none" stroke="var(--accent)" stroke-width="2.4"/>
+<line x1="205.8181818181818" y1="156" x2="205.8181818181818" y2="30" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3"/>
+<text x="205.8181818181818" y="24" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">target set</text>
+<text x="500" y="60.0" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--gate)" font-weight="600">units</text>
+<text x="500" y="107.94" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--accent)" font-weight="600">parts</text>
+<text x="40.0" y="166" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">t</text>
+<text x="205.8181818181818" y="166" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">+0</text>
+<text x="371.6363636363636" y="166" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">+4</text>
+<text x="496.0" y="166" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">+8</text>
+<text x="274" y="184" font-family="var(--sans)" font-size="9.5" text-anchor="middle" fill="var(--muted)">months after the target takes effect</text>
+<line x1="40" y1="56.0" x2="496" y2="56.0" stroke="var(--gate)" stroke-width="0.8" stroke-dasharray="2 3"/>
+<text x="16" y="198" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--ink)" font-weight="600">New bikes consume almost nothing for years. The response lags through the age profile</text>
+<text x="16" y="214" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--ink)" font-weight="600">and arrives smaller — which is exactly the test that the mechanism is wired up.</text>
+<rect x="16" y="230" width="488" height="30" rx="4" fill="var(--gate-soft)" stroke="var(--gate)" stroke-width="2"/>
+<text x="28" y="249" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--gate)" font-weight="600">If parts demand moves 1:1 with unit sales, step 10 is not connected.</text>
+      </svg>
+    </div>
+    <figcaption>Scenario output is planning information. The monthly purchase order runs on the base scenario unless a human explicitly switches it — a scenario must never quietly become the operational number.</figcaption>
+  </figure>
+
+  <figure class="card" id="s12">
+    <div class="ch">
+      <span class="cn">12</span>
+      <div><h3 class="ct">Stock Position</h3><p class="cl">IP, never on-hand</p></div>
+    </div>
+    <div class="cv">
+      <svg viewBox="0 0 520 284" role="img" aria-label="IP, never on-hand">
+        <defs><marker id="a12" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,1.5 L9,5 L0,8.5 z" fill="var(--line)"/></marker></defs>
+        <text x="16" y="16" font-family="var(--sans)" font-size="9" text-anchor="start" fill="var(--muted)" font-weight="600">THREE ORDERS CAN BE IN FLIGHT AT ONCE</text>
+<line x1="118" y1="32" x2="118" y2="108" stroke="var(--line)" stroke-width="0.8" stroke-dasharray="2 3"/>
+<text x="118" y="123" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">now</text>
+<line x1="176" y1="32" x2="176" y2="108" stroke="var(--line)" stroke-width="0.8" stroke-dasharray="2 3"/>
+<text x="176" y="123" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">+1</text>
+<line x1="234" y1="32" x2="234" y2="108" stroke="var(--line)" stroke-width="0.8" stroke-dasharray="2 3"/>
+<text x="234" y="123" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">+2</text>
+<line x1="292" y1="32" x2="292" y2="108" stroke="var(--line)" stroke-width="0.8" stroke-dasharray="2 3"/>
+<text x="292" y="123" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">+3</text>
+<line x1="350" y1="32" x2="350" y2="108" stroke="var(--line)" stroke-width="0.8" stroke-dasharray="2 3"/>
+<text x="350" y="123" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">+4</text>
+<line x1="408" y1="32" x2="408" y2="108" stroke="var(--line)" stroke-width="0.8" stroke-dasharray="2 3"/>
+<text x="408" y="123" font-family="var(--mono)" font-size="9" text-anchor="middle" fill="var(--muted)">+5</text>
+<line x1="104" y1="108" x2="422" y2="108" stroke="var(--line)" stroke-width="1.2"/>
+<line x1="108" y1="44" x2="118" y2="44" stroke="var(--accent)" stroke-width="2.4"/>
+<circle cx="118" cy="44" r="4.2" fill="var(--accent)"/>
+<text x="100" y="48" font-family="var(--mono)" font-size="9" text-anchor="end" fill="var(--muted)">ordered m−3</text>
+<line x1="108" y1="64" x2="176" y2="64" stroke="var(--accent)" stroke-width="2.4"/>
+<circle cx="176" cy="64" r="4.2" fill="var(--accent)"/>
+<text x="100" y="68" font-family="var(--mono)" font-size="9" text-anchor="end" fill="var(--muted)">ordered m−2</text>
+<line x1="108" y1="84" x2="234" y2="84" stroke="var(--accent)" stroke-width="2.4"/>
+<circle cx="234" cy="84" r="4.2" fill="var(--accent)"/>
+<text x="100" y="88" font-family="var(--mono)" font-size="9" text-anchor="end" fill="var(--muted)">ordered m−1</text>
+<text x="257.2" y="152" font-family="var(--sans)" font-size="9.5" text-anchor="middle" fill="var(--accent)" font-weight="600">on_order — paid for, not yet on the shelf</text>
+<line x1="16" y1="170" x2="504" y2="170" stroke="var(--line)" stroke-width="1"/>
+<text x="16" y="192" font-family="var(--sans)" font-size="9" text-anchor="start" fill="var(--muted)" font-weight="600">INVENTORY POSITION</text>
+<rect x="16.0" y="202.0" width="168.0" height="30.0" rx="2" fill="var(--good)" opacity="0.8"/>
+<text x="100.0" y="222" font-family="var(--sans)" font-size="9.5" text-anchor="middle" fill="#fff" font-weight="600">on_hand</text>
+<rect x="190.0" y="202.0" width="134.0" height="30.0" rx="2" fill="var(--accent)" opacity="0.8"/>
+<text x="257.0" y="222" font-family="var(--sans)" font-size="9.5" text-anchor="middle" fill="#fff" font-weight="600">on_order</text>
+<text x="338" y="220" font-family="var(--sans)" font-size="13" text-anchor="middle" fill="var(--muted)">−</text>
+<rect x="350.0" y="202.0" width="64.0" height="30.0" rx="2" fill="var(--bad)" opacity="0.8"/>
+<text x="382.0" y="222" font-family="var(--sans)" font-size="9.5" text-anchor="middle" fill="#fff" font-weight="600">backorders</text>
+<text x="428" y="222" font-family="var(--mono)" font-size="11" text-anchor="start" fill="var(--ink)" font-weight="600">= IP</text>
+<rect x="16" y="202" width="168" height="30" fill="none" stroke="var(--bad)" stroke-width="2" stroke-dasharray="4 3" rx="2"/>
+<text x="16" y="258" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--bad)" font-weight="600">Comparing against on_hand alone over-orders by a lead time</text>
+<text x="16" y="274" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--bad)" font-weight="600">of demand — every month, until the pipeline lands.</text>
+      </svg>
+    </div>
+    <figcaption>On_Orders.xlsx is a wide month pivot for 2026 with no PO dates, read as expected arrival by default. Only months at or after the as-of date count — earlier ones have already landed and sit inside on_hand.</figcaption>
+  </figure>
+
+  <figure class="card" id="s13">
+    <div class="ch">
+      <span class="cn">13</span>
+      <div><h3 class="ct">Policy Engine</h3><p class="cl">Safety stock is the buffer the sawtooth may reach</p></div>
+    </div>
+    <div class="cv">
+      <svg viewBox="0 0 520 322" role="img" aria-label="Safety stock is the buffer the sawtooth may reach">
+        <defs><marker id="a13" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,1.5 L9,5 L0,8.5 z" fill="var(--line)"/></marker></defs>
+        <text x="16" y="16" font-family="var(--sans)" font-size="9" text-anchor="start" fill="var(--muted)" font-weight="600">INVENTORY OVER TIME UNDER (R,s,S)</text>
+<line x1="44" y1="51.52000000000001" x2="486" y2="51.52000000000001" stroke="var(--accent)" stroke-width="1.4" stroke-dasharray="5 3"/>
+<text x="492" y="55.52000000000001" font-family="var(--mono)" font-size="10.5" text-anchor="start" fill="var(--accent)" font-weight="600">S</text>
+<text x="36" y="55.52000000000001" font-family="var(--mono)" font-size="9" text-anchor="end" fill="var(--accent)">172</text>
+<line x1="44" y1="123.76" x2="486" y2="123.76" stroke="var(--gate)" stroke-width="1.4" stroke-dasharray="5 3"/>
+<text x="492" y="127.76" font-family="var(--mono)" font-size="10.5" text-anchor="start" fill="var(--gate)" font-weight="600">s</text>
+<text x="36" y="127.76" font-family="var(--mono)" font-size="9" text-anchor="end" fill="var(--gate)">86</text>
+<line x1="44" y1="159.04" x2="486" y2="159.04" stroke="var(--good)" stroke-width="1.4" stroke-dasharray="5 3"/>
+<text x="492" y="163.04" font-family="var(--mono)" font-size="10.5" text-anchor="start" fill="var(--good)" font-weight="600">SS</text>
+<text x="36" y="163.04" font-family="var(--mono)" font-size="9" text-anchor="end" fill="var(--good)">44</text>
+<polyline points="44,51.5 100,108.6 100,51.5 156,71.7 212,143.9 212,51.5 268,96.9 322,170.8 322,51.5 378,80.1 434,150.6 434,51.5 486,90.2" fill="none" stroke="var(--ink)" stroke-width="2"/>
+<line x1="100" y1="218" x2="100" y2="202" stroke="var(--accent)" stroke-width="1.4" marker-end="url(#a13)"/>
+<text x="100" y="232" font-family="var(--mono)" font-size="8.5" text-anchor="middle" fill="var(--accent)">order</text>
+<line x1="212" y1="218" x2="212" y2="202" stroke="var(--accent)" stroke-width="1.4" marker-end="url(#a13)"/>
+<text x="212" y="232" font-family="var(--mono)" font-size="8.5" text-anchor="middle" fill="var(--accent)">order</text>
+<line x1="322" y1="218" x2="322" y2="202" stroke="var(--accent)" stroke-width="1.4" marker-end="url(#a13)"/>
+<text x="322" y="232" font-family="var(--mono)" font-size="8.5" text-anchor="middle" fill="var(--accent)">order</text>
+<line x1="434" y1="218" x2="434" y2="202" stroke="var(--accent)" stroke-width="1.4" marker-end="url(#a13)"/>
+<text x="434" y="232" font-family="var(--mono)" font-size="8.5" text-anchor="middle" fill="var(--accent)">order</text>
+<circle cx="322" cy="170.8" r="4.5" fill="var(--bad)"/>
+<line x1="322" y1="176" x2="322" y2="186" stroke="var(--bad)" stroke-width="1.3"/>
+<text x="322" y="196" font-family="var(--sans)" font-size="9" text-anchor="middle" fill="var(--bad)" font-weight="600">dipped into SS</text>
+<line x1="44" y1="196" x2="486" y2="196" stroke="var(--line)" stroke-width="1.2"/>
+<text x="16" y="254" font-family="var(--mono)" font-size="10" text-anchor="start" fill="var(--muted)">ROL = μ_L + SS_L    ·    months of cover = S / d̄</text>
+<rect x="16" y="268" width="488" height="44" rx="4" fill="var(--gate-soft)" stroke="var(--gate)" stroke-width="2"/>
+<text x="28" y="288" font-family="var(--sans)" font-size="10" text-anchor="start" fill="var(--gate)" font-weight="600">Fill rate ≠ service level.</text>
+<text x="28" y="304" font-family="var(--mono)" font-size="9.5" text-anchor="start" fill="var(--muted)">Solve σ·G(z)/(d̄·R) ≤ 1−β — not a CSL lookup table.</text>
+      </svg>
+    </div>
+    <figcaption>Four monthly-executable policies are scored by walk-forward simulation and selected on cost subject to service, with a 5% hysteresis margin so the mix does not churn. Continuous review, VMI and JIT cannot execute on this cycle and are excluded.</figcaption>
+  </figure>
+
+  <figure class="card" id="s14">
+    <div class="ch">
+      <span class="cn">14</span>
+      <div><h3 class="ct">Monthly Order</h3><p class="cl">IP 120, S 300, pack 25 → order 200</p></div>
+    </div>
+    <div class="cv">
+      <svg viewBox="0 0 520 292" role="img" aria-label="IP 120, S 300, pack 25 → order 200">
+        <defs><marker id="a14" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,1.5 L9,5 L0,8.5 z" fill="var(--line)"/></marker></defs>
+        <text x="16" y="16" font-family="var(--sans)" font-size="9" text-anchor="start" fill="var(--muted)" font-weight="600">FROM INVENTORY POSITION TO A PLACEABLE QUANTITY</text>
+<rect x="22.0" y="65.2" width="84.0" height="100.8" rx="2" fill="var(--accent)" opacity="0.85"/>
+<text x="64" y="57.19999999999999" font-family="var(--mono)" font-size="11" text-anchor="middle" fill="var(--accent)" font-weight="600">180</text>
+<text x="64" y="183" font-family="var(--sans)" font-size="10" text-anchor="middle" fill="var(--ink)" font-weight="600">q_raw</text>
+<text x="64" y="197" font-family="var(--mono)" font-size="8.5" text-anchor="middle" fill="var(--muted)">S − IP = 300 − 120</text>
+<line x1="112" y1="130" x2="140" y2="130" stroke="var(--line)" stroke-width="1.4" marker-end="url(#a14)"/>
+<rect x="146.0" y="65.2" width="84.0" height="100.8" rx="2" fill="var(--muted)" opacity="0.32"/>
+<text x="188" y="57.19999999999999" font-family="var(--mono)" font-size="11" text-anchor="middle" fill="var(--muted)" font-weight="600">180</text>
+<text x="188" y="183" font-family="var(--sans)" font-size="10" text-anchor="middle" fill="var(--ink)" font-weight="600">EOQ floor</text>
+<text x="188" y="197" font-family="var(--mono)" font-size="8.5" text-anchor="middle" fill="var(--muted)">EOQ 140 — no effect</text>
+<line x1="236" y1="130" x2="264" y2="130" stroke="var(--line)" stroke-width="1.4" marker-end="url(#a14)"/>
+<rect x="270.0" y="65.2" width="84.0" height="100.8" rx="2" fill="var(--muted)" opacity="0.32"/>
+<text x="312" y="57.19999999999999" font-family="var(--mono)" font-size="11" text-anchor="middle" fill="var(--muted)" font-weight="600">180</text>
+<text x="312" y="183" font-family="var(--sans)" font-size="10" text-anchor="middle" fill="var(--ink)" font-weight="600">MOQ</text>
+<text x="312" y="197" font-family="var(--mono)" font-size="8.5" text-anchor="middle" fill="var(--muted)">MOQ 50 — no effect</text>
+<line x1="360" y1="130" x2="388" y2="130" stroke="var(--line)" stroke-width="1.4" marker-end="url(#a14)"/>
+<rect x="394.0" y="54.0" width="84.0" height="112.0" rx="2" fill="var(--good)" opacity="0.85"/>
+<text x="436" y="45.999999999999986" font-family="var(--mono)" font-size="11" text-anchor="middle" fill="var(--good)" font-weight="600">200</text>
+<text x="436" y="183" font-family="var(--sans)" font-size="10" text-anchor="middle" fill="var(--ink)" font-weight="600">pack 25</text>
+<text x="436" y="197" font-family="var(--mono)" font-size="8.5" text-anchor="middle" fill="var(--muted)">ceil(180/25) × 25</text>
+<line x1="16" y1="166" x2="504" y2="166" stroke="var(--line)" stroke-width="1.2"/>
+<text x="16" y="220" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--ink)" font-weight="600">Pack rounding never rounds down. MOQ never applies to a zero order.</text>
+<rect x="16" y="234" width="488" height="48" rx="4" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="2"/>
+<text x="28" y="254" font-family="var(--sans)" font-size="10" text-anchor="start" fill="var(--bad)" font-weight="600">Supply inflation  q ÷ β̂  is OFF by default</text>
+<text x="28" y="271" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--muted)">If β̂ is low because we over-order, inflating lowers it further.</text>
+      </svg>
+    </div>
+    <figcaption>EOQ is a floor on a triggered order, never the order itself — it assumes constant deterministic demand, which no spare part has. Where MOQ and pack size are absent they default to 1, and the report must say so.</figcaption>
+  </figure>
+
+  <figure class="card" id="s15">
+    <div class="ch">
+      <span class="cn">15</span>
+      <div><h3 class="ct">FastAPI Service</h3><p class="cl">Serves marts, computes nothing</p></div>
+    </div>
+    <div class="cv">
+      <svg viewBox="0 0 520 296" role="img" aria-label="Serves marts, computes nothing">
+        <defs><marker id="a15" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0,1.5 L9,5 L0,8.5 z" fill="var(--line)"/></marker></defs>
+        <text x="16" y="16" font-family="var(--sans)" font-size="9" text-anchor="start" fill="var(--muted)" font-weight="600">THE PIPELINE WRITES. THE API ONLY READS.</text>
+<rect x="16" y="30" width="132" height="42" rx="4" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+<text x="28" y="50" font-family="var(--mono)" font-size="10" text-anchor="start" fill="var(--ink)" font-weight="600">steps 12 → 14</text>
+<text x="28" y="64" font-family="var(--sans)" font-size="9" text-anchor="start" fill="var(--muted)">monthly run</text>
+<line x1="152" y1="51" x2="196" y2="51" stroke="var(--line)" stroke-width="1.4" marker-end="url(#a15)"/>
+<text x="174" y="43" font-family="var(--mono)" font-size="8.5" text-anchor="middle" fill="var(--muted)">writes</text>
+<rect x="202" y="30" width="116" height="42" rx="4" fill="var(--gate-soft)" stroke="var(--gate)" stroke-width="2"/>
+<text x="214" y="56" font-family="var(--mono)" font-size="10" text-anchor="start" fill="var(--gate)" font-weight="600">data/marts</text>
+<line x1="322" y1="51" x2="366" y2="51" stroke="var(--line)" stroke-width="1.4" marker-end="url(#a15)"/>
+<text x="344" y="43" font-family="var(--mono)" font-size="8.5" text-anchor="middle" fill="var(--muted)">reads</text>
+<rect x="372" y="30" width="132" height="42" rx="4" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+<text x="384" y="56" font-family="var(--mono)" font-size="10" text-anchor="start" fill="var(--accent)" font-weight="600">FastAPI</text>
+<line x1="438" y1="76" x2="438" y2="100" stroke="var(--accent)" stroke-width="1.4" marker-end="url(#a15)"/>
+<rect x="354" y="104" width="150" height="32" rx="4" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+<text x="429" y="124" font-family="var(--sans)" font-size="9.5" text-anchor="middle" fill="var(--muted)">buyer · analyst · job</text>
+<path d="M 372 66 C 300 112, 150 110, 82 78" fill="none" stroke="var(--bad)" stroke-width="1.6" stroke-dasharray="5 3"/>
+<path d="M224,100 l8,8 M232,100 l-8,8" stroke="var(--bad)" stroke-width="2" stroke-linecap="round"/>
+<text x="16" y="154" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--bad)" font-weight="600">No computation in a request handler.</text>
+<text x="16" y="170" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--bad)" font-weight="600">No purchase order written back to SAP.</text>
+<line x1="16" y1="186" x2="504" y2="186" stroke="var(--line)" stroke-width="1"/>
+<text x="16" y="208" font-family="var(--mono)" font-size="10" text-anchor="start" fill="var(--accent)" font-weight="600">GET /orders/proposal</text>
+<text x="232" y="208" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--muted)">the monthly order, filterable</text>
+<text x="16" y="236" font-family="var(--mono)" font-size="10" text-anchor="start" fill="var(--accent)" font-weight="600">GET /parts/{sku}/explain</text>
+<text x="232" y="236" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--muted)">forecast → σ → z → SS → policy → q</text>
+<text x="16" y="264" font-family="var(--mono)" font-size="10" text-anchor="start" fill="var(--accent)" font-weight="600">POST /runs/monthly</text>
+<text x="232" y="264" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--muted)">async, returns a job id</text>
+<text x="16" y="286" font-family="var(--sans)" font-size="9.5" text-anchor="start" fill="var(--ink)" font-weight="600">Every figure it returns was computed in a step, tested, and written to a table.</text>
+      </svg>
+    </div>
+    <figcaption>A number derived inside a request handler is a number nobody can reproduce. The proposal endpoint is a recommendation — there is no endpoint that submits a purchase order.</figcaption>
+  </figure>
+  </div>
+
+  <footer>16 diagrams · figures from source files, 2026-09-22</footer>
+</div>

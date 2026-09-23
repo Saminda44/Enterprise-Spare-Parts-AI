@@ -11,5 +11,27 @@
       "PowerShell(Get-ChildItem*)",
       "PowerShell(.venv\\Scripts\\python.exe*)"
     ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:/Users/samin/.local/bin/graphify.EXE hook-guard search"
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:/Users/samin/.local/bin/graphify.EXE hook-guard read"
+          }
+        ]
+      }
+    ]
   }
 }

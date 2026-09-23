@@ -1,0 +1,2308 @@
+<title>Yamaha Build Prompts</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@400&display=swap">
+<style>
+:root{
+  --sans:'IBM Plex Sans',ui-sans-serif,system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,monospace;
+  --serif:'IBM Plex Serif',Georgia,serif;
+  --bg:#eceff1; --surface:#ffffff; --ink:#151a1e; --muted:#5c6a72;
+  --line:#c3ced3; --accent:#0d6068; --accent-soft:#e2eff0;
+  --gate:#8a5d00; --gate-soft:#f8eed9; --code:#f2f5f6;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12171a; --surface:#1b2226; --ink:#e8eef0; --muted:#94a5ac;
+  --line:#323f45; --accent:#63c3c8; --accent-soft:#0f2c2e;
+  --gate:#d9a441; --gate-soft:#2b2416; --code:#151b1e;}}
+:root[data-theme="dark"]{
+  --bg:#12171a; --surface:#1b2226; --ink:#e8eef0; --muted:#94a5ac;
+  --line:#323f45; --accent:#63c3c8; --accent-soft:#0f2c2e;
+  --gate:#d9a441; --gate-soft:#2b2416; --code:#151b1e;}
+html,body{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);
+     -webkit-font-smoothing:antialiased;line-height:1.6}
+.shell{max-width:1140px;margin:0 auto;padding-inline:20px;padding-block:40px 72px;
+       display:grid;grid-template-columns:216px minmax(0,1fr);gap:34px;align-items:start}
+@media (max-width:840px){.shell{grid-template-columns:minmax(0,1fr);gap:22px}}
+
+nav{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow-y:auto}
+@media (max-width:840px){nav{position:static;max-height:none}}
+.nh{font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);
+    font-weight:600;margin:0 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+nav ul{list-style:none;padding:0;margin:0}
+nav a{display:grid;grid-template-columns:24px 1fr;gap:9px;align-items:baseline;
+      padding:6px 8px;border-radius:4px;text-decoration:none;color:var(--muted);
+      font-size:13px;line-height:1.35}
+nav a:hover{background:var(--accent-soft);color:var(--accent)}
+nav a.on{background:var(--accent-soft);color:var(--accent);font-weight:500}
+.nn{font-family:var(--mono);font-size:10.5px;color:var(--accent);font-variant-numeric:tabular-nums}
+
+main{min-width:0}
+.hero{margin-bottom:38px}
+.eyebrow{font-size:11px;letter-spacing:1.6px;text-transform:uppercase;color:var(--accent);
+         font-weight:600;margin:0 0 10px}
+h1.big{font-size:clamp(28px,5.5vw,40px);line-height:1.1;margin:0 0 15px;font-weight:600;
+       letter-spacing:-.02em;text-wrap:balance}
+.lede{font-family:var(--serif);font-size:16.5px;line-height:1.6;max-width:62ch;margin:0;
+      color:var(--ink)}
+.lede em{color:var(--accent);font-style:italic}
+
+.doc{background:var(--surface);border:1px solid var(--line);border-radius:7px;
+     padding:26px 28px 30px;margin-bottom:22px;scroll-margin-top:16px}
+@media (max-width:560px){.doc{padding:20px 18px 24px}}
+.dh{display:flex;align-items:center;justify-content:space-between;gap:14px;
+    padding-bottom:12px;margin-bottom:18px;border-bottom:1px solid var(--line)}
+.dfile{font-family:var(--mono);font-size:11px;color:var(--muted);margin:0}
+.copy{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:5px;
+      padding:6px 13px;font-family:var(--sans);font-size:12px;cursor:pointer;white-space:nowrap}
+.copy:hover{border-color:var(--accent);color:var(--accent)}
+.copy:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.copy.ok{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+
+.md h1{font-size:23px;font-weight:600;letter-spacing:-.01em;margin:0 0 16px;line-height:1.2}
+.md h2{font-size:12px;letter-spacing:1.3px;text-transform:uppercase;color:var(--muted);
+       font-weight:600;margin:30px 0 13px;padding-bottom:7px;border-bottom:1px solid var(--line)}
+.md h3{font-size:15px;font-weight:600;margin:22px 0 9px}
+.md p{font-size:14.5px;margin:0 0 13px;max-width:70ch}
+.md ul,.md ol{font-size:14.5px;margin:0 0 13px;padding-left:20px;max-width:70ch}
+.md li{margin-bottom:5px}
+.md li::marker{color:var(--accent)}
+.md strong{font-weight:600}
+.md a{color:var(--accent)}
+.md hr{border:none;border-top:1px solid var(--line);margin:26px 0}
+.md code{font-family:var(--mono);font-size:12.5px;background:var(--accent-soft);
+         color:var(--accent);padding:1.5px 5px;border-radius:3px}
+.md pre{background:var(--code);border:1px solid var(--line);border-radius:6px;
+        padding:14px 16px;overflow-x:auto;margin:0 0 15px}
+.md pre code{background:none;color:var(--ink);padding:0;font-size:12.5px;line-height:1.55}
+.md blockquote{border-left:3px solid var(--gate);background:var(--gate-soft);margin:0 0 16px;
+               padding:13px 16px;border-radius:0 5px 5px 0}
+.md blockquote p{margin:0 0 8px;font-size:13.5px;color:var(--muted)}
+.md blockquote p:last-child{margin:0}
+.md blockquote strong{color:var(--ink)}
+.tw{overflow-x:auto;margin:0 0 16px}
+.md table{width:100%;border-collapse:collapse;font-size:13px;min-width:min(100%,420px)}
+.md th{text-align:left;font-size:10px;letter-spacing:1px;text-transform:uppercase;
+       color:var(--muted);font-weight:600;padding:0 12px 7px 0;border-bottom:1px solid var(--line);
+       white-space:nowrap}
+.md td{padding:8px 12px 8px 0;border-bottom:1px solid var(--line);vertical-align:top}
+.md td code{font-size:12px}
+footer{grid-column:1/-1;margin-top:14px;padding-top:16px;border-top:1px solid var(--line);
+       font-size:12px;color:var(--muted);font-family:var(--mono)}
+</style>
+
+<div class="shell">
+  <nav aria-label="Steps">
+    <p class="nh">16 steps</p>
+    <ul><li><a href="#readme" data-id="readme"><span class="nn"></span><span class="nt">Overview</span></a></li>
+<li><a href="#step00" data-id="step00"><span class="nn">00</span><span class="nt">Foundation</span></a></li>
+<li><a href="#step01" data-id="step01"><span class="nn">01</span><span class="nt">PDF Catalogue Reader</span></a></li>
+<li><a href="#step02" data-id="step02"><span class="nn">02</span><span class="nt">Part Master and Supersession</span></a></li>
+<li><a href="#step03" data-id="step03"><span class="nn">03</span><span class="nt">Order Cleaning and Demand History</span></a></li>
+<li><a href="#step04" data-id="step04"><span class="nn">04</span><span class="nt">Parts Sales and Revenue</span></a></li>
+<li><a href="#step05" data-id="step05"><span class="nn">05</span><span class="nt">Order Analysis, Lost Sales and Lead Time</span></a></li>
+<li><a href="#step06" data-id="step06"><span class="nn">06</span><span class="nt">Parts Classification</span></a></li>
+<li><a href="#step07" data-id="step07"><span class="nn">07</span><span class="nt">Forecast Model Selection</span></a></li>
+<li><a href="#step08" data-id="step08"><span class="nn">08</span><span class="nt">Order Material Forecast</span></a></li>
+<li><a href="#step09" data-id="step09"><span class="nn">09</span><span class="nt">Vehicle Unit Sales</span></a></li>
+<li><a href="#step10" data-id="step10"><span class="nn">10</span><span class="nt">UIO, Survival and Age Cohorts</span></a></li>
+<li><a href="#step11" data-id="step11"><span class="nn">11</span><span class="nt">Target and Scenario Simulator</span></a></li>
+<li><a href="#step12" data-id="step12"><span class="nn">12</span><span class="nt">Stock and Inventory Position</span></a></li>
+<li><a href="#step13" data-id="step13"><span class="nn">13</span><span class="nt">Safety Stock, Reorder Level, Reorder Quantity</span></a></li>
+<li><a href="#step14" data-id="step14"><span class="nn">14</span><span class="nt">Monthly Order Generation</span></a></li>
+<li><a href="#step15" data-id="step15"><span class="nn">15</span><span class="nt">FastAPI Service Layer</span></a></li></ul>
+  </nav>
+
+  <main>
+    <div class="hero">
+      <p class="eyebrow">AMW · Yamaha spare parts</p>
+      <h1 class="big">Yamaha Build Prompts</h1>
+      <p class="lede">Every step prompt, in one place. Each is self-contained — hand a coding agent
+      <em>one</em> section and it has the objective, the real data shape, the rules, the output
+      contract, the validation gates and the questions to ask first. Use <strong>Copy prompt</strong>
+      to take the original markdown straight to the clipboard.</p>
+    </div>
+<article id="readme" class="doc"><header class="dh"><div><p class="dfile">00_README.md</p></div><button class="copy" data-id="readme">Copy prompt</button></header><div class="md"><h1>Build Prompts - Yamaha Spare Parts Intelligence</h1>
+<p>Sixteen prompts, one per step. Each is self-contained: give a coding agent <strong>one</strong> file and it has
+the objective, the real data shape, the rules, the output contract, the validation gates and the
+questions to ask first.</p>
+<p>Written against the <strong>actual data files</strong>, inspected 2026-09-22 - not against assumptions.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>File</th>
+<th>Builds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>00</td>
+<td><code>Step00_Foundation.md</code></td>
+<td>repo, contracts, orchestration, the SAP column parser</td>
+</tr>
+<tr>
+<td>01</td>
+<td><code>Step01_Catalogue_Reader.md</code></td>
+<td>PDF extraction with the full colour-variant ruleset</td>
+</tr>
+<tr>
+<td>02</td>
+<td><code>Step02_Part_Master.md</code></td>
+<td>supersession chain, <code>active_sku_id</code>, vector search</td>
+</tr>
+<tr>
+<td>03</td>
+<td><code>Step03_Cleaned_Orders.md</code></td>
+<td>demand history and measured lost sales</td>
+</tr>
+<tr>
+<td>04</td>
+<td><code>Step04_Parts_Sales.md</code></td>
+<td>billed sales, revenue, margin, geography</td>
+</tr>
+<tr>
+<td>05</td>
+<td><code>Step05_Order_Analysis.md</code></td>
+<td>fulfilment, supply reliability, lead time</td>
+</tr>
+<tr>
+<td>06</td>
+<td><code>Step06_Classification.md</code></td>
+<td>behaviour, ADI/CV2, ABC/XYZ/FSN</td>
+</tr>
+<tr>
+<td>07</td>
+<td><code>Step07_Model_Selection.md</code></td>
+<td>rolling-origin backtest, champion per segment</td>
+</tr>
+<tr>
+<td>08</td>
+<td><code>Step08_Material_Forecast.md</code></td>
+<td>parc-driven forecast, lambda(p,a), uncertainty</td>
+</tr>
+<tr>
+<td>09</td>
+<td><code>Step09_Unit_Sales.md</code></td>
+<td>VIN-level registrations from MCSI</td>
+</tr>
+<tr>
+<td>10</td>
+<td><code>Step10_UIO_Cohorts.md</code></td>
+<td>UIO by age bucket, survival, roll-forward</td>
+</tr>
+<tr>
+<td>11</td>
+<td><code>Step11_Targets.md</code></td>
+<td>unit forecast and target simulator</td>
+</tr>
+<tr>
+<td>12</td>
+<td><code>Step12_Stock.md</code></td>
+<td>PDC stock, on-order, inventory position</td>
+</tr>
+<tr>
+<td>13</td>
+<td><code>Step13_Policy_Engine.md</code></td>
+<td>SS, ROL, ROQ - simulated and selected</td>
+</tr>
+<tr>
+<td>14</td>
+<td><code>Step14_Monthly_Order.md</code></td>
+<td>the buyer-ready order, marts, explainability</td>
+</tr>
+<tr>
+<td>15</td>
+<td><code>Step15_FastAPI_Service.md</code></td>
+<td>the service layer</td>
+</tr>
+</tbody>
+</table>
+<h2>Scope decisions locked in these prompts</h2>
+<table>
+<thead>
+<tr>
+<th>Decision</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Output format</td>
+<td>Python modules under <code>src/</code>. <strong>Never notebooks.</strong></td>
+</tr>
+<tr>
+<td>Stock scope</td>
+<td><strong>PDC only</strong> (<code>Plant == "W1B4"</code>), cleaned against <code>PN_Yamaha.xlsx</code></td>
+</tr>
+<tr>
+<td>History</td>
+<td>Full <code>orders.xlsx</code> is <strong>~3 years</strong>; the 8-month file supplied is a sample</td>
+</tr>
+<tr>
+<td>On-order months</td>
+<td><strong>2026</strong>, read as expected arrival (config flag, printed every run)</td>
+</tr>
+<tr>
+<td>Delivery</td>
+<td><strong>FastAPI only</strong> - no Streamlit</td>
+</tr>
+<tr>
+<td>Lead time</td>
+<td>3 months. Review 1 month. Protection interval <strong>P = 4 months</strong></td>
+</tr>
+<tr>
+<td>Policies</td>
+<td>(R,S), (R,s,S), on-demand, no-stock. <strong>No VMI, JIT or continuous review</strong></td>
+</tr>
+</tbody>
+</table>
+<h2>What the data actually contains</h2>
+<p>Verified by reading all eight files.</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Rows</th>
+<th>Coverage</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>orders.xlsx</code></td>
+<td>46,514 x 102</td>
+<td>Jan-Aug 2026 (sample)</td>
+<td>fill rate <strong>0.745</strong>; 32% of lines fully rejected</td>
+</tr>
+<tr>
+<td><code>sales.xlsx</code></td>
+<td>21,301 x 41</td>
+<td>Jan-Aug 2026</td>
+<td><strong>May missing</strong>; <code>Payer</code> and <code>Material</code> are glued code+label</td>
+</tr>
+<tr>
+<td><code>MCSI.xlsx</code></td>
+<td>56,211 x 58</td>
+<td>2025-2026</td>
+<td>VIN-level, 12 model codes</td>
+</tr>
+<tr>
+<td><code>Sales Summery.xlsx</code></td>
+<td>20 sheets</td>
+<td>2014-2021, 2025-2026</td>
+<td><strong>278,732 units</strong>; 113 models classified</td>
+</tr>
+<tr>
+<td><code>current_stock.xlsx</code></td>
+<td>26,288 x 8</td>
+<td>snapshot</td>
+<td>16 plants; <strong>only an <code>Unrestricted</code> column</strong></td>
+</tr>
+<tr>
+<td><code>On_Orders.xlsx</code></td>
+<td>2,820 x 10</td>
+<td>2026 Jan-Aug</td>
+<td>wide month pivot; 252,568 units</td>
+</tr>
+<tr>
+<td><code>PN_Yamaha.xlsx</code></td>
+<td>30,216 x 16</td>
+<td>-</td>
+<td><code>Latest SS</code> already resolved</td>
+</tr>
+<tr>
+<td><code>dealers.xlsx</code></td>
+<td>414 x 12</td>
+<td>-</td>
+<td>Type MC/OBM, RM, ASE, Province, District</td>
+</tr>
+</tbody>
+</table>
+<h2>Three things the data settled</h2>
+<p><strong>1. <code>Payer</code> was never a contradiction.</strong> It holds both: <code>"26198      Yamaha Sales Center"</code>. So does
+<code>Material</code>: <code>"676-42115-00       SHAFT STEERING YAMAHA 40 HP"</code>. One shared parser, applied per column
+per file - <code>orders.xlsx</code> does not use this encoding.</p>
+<p><strong>2. The revenue formula needed no fixing.</strong> <code>Revenue Re</code> and <code>Cost Reduc</code> are zero in all 21,301
+rows, and <code>Net Sales = Sales Pric + Discount</code> holds exactly. Revenue is <code>Net Sales</code>; margin is
+<code>Net Sales - Cost</code>.</p>
+<p><strong>3. The parc has a four-year hole, and it is real.</strong> 2020: 26,701 units. 2021: <strong>85</strong>. 2022-2024:
+none. 2025: 22,084. That is Sri Lanka's vehicle import ban. The fleet is bimodal - a large 2014-2020
+block now aged 6-12, sitting in the high-consumption band, and a young 2025-2026 block that will
+demand little for years. Step 08 and Step 10 both depend on modelling this rather than smoothing it.</p>
+<h2>How to use these</h2>
+<p>Hand a coding agent one step's file. It will ask its questions, propose an architecture, wait, then
+build. Do not hand it several at once - each step has a validation gate that should pass before the
+next begins.</p>
+<p>Steps 01 and 02 can start immediately. Step 03 onward wants the full 3-year <code>orders.xlsx</code>.</p></div></article>
+<article id="step00" class="doc"><header class="dh"><div><p class="dfile">Step00_Foundation.md</p></div><button class="copy" data-id="step00">Copy prompt</button></header><div class="md"><h1>Step 00 - Foundation</h1>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Builds</strong></td>
+<td><code>src/core/ - src/io/ - tests/ - pyproject.toml</code></td>
+</tr>
+<tr>
+<td><strong>Reads</strong></td>
+<td>nothing</td>
+</tr>
+<tr>
+<td><strong>Writes</strong></td>
+<td><code>PlanningContext</code>, settings, stage registry, <code>src/io/sap.py</code></td>
+</tr>
+<tr>
+<td><strong>Format</strong></td>
+<td>Python modules under <code>src/</code>. Never a notebook. <code>run(ctx) -&gt; StageResult</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2>Objective</h2>
+<p>Set up the repository, the data contracts and the orchestration so every later step plugs into the same frame. No business logic here.</p>
+<h2>Environment</h2>
+<p>Python &gt;= 3.11 managed with <code>uv</code>. Dependencies: pandas, pyarrow, pandera, pydantic-settings, loguru,
+scipy, statsmodels, scikit-learn, chromadb, fastapi, uvicorn, pytest.</p>
+<h2>Layout</h2>
+<pre><code>src/
+  core/        context.py  registry.py  contracts.py  errors.py
+  io/          excel.py  sap.py  parquet.py  chroma.py
+  catalogue/   parts/  demand/  forecast/  parc/  inventory/
+  api/         main.py  routers/
+data/
+  raw/  staging/  facts/  marts/
+tests/
+</code></pre>
+<h2>The context object</h2>
+<pre><code class="language-python">@dataclass(frozen=True)
+class PlanningContext:
+    as_of: date
+    lead_time_months: int = 3
+    review_period_months: int = 1
+    plant: str = &quot;W1B4&quot;          # PDC only - see Step 12
+    currency: str = &quot;LKR&quot;
+    config: Mapping[str, Any] = field(default_factory=dict)
+</code></pre>
+<p>Frozen. Every stage receives it and returns <code>StageResult(rows_in, rows_out, rejected, warnings,
+artifacts)</code>. No stage reads global state; no stage mutates anything it did not create.</p>
+<h2>Contracts</h2>
+<p>Every table crossing a stage boundary carries a <strong>pandera</strong> schema. A violation raises - it does not
+warn and continue. This matters more than usual here, because the source files are SAP exports whose
+column meanings are not self-evident.</p>
+<h2>The SAP glued-column rule - applies everywhere</h2>
+<p>Several columns in these exports pack a <strong>code and a label into one string</strong>, separated by runs of
+spaces. Verified in the real files:</p>
+<pre><code>Payer               &quot;26198      Yamaha Sales Center&quot;
+Material            &quot;676-42115-00       SHAFT STEERING YAMAHA 40 HP&quot;
+Sales Organization  &quot;2501 Associated Motorways&quot;
+Sales Office        &quot;W1B1 Seeduwa - PDC&quot;
+Sales Employee      &quot;00171976 Arosha Edirisinghe&quot;
+</code></pre>
+<p>Build <strong>one</strong> shared parser in <code>src/io/sap.py</code>:</p>
+<pre><code class="language-python">def split_code_label(s: str) -&gt; tuple[str | None, str | None]:
+    &quot;&quot;&quot;Split &quot;26198      Yamaha Sales Center&quot; -&gt; (&quot;26198&quot;, &quot;Yamaha Sales Center&quot;).&quot;&quot;&quot;
+</code></pre>
+<p>Split on the first run of two or more spaces; fall back to the first single space when the leading
+token is purely numeric or matches a part-number pattern. Emit both <code>*_code</code> and <code>*_name</code> columns and
+<strong>never join on the raw glued string</strong>.</p>
+<p><code>orders.xlsx</code> does <strong>not</strong> use this encoding - it carries separate <code>Sold-to Party</code> (numeric) and
+<code>Sold-To Party Name</code>. <code>MCSI.xlsx</code> uses it for <code>Sales Organization</code> and <code>Sales Office</code> but its <code>Payer</code>
+is a retail customer name. So the parser is applied per column, per file, from a declared map - never
+blanket across a dataframe.</p>
+<h2>Excel loading</h2>
+<p>Source files are large: <code>orders.xlsx</code> 20 MB, <code>MCSI.xlsx</code> 18 MB. Read each workbook <strong>once</strong>, convert
+to parquet under <code>data/raw/</code>, and have every later step read the parquet. Re-reading the workbook per
+stage wastes minutes per run.</p>
+<h2>Orchestration</h2>
+<p>Explicit DAG, topologically sorted, fail-closed. A stage whose upstream failed does not run. Each run
+writes a report: rows in and out per stage, rejects with reasons, warnings, elapsed time.</p>
+<h2>Definition of Done</h2>
+<p><code>uv run pytest</code> green; the DAG executes end to end on a two-stage stub; the glued-column parser has
+tests covering all five patterns above plus a no-op on <code>orders.xlsx</code>-style columns.</p>
+<h2>Protocol</h2>
+<p><strong>Clarify -&gt; Architect -&gt; Code -&gt; Validate.</strong> Ask the open questions below first. Present an
+architecture note and <strong>wait for confirmation</strong> before writing code. Finish with tests and a
+validation report reconciled against the source file.</p>
+<h2>Open questions</h2>
+<ol>
+<li>Confirm Python version and whether <code>uv</code> is acceptable, or the team requires pip/conda.</li>
+<li>Where do the source files land in production - shared drive, scheduled SAP export, manual upload?</li>
+<li>Is the monthly run scheduled, or triggered by hand?</li>
+<li>Is there an existing repo and CI to fit into, or is this greenfield?</li>
+</ol></div></article>
+<article id="step01" class="doc"><header class="dh"><div><p class="dfile">Step01_Catalogue_Reader.md</p></div><button class="copy" data-id="step01">Copy prompt</button></header><div class="md"><h1>Step 01 - PDF Catalogue Reader</h1>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Builds</strong></td>
+<td><code>src/catalogue/pdf_reader.py - src/catalogue/colour_rules.py</code></td>
+</tr>
+<tr>
+<td><strong>Reads</strong></td>
+<td><code>pdf_catalogues/</code> (mixed layouts)</td>
+</tr>
+<tr>
+<td><strong>Writes</strong></td>
+<td><code>catalogue_parts</code>, <code>model_colour_variants</code> -&gt; Chroma collection <code>catalogue</code></td>
+</tr>
+<tr>
+<td><strong>Format</strong></td>
+<td>Python modules under <code>src/</code>. Never a notebook. <code>run(ctx) -&gt; StageResult</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2>Objective</h2>
+<p>Extract the parts table from every Yamaha catalogue PDF and resolve, for each part, which model and which colour variant it belongs to. The colour logic below is specified in full - it is not inference to be improvised.</p>
+<h2>Shape of the input</h2>
+<p>PDFs come in several layouts. The <strong>model code appears on page 1</strong> in most of them. Some are
+single-model; some are multimodal, with a quantity column per model.</p>
+<h2>Step A - the FOREWARD colour table</h2>
+<p>Read the <strong>FOREWARD</strong> page first and extract the <em>Applicable Color Table</em>: abbreviation, colour name,
+and colour code number where present. This is the universe of possible colours for that PDF.</p>
+<p>An abbreviation marked <strong><code>(*)</code></strong> is the <strong>model colour</strong> for that PDF.</p>
+<blockquote>
+<p><strong>Do not promote the FOREWARD table straight into colour variants.</strong> Real variants are equal to or
+fewer than the table. A variant is confirmed only once its abbreviation or colour name is actually
+observed in the parts table's remarks or descriptions.</p>
+</blockquote>
+<h2>Step B - remarks carrying abbreviations</h2>
+<p>A row whose <strong>Remark</strong> contains an abbreviation from the table is a <strong>coloured part</strong> belonging to
+that abbreviation's colour:</p>
+<table>
+<thead>
+<tr>
+<th>Remark pattern</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ABBR</code></td>
+<td>belongs to that colour</td>
+</tr>
+<tr>
+<td><code>UR ABBR</code> / <code>FOR ABBR</code></td>
+<td>belongs to that colour</td>
+</tr>
+<tr>
+<td><code>EXCEPT ABBR</code></td>
+<td><strong>does not</strong> belong - belongs to all <em>other</em> confirmed variants</td>
+</tr>
+<tr>
+<td><code>ABBR1, ABBR2</code></td>
+<td>belongs to each listed colour</td>
+</tr>
+</tbody>
+</table>
+<p><code>EXCEPT</code> inverts against the <strong>confirmed variant set</strong>, not against the full FOREWARD table. Getting
+this backwards silently assigns parts to colours that do not exist in the PDF.</p>
+<h2>Step C - remarks carrying numbers</h2>
+<p>When remarks contain numbers and the colour table carries colour numbers, the <strong>suffix after the
+final <code>-</code></strong> is the colour-variant number. The part is <strong>shared</strong> and belongs to that variant.</p>
+<h2>Step D - colour in the description</h2>
+<p>Where the remark cannot be resolved against the table, the colour abbreviation or name is often in
+the <strong>description</strong> - as a suffix after <code>-</code>, or inside brackets. Treat it as a coloured part for that
+variant. <code>UR</code> / <code>FOR</code> / <code>EXCEPT</code> apply identically.</p>
+<p><strong>Precedence when C and D disagree:</strong> if remarks carry numbers and the descriptions imply more
+colours than the table holds, <strong>go with the suffix numbers</strong>.</p>
+<h2>Step E - multimodal catalogues</h2>
+<p>Where quantities appear per model and remarks carry colour abbreviations:</p>
+<ol>
+<li>An abbreviation whose quantity appears for <strong>exactly one model</strong> is always a colour variant <em>of
+   that model</em>.</li>
+<li>A remark listing <strong>comma-separated abbreviations</strong> is split across models using the variants
+   identified in (1).</li>
+<li>A remark carrying <strong>one abbreviation across several models</strong> means that colour is available for
+   every model showing a quantity.</li>
+</ol>
+<p>Run (1) before (2). Step 2 has no basis without it.</p>
+<h2>Output</h2>
+<p><code>catalogue_parts</code>: <code>pdf_file</code>, <code>model_code</code>, <code>part_no</code>, <code>description</code>, <code>qty</code>, <code>remark_raw</code>,
+<code>part_kind</code> in {coloured, shared}, <code>colour_abbr</code>, <code>colour_name</code>, <code>colour_code</code>, <code>rule_applied</code>,
+<code>confidence</code>.</p>
+<p><code>rule_applied</code> records which of B/C/D/E fired. Without it, a wrong extraction cannot be audited.</p>
+<h2>Accuracy check - required, not optional</h2>
+<p>Sample <strong>at least 30 parts per PDF layout</strong>, verify by eye against the PDF, and report precision per
+rule. Report model-code detection accuracy separately. Rows the rules cannot resolve go to an
+exceptions table with the raw remark - <strong>never</strong> guessed into a variant.</p>
+<p>Load the resolved table into Chroma <strong>model-variant-wise</strong>, one document per part x variant.</p>
+<h2>Definition of Done</h2>
+<p>Accuracy reported per layout and per rule; exceptions listed with raw remarks; Chroma collection
+queryable by model code and colour.</p>
+<h2>Protocol</h2>
+<p><strong>Clarify -&gt; Architect -&gt; Code -&gt; Validate.</strong> Ask the open questions below first. Present an
+architecture note and <strong>wait for confirmation</strong> before writing code. Finish with tests and a
+validation report reconciled against the source file.</p>
+<h2>Open questions</h2>
+<ol>
+<li>How many PDFs, and how many distinct layouts?</li>
+<li>Is the heading always spelled FOREWARD, or do some use FOREWORD or another word?</li>
+<li>A part with <strong>no remark at all</strong> - shared across every colour, or unknown?</li>
+<li>Are there PDFs where the model code is not on page 1? What is the fallback?</li>
+<li>Do the catalogue part numbers use the same format as <code>PN_Yamaha.xlsx</code> (<code>0NH9-28471-00</code>)?</li>
+</ol></div></article>
+<article id="step02" class="doc"><header class="dh"><div><p class="dfile">Step02_Part_Master.md</p></div><button class="copy" data-id="step02">Copy prompt</button></header><div class="md"><h1>Step 02 - Part Master and Supersession</h1>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Builds</strong></td>
+<td><code>src/parts/master.py - src/parts/supersession.py - src/parts/search.py</code></td>
+</tr>
+<tr>
+<td><strong>Reads</strong></td>
+<td>Step 01 Chroma, <code>PN_Yamaha.xlsx</code>, <code>Sales Summery.xlsx</code> (Model Classification)</td>
+</tr>
+<tr>
+<td><strong>Writes</strong></td>
+<td><code>part_master</code>, <code>part_master_enriched</code>, Chroma collection <code>parts_master</code></td>
+</tr>
+<tr>
+<td><strong>Format</strong></td>
+<td>Python modules under <code>src/</code>. Never a notebook. <code>run(ctx) -&gt; StageResult</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2>Objective</h2>
+<p>Establish one identity per physical part - resolving the supersession chain to a single <code>active_sku_id</code> - and attach model compatibility to it. Everything downstream aggregates on this identifier.</p>
+<h2>Inputs - what is actually there</h2>
+<p><code>PN_Yamaha.xlsx</code>, sheet <code>Supersession</code>: <strong>30,216 rows x 16 columns</strong>.</p>
+<pre><code>Material, Latest SS, Material description, Material Type, Material Group, Brand,
+1st Supersede ... 10th Supersede
+</code></pre>
+<p><code>Latest SS</code> is <strong>already resolved</strong> in the source - do not recompute it, but <strong>do</strong> verify it against
+the chain and report disagreements. Material Type is <code>ERSA</code>; Material Group looks like <code>AWPYM0027</code>;
+Brand like <code>YM</code>.</p>
+<h2>Part A - model compatibility</h2>
+<p>From the Step 01 Chroma collection, derive for each unique part number the set of models it fits, as:</p>
+<pre><code>family name - model code (year)
+</code></pre>
+<p>e.g. <code>RAY - B2UG (2025)</code>. Model family, code and year come from the <code>Model Classification</code> sheet of
+<code>Sales Summery.xlsx</code>, which carries <code>Model</code>, <code>Model Name</code>, <code>Model Family</code>, <code>First Year Sold</code>,
+<code>Last Year Sold</code>, <code>Motorcycle Type</code>, <code>Segment</code>, <code>cc</code> for <strong>113 models</strong>. Join catalogue model codes to
+that sheet; report any code that does not match.</p>
+<p>Carry <code>part_kind</code> (coloured / shared) through from Step 01.</p>
+<h2>Part B - the supersession tool</h2>
+<p>Two capabilities, both required.</p>
+<p><strong>1. Vector search.</strong> Embed each part from its description, part number, all supersede numbers, group
+and brand. Search by description tolerant of typos (<code>"oil seal yb50"</code>), or by any part number.
+Filterable by Brand and Material Group. Persist to Chroma.</p>
+<p><strong>2. Part-number lookup.</strong> Accept any number from <code>Material</code>, <code>Latest SS</code>, or any of the ten
+supersede columns. Return every related part, each labelled:</p>
+<table>
+<thead>
+<tr>
+<th>Label</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>QUERIED</code></td>
+<td>the number asked for</td>
+</tr>
+<tr>
+<td><code>CURRENT</code></td>
+<td>the latest number in the chain</td>
+</tr>
+<tr>
+<td><code>OLDER</code></td>
+<td>a superseded predecessor</td>
+</tr>
+<tr>
+<td><code>RELATED</code></td>
+<td>linked through the chain, neither of the above</td>
+</tr>
+</tbody>
+</table>
+<p>Accept numbers <strong>with or without dashes</strong>, and <strong>partial</strong> numbers (<code>5VL-F341E</code> matches all its
+versions). Unknown number returns <code>not found</code> - never a fuzzy guess, because a wrong supersession
+merge corrupts every downstream demand series.</p>
+<h2>Part C - the join</h2>
+<p>Left join <strong>onto <code>PN_Yamaha</code></strong>: for each <code>Material</code>, look up the part master by <code>Material</code> and by
+each of the ten supersede columns, and bring across <code>description</code>, <code>part_kind</code> and
+<code>compatible_models</code>.</p>
+<h2>active_sku_id</h2>
+<p>Resolve every chain to one identifier - use <code>Latest SS</code> where it is present and consistent, otherwise
+the chain head. <strong>Every downstream step aggregates on <code>active_sku_id</code>, never on the raw material
+number.</strong> Without it, demand for one physical part is split across its old and new numbers and every
+forecast is understated.</p>
+<h2>Output</h2>
+<p><code>part_master</code> -&gt; parquet + Chroma. Then write <code>part_master_enriched</code> as a <strong>separate copy</strong>; Steps 6,
+8, 12 and 13 append their columns to that copy, never to the base.</p>
+<h2>Validation</h2>
+<ol>
+<li>Chain integrity: no cycles; every <code>Latest SS</code> is its own chain head.</li>
+<li><code>Latest SS</code> disagreements with the derived chain, counted and listed.</li>
+<li>Lookup returns identical results for <code>5VLF341E</code>, <code>5VL-F341E</code> and the partial form.</li>
+<li>Coverage: what share of the 30,216 parts got a model compatibility, and what share did not.</li>
+</ol>
+<h2>Protocol</h2>
+<p><strong>Clarify -&gt; Architect -&gt; Code -&gt; Validate.</strong> Ask the open questions below first. Present an
+architecture note and <strong>wait for confirmation</strong> before writing code. Finish with tests and a
+validation report reconciled against the source file.</p>
+<h2>Open questions</h2>
+<ol>
+<li>Where <code>Latest SS</code> disagrees with the supersede chain, which wins?</li>
+<li>Should parts with <strong>no catalogue match</strong> stay in the master with empty compatibility, or be flagged
+   out of scope?</li>
+<li>Is <code>Material Group</code> (<code>AWPYM0027</code>, <code>AWPOB0119</code>) meaningful for classification, and is there a lookup
+   for what each group means?</li>
+<li>Brand <code>YM</code> vs others - is the scope Yamaha only, or all brands in the file?</li>
+</ol></div></article>
+<article id="step03" class="doc"><header class="dh"><div><p class="dfile">Step03_Cleaned_Orders.md</p></div><button class="copy" data-id="step03">Copy prompt</button></header><div class="md"><h1>Step 03 - Order Cleaning and Demand History</h1>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Builds</strong></td>
+<td><code>src/demand/orders.py</code></td>
+</tr>
+<tr>
+<td><strong>Reads</strong></td>
+<td><code>orders.xlsx</code>, <code>dealers.xlsx</code>, <code>part_master</code></td>
+</tr>
+<tr>
+<td><strong>Writes</strong></td>
+<td><code>demand_history</code> (sales orders), <code>returns_history</code>, <code>order_exceptions</code></td>
+</tr>
+<tr>
+<td><strong>Format</strong></td>
+<td>Python modules under <code>src/</code>. Never a notebook. <code>run(ctx) -&gt; StageResult</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2>Objective</h2>
+<p>Turn the raw order export into a clean monthly demand history per part - including the <strong>measured lost sales</strong> that make this dataset unusually good for inventory work.</p>
+<h2>What the file actually is</h2>
+<p><code>orders.xlsx</code>, sheet <code>Sheet1</code>: the sample supplied is <strong>46,514 rows x 102 columns</strong>, Jan-Aug 2026.
+<strong>The production file holds about 3 years.</strong> Build for 3 years; never hard-code the 8-month window.</p>
+<p>Of the 102 columns, roughly 60 are empty contract/cancellation fields. Keep this shortlist:</p>
+<pre><code>Document Date, Sales Document, Sales Document Item, Sales Document Type,
+SD Document Category, Sold-to Party, Sold-To Party Name, Material,
+Material Description, Order Quantity (Item), Confirmed Quantity (Item),
+Net Price, Net Value (Item), Plant, Storage Location, Reason for Rejection,
+Delivery Date, Item Category, Sales Office
+</code></pre>
+<p><code>Material</code> here is the <strong>bare part number</strong> (<code>17540-53U01</code>) - no glued description. <code>Sold-to Party</code> is
+numeric and separate from <code>Sold-To Party Name</code>.</p>
+<h2>Cleaning order - this order, not the reverse</h2>
+<ol>
+<li>Drop <strong>fully null columns</strong>, then <strong>fully null rows</strong>. (Doing rows first leaves the ~60 empty
+   columns in place and they then block the row test.)</li>
+<li>Join <code>dealers.xlsx</code> (<strong>414 rows</strong>) on <code>Dealer Code</code> = <code>Sold-to Party</code> <strong>and</strong> <code>Dealer Name</code> =
+   <code>Sold-To Party Name</code>. Bring <code>Type</code> into a new <strong><code>Dealer Type</code></strong> column; unmatched becomes
+   <code>"Not Found"</code>.</li>
+<li><strong>Do not remove rows whose <code>Dealer Code</code> is <code>"No Code"</code>.</strong> They are real demand.</li>
+<li>Join <code>part_master</code>. Drop rows matching neither <code>Material</code> nor any of the ten supersede columns -
+   to an exceptions table with counts, not silently.</li>
+</ol>
+<h2>Split by document category</h2>
+<table>
+<thead>
+<tr>
+<th><code>SD Document Category</code></th>
+<th>Meaning</th>
+<th>Sample count</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>C</code></td>
+<td><strong>Sales Order</strong></td>
+<td>46,320</td>
+</tr>
+<tr>
+<td><code>H</code></td>
+<td><strong>Return Sale</strong></td>
+<td>194</td>
+</tr>
+</tbody>
+</table>
+<p>Split into two outputs. Everything downstream that says "demand" means the <code>C</code> set.</p>
+<h2>Material Category</h2>
+<pre><code>Dealer Type == &quot;MC&quot;:
+    description contains &quot;YAMALUBE&quot;        -&gt; Lubricant
+    description contains &quot;KARATE BATTERY&quot;  -&gt; Battery
+    description contains &quot;KATANA TYRE&quot;     -&gt; Tyre
+    otherwise                              -&gt; MC Spare Parts
+Dealer Type == &quot;OBM&quot;:                      -&gt; OBM Spare Parts
+</code></pre>
+<p>Match case-insensitively on <code>Material Description</code>. Report the count falling in each bucket and the
+count where <code>Dealer Type</code> is <code>"Not Found"</code> - those get no category and must not be silently dropped.</p>
+<h2>Lost sales - measured, not inferred</h2>
+<pre><code>Lost Quantity   = Order Quantity (Item) - Confirmed Quantity (Item)
+Lost Sale Value = Lost Quantity x Net Price
+Order Value     = Confirmed Quantity (Item) x Net Price
+</code></pre>
+<p><strong>This is the most valuable column in the project.</strong> Most inventory systems have to infer stockouts
+from demand that never appears. Here the shortfall is recorded on every line.</p>
+<p>In the sample: <strong>74.5% overall fill rate</strong>, 15,055 lines (32%) fully rejected. Expect the same shape
+across 3 years and make sure nothing in the pipeline quietly treats confirmed quantity as demand.</p>
+<h2>Output</h2>
+<p><code>demand_history</code> at <code>active_sku_id</code> x month, carrying ordered, confirmed and lost quantity and value,
+dealer type, material category. Plus <code>returns_history</code> from the <code>H</code> set.</p>
+<h2>Validation</h2>
+<ol>
+<li>Row counts reconcile: raw = kept + rejected, by reason.</li>
+<li><code>Order Qty &gt;= Confirmed Qty</code> on every row; any violation is a data error - list them.</li>
+<li>Monthly totals tie back to the raw file.</li>
+<li>Dealer join coverage stated; <code>"Not Found"</code> share reported.</li>
+</ol>
+<h2>Protocol</h2>
+<p><strong>Clarify -&gt; Architect -&gt; Code -&gt; Validate.</strong> Ask the open questions below first. Present an
+architecture note and <strong>wait for confirmation</strong> before writing code. Finish with tests and a
+validation report reconciled against the source file.</p>
+<h2>Open questions</h2>
+<ol>
+<li>The sample is Jan-Aug 2026. What is the true start date of the full file, and are any months
+   missing the way May is missing from <code>sales.xlsx</code>?</li>
+<li><code>Sales Document Type</code> is <code>ZP2A</code> (27,041) / <code>ZP1A</code> (19,279) / <code>ZRE</code> (194). What distinguishes ZP1A
+   from ZP2A - and should both count as demand?</li>
+<li>32% of lines fully rejected is very high. Is that genuine unavailability, or do some rejection
+   reasons mean something else (credit block, cancelled by dealer)?</li>
+<li><code>Reason for Rejection</code> - which codes mean "no stock" versus a commercial reason? Only the former is
+   lost sales.</li>
+</ol></div></article>
+<article id="step04" class="doc"><header class="dh"><div><p class="dfile">Step04_Parts_Sales.md</p></div><button class="copy" data-id="step04">Copy prompt</button></header><div class="md"><h1>Step 04 - Parts Sales and Revenue</h1>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Builds</strong></td>
+<td><code>src/demand/sales.py</code></td>
+</tr>
+<tr>
+<td><strong>Reads</strong></td>
+<td><code>sales.xlsx</code>, <code>dealers.xlsx</code>, <code>part_master</code></td>
+</tr>
+<tr>
+<td><strong>Writes</strong></td>
+<td><code>parts_sales</code>, <code>sales_performance</code>, <code>sales_kpis</code></td>
+</tr>
+<tr>
+<td><strong>Format</strong></td>
+<td>Python modules under <code>src/</code>. Never a notebook. <code>run(ctx) -&gt; StageResult</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2>Objective</h2>
+<p>Build the billed-sales view - revenue, cost and margin per part and per dealer - and the geographic and time-trend performance cuts.</p>
+<h2>What the file actually is</h2>
+<p><code>sales.xlsx</code>, sheet <code>Sheet1</code>: <strong>21,301 rows x 41 columns</strong>, billing dates <strong>2026-01-05 to
+2026-08-31</strong>. <strong>May 2026 is absent entirely</strong> - Jan 2,864 / Feb 2,816 / Mar 2,885 / Apr 2,784 /
+<strong>May 0</strong> / Jun 3,475 / Jul 2,969 / Aug 3,508. Confirm whether that is an export gap before
+publishing any trend that spans it.</p>
+<h2>The glued columns - resolved</h2>
+<p><code>Payer</code> contains <strong>both</strong> dealer code and dealer name:</p>
+<pre><code>&quot;26198      Yamaha Sales Center&quot;  -&gt;  code 26198, name &quot;Yamaha Sales Center&quot;
+</code></pre>
+<p><code>Material</code> does the same: <code>"676-42115-00       SHAFT STEERING YAMAHA 40 HP"</code>. Use the Step 00 parser.
+Join <code>Dealer Type</code> on the <strong>extracted code</strong> against <code>dealers.xlsx</code>; fall back to name match only when
+the code misses. Unmatched -&gt; <code>"Not Found"</code>.</p>
+<p>This settles the old data-dictionary contradiction - "Payer = Dealer Code" and "Payer = Dealer Name"
+were both correct descriptions of one column.</p>
+<h2>Money columns - verified against the data</h2>
+<pre><code>Net Sales = Sales Pric + Discount        (exact, max abs diff 0.0 over all 21,301 rows)
+Margin    = Net Sales - Cost
+</code></pre>
+<p><code>Discount</code> is stored <strong>negative</strong>. <code>Tax Amount</code> sits outside <code>Net Sales</code>. <code>Revenue Re</code> and
+<code>Cost Reduc</code> are <strong>zero in every row</strong> - they are not part of any revenue calculation here.</p>
+<blockquote>
+<p>Use this. Do not implement the old dictionary formula
+<code>Net Sales - (Tax - Revenue Re - Dealer Commission - Cost of Sales)</code>; it referenced columns that do
+not exist or are never populated, and as bracketed it added cost to revenue.</p>
+</blockquote>
+<p><code>SlsVolQty</code> is the sold quantity; <strong>negative means a return</strong> or a wrongly entered material being
+reversed - 250 such rows in the sample. Keep them and net them; do not filter them out.</p>
+<p><code>Bill. Type</code>: F2 19,896 / ZVAT 1,150 / RE 154 / S1 81 / ZRVT 20. Confirm which are returns.</p>
+<h2>Cleaning order</h2>
+<p>Fully null columns first (<code>Batch</code> and <code>Cust. Clas</code> are entirely null), then fully null rows. Then
+<code>Dealer Type</code>, then the <code>part_master</code> filter, then <code>Material Category</code> by the same rules as Step 03
+(matching on the <strong>extracted description</strong>, not the glued string).</p>
+<h2>Analysis to produce</h2>
+<ul>
+<li>Material-wise performance for unique materials</li>
+<li>Dealer-wise, and by <strong>RM, ASE, Province, District</strong> (all four come from <code>dealers.xlsx</code>)</li>
+<li>Monthly trend - with the May gap marked, not interpolated</li>
+</ul>
+<h2>KPIs</h2>
+<p>Total invoices, total order lines, total quantity, total cost, total sales, unique SKUs sold.</p>
+<h2>Validation</h2>
+<ol>
+<li><code>Net Sales == Sales Pric + Discount</code> asserted row-wise; report any failures.</li>
+<li>Totals reconcile to the raw file before and after cleaning.</li>
+<li>Dealer code/name extraction: report how many <code>Payer</code> values parsed, and list the unparsed ones.</li>
+<li>The 328 distinct <code>Payer</code> values map to how many of the 414 dealers?</li>
+</ol>
+<h2>Protocol</h2>
+<p><strong>Clarify -&gt; Architect -&gt; Code -&gt; Validate.</strong> Ask the open questions below first. Present an
+architecture note and <strong>wait for confirmation</strong> before writing code. Finish with tests and a
+validation report reconciled against the source file.</p>
+<h2>Open questions</h2>
+<ol>
+<li><strong>Is May 2026 genuinely missing, or an export error?</strong> Everything monthly depends on the answer.</li>
+<li>Does the full <code>sales.xlsx</code> also cover ~3 years, like orders?</li>
+<li>Which <code>Bill. Type</code> codes are returns - RE and ZRVT only, or also S1?</li>
+<li><code>sales.xlsx</code> shows 3,794 distinct materials against 6,422 in orders. Is sales a narrower scope
+   (one sales org, one channel), or a shorter window?</li>
+</ol></div></article>
+<article id="step05" class="doc"><header class="dh"><div><p class="dfile">Step05_Order_Analysis.md</p></div><button class="copy" data-id="step05">Copy prompt</button></header><div class="md"><h1>Step 05 - Order Analysis, Lost Sales and Lead Time</h1>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Builds</strong></td>
+<td><code>src/demand/order_analysis.py</code></td>
+</tr>
+<tr>
+<td><strong>Reads</strong></td>
+<td><code>demand_history</code>, <code>returns_history</code>, <code>part_master</code></td>
+</tr>
+<tr>
+<td><strong>Writes</strong></td>
+<td><code>fulfilment_stats</code>, <code>supply_reliability</code> (beta_hat), <code>lead_time_stats</code>, <code>returns_summary</code></td>
+</tr>
+<tr>
+<td><strong>Format</strong></td>
+<td>Python modules under <code>src/</code>. Never a notebook. <code>run(ctx) -&gt; StageResult</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2>Objective</h2>
+<p>Quantify how well orders are being served, how reliable supply is, and how long replenishment actually takes. These three feed the safety-stock maths directly.</p>
+<h2>Part A - fulfilment, from the sales-order set</h2>
+<p>Per line, classify:</p>
+<table>
+<thead>
+<tr>
+<th>Condition</th>
+<th>Class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Order Qty == Confirmed Qty</code></td>
+<td><strong>fully confirmed</strong></td>
+</tr>
+<tr>
+<td><code>Order Qty &gt; Confirmed Qty &gt; 0</code></td>
+<td><strong>partially confirmed</strong></td>
+</tr>
+<tr>
+<td><code>Confirmed Qty == 0</code></td>
+<td><strong>fully rejected</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Report <strong>lines and quantities</strong> for each, and roll the same classification up to the <strong>purchase
+order</strong> (<code>Sales Document</code>) level: a PO is fully confirmed only if all its lines are.</p>
+<p>Sample baseline to reproduce: 30,553 fully confirmed / 913 partial / 15,055 fully rejected lines;
+592,829 ordered vs 441,737 confirmed units - <strong>fill rate 0.745</strong>.</p>
+<h2>Part B - supply reliability</h2>
+<pre><code>beta_hat = confirmed / ordered
+</code></pre>
+<p>Estimate <strong>per part</strong> and <strong>per material category</strong>, with a monthly series so drift is visible. Guard
+against parts with only one or two order lines - use a shrinkage estimator toward the category mean
+rather than letting a single fully-rejected line produce beta_hat = 0.</p>
+<p><code>beta_hat</code> feeds Step 14, where <strong>inflating orders by 1/beta_hat is off by default</strong>. Record it here;
+decide there.</p>
+<h2>Part C - lead time</h2>
+<p>The order export carries <code>Document Date</code>, <code>Delivery Date</code> and <code>Material Availability Date</code>.</p>
+<pre><code>lead_time = Delivery Date - Document Date
+</code></pre>
+<p>Compute the distribution per part and per category: mean, <strong>standard deviation</strong>, P50, P90. The
+standard deviation is what Step 13 needs - a point estimate of lead time is not enough to size safety
+stock.</p>
+<p>If those date fields prove unreliable, fall back to the planning assumption of <strong>3 months</strong> and say so
+loudly in the run report, because a wrong sigma_L silently mis-sizes every buffer.</p>
+<h2>Part D - returns</h2>
+<p>From the <code>H</code> set (194 rows in the sample): number of return invoices, total return quantity, total
+return value, unique SKUs returned, and <strong>return rate</strong> against sales. Break down by Material
+Category.</p>
+<h2>Part E - performance cuts</h2>
+<p>Material-wise, dealer-wise, and by RM / ASE / Province / District - mirroring Step 04 so the ordered
+and billed views can be compared side by side.</p>
+<h2>KPIs</h2>
+<p>Total invoices, total ordered quantity, total confirmed quantity, total sales value, unique SKUs
+ordered.</p>
+<h2>Validation</h2>
+<ol>
+<li>The three fulfilment classes partition the line set exactly - no row in two classes, none in none.</li>
+<li>Line-level and PO-level rollups reconcile.</li>
+<li><code>beta_hat</code> between 0 and 1 for every part; list any part where it is exactly 0 and say how many
+   lines produced it.</li>
+<li>Lead-time distribution plotted and eyeballed before it is used.</li>
+</ol>
+<h2>Protocol</h2>
+<p><strong>Clarify -&gt; Architect -&gt; Code -&gt; Validate.</strong> Ask the open questions below first. Present an
+architecture note and <strong>wait for confirmation</strong> before writing code. Finish with tests and a
+validation report reconciled against the source file.</p>
+<h2>Open questions</h2>
+<ol>
+<li>Are <code>Delivery Date</code> and <code>Material Availability Date</code> reliably populated in the full file? They are
+   the only route to a measured lead-time sigma.</li>
+<li>Should <code>Reason for Rejection</code> filter what counts as lost sales? A credit-block rejection is not a
+   stock failure.</li>
+<li>For <code>beta_hat</code>, what minimum number of order lines makes a part's estimate trustworthy?</li>
+</ol></div></article>
+<article id="step06" class="doc"><header class="dh"><div><p class="dfile">Step06_Classification.md</p></div><button class="copy" data-id="step06">Copy prompt</button></header><div class="md"><h1>Step 06 - Parts Classification</h1>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Builds</strong></td>
+<td><code>src/parts/classify.py - src/parts/behaviour_model.py</code></td>
+</tr>
+<tr>
+<td><strong>Reads</strong></td>
+<td><code>part_master</code>, <code>demand_history</code>, <code>PN_Yamaha.xlsx</code>, Chroma <code>parts_master</code></td>
+</tr>
+<tr>
+<td><strong>Writes</strong></td>
+<td><code>sku_classification</code> -&gt; appended to <code>part_master_enriched</code></td>
+</tr>
+<tr>
+<td><strong>Format</strong></td>
+<td>Python modules under <code>src/</code>. Never a notebook. <code>run(ctx) -&gt; StageResult</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2>Objective</h2>
+<p>Label every part four ways - behaviour, demand pattern, value and movement - because each later decision routes on these labels rather than treating 30,000 parts alike.</p>
+<h2>Classification 1 - behaviour class</h2>
+<p>Assign every part to exactly one of:</p>
+<pre><code>service part | wear part | crash part | cosmetic part | engine part
+</code></pre>
+<p>Derived from description text, <code>Material Group</code>, catalogue section and demand shape. This is a
+<strong>text-plus-features classification problem</strong>, so:</p>
+<ol>
+<li>Hand-label a stratified sample (aim for 300-500 parts across groups).</li>
+<li>Train several candidates - TF-IDF + linear SVM, gradient boosting on description embeddings plus
+   demand features, and a rules baseline from keyword lists.</li>
+<li><strong>Select on held-out macro-F1</strong>, not accuracy - the classes are imbalanced, and accuracy will
+   reward a model that predicts "service part" for everything.</li>
+<li>Report the confusion matrix. Report per-class precision and recall, not one number.</li>
+</ol>
+<p>The behaviour class is what makes the age-cohort model work: it is the pooling key for <code>lambda(p,a)</code>
+in Step 08. Wear parts consume on a rising curve with vehicle age; crash parts are roughly flat;
+cosmetic parts fall away. Pooling across the wrong class destroys the signal.</p>
+<h2>Classification 2 - demand pattern</h2>
+<p>From <code>demand_history</code>, per <code>active_sku_id</code>:</p>
+<pre><code>ADI  = mean interval between non-zero demand periods
+CV^2 = (sigma / mean)^2 of non-zero demand sizes
+</code></pre>
+<p>Syntetos-Boylan quadrants, cutoffs <strong>ADI = 1.32</strong>, <strong>CV^2 = 0.49</strong>:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>CV^2 &lt;= 0.49</th>
+<th>CV^2 &gt; 0.49</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>ADI &lt;= 1.32</strong></td>
+<td>smooth</td>
+<td>erratic</td>
+</tr>
+<tr>
+<td><strong>ADI &gt; 1.32</strong></td>
+<td>intermittent</td>
+<td>lumpy</td>
+</tr>
+</tbody>
+</table>
+<p>This quadrant decides which forecasting family Step 07 is allowed to use, and which safety-stock
+strategy Step 13 applies. It is not a report - it is a routing key.</p>
+<h2>Classification 3 - value and movement</h2>
+<ul>
+<li><strong>ABC</strong> on annual consumption value (Pareto; default 80/15/5, configurable)</li>
+<li><strong>XYZ</strong> on demand variability (CV of monthly demand)</li>
+<li><strong>FSN</strong> on movement frequency (Fast / Slow / Non-moving)</li>
+</ul>
+<p>Plus <strong>criticality</strong> (VED) where it can be derived - a part that immobilises a motorcycle is not the
+same as a decal, whatever its value. If no source exists for criticality, say so rather than
+inventing one; Step 13 treats <code>criticality = high</code> specially and must not be fed a guess.</p>
+<h2>Minimum history</h2>
+<p>A part with fewer than <strong>12 non-zero months</strong> gets <code>insufficient_history = True</code> and is routed to the
+conservative path in Steps 07 and 13. Do not force a quadrant onto a part with four data points.</p>
+<h2>Output</h2>
+<p>Append all classifications to <strong><code>part_master_enriched</code></strong> (the copy), keyed on <code>active_sku_id</code> so the
+labels follow the supersession chain. Never write to the base <code>part_master</code>.</p>
+<h2>Validation</h2>
+<ol>
+<li>Every part gets exactly one label per scheme; no nulls, no doubles.</li>
+<li>ABC value shares reconcile to total consumption value.</li>
+<li>The behaviour classifier's held-out macro-F1 and confusion matrix are in the report.</li>
+<li>Quadrant counts are sane - if 95% of parts land in one quadrant, the cutoffs or the history window
+   are wrong.</li>
+</ol>
+<h2>Protocol</h2>
+<p><strong>Clarify -&gt; Architect -&gt; Code -&gt; Validate.</strong> Ask the open questions below first. Present an
+architecture note and <strong>wait for confirmation</strong> before writing code. Finish with tests and a
+validation report reconciled against the source file.</p>
+<h2>Open questions</h2>
+<ol>
+<li>Is there an existing list or convention at AMW for the five behaviour classes, or do we label from
+   scratch?</li>
+<li>Can you hand-label ~400 parts, or should the first pass be rules-only with labels added later?</li>
+<li>Is there any criticality / VED source - a "bike does not run without it" flag anywhere?</li>
+<li>ABC on <strong>value</strong> or on <strong>quantity</strong>? Value is the default; confirm.</li>
+</ol></div></article>
+<article id="step07" class="doc"><header class="dh"><div><p class="dfile">Step07_Model_Selection.md</p></div><button class="copy" data-id="step07">Copy prompt</button></header><div class="md"><h1>Step 07 - Forecast Model Selection</h1>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Builds</strong></td>
+<td><code>src/forecast/backtest.py - src/forecast/selection.py</code></td>
+</tr>
+<tr>
+<td><strong>Reads</strong></td>
+<td><code>demand_history</code>, <code>part_master_enriched</code></td>
+</tr>
+<tr>
+<td><strong>Writes</strong></td>
+<td><code>model_registry</code>, <code>backtest_results</code>, protected holdout split</td>
+</tr>
+<tr>
+<td><strong>Format</strong></td>
+<td>Python modules under <code>src/</code>. Never a notebook. <code>run(ctx) -&gt; StageResult</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2>Objective</h2>
+<p>For each classification combination, find the forecasting model that actually performs best on a rolling-origin backtest - and record why it won.</p>
+<h2>What this step does</h2>
+<p>It does <strong>not</strong> forecast. It decides, for each classification combination, which model to use - then
+hands that decision to Step 08.</p>
+<h2>Candidate models, routed by quadrant</h2>
+<table>
+<thead>
+<tr>
+<th>Quadrant</th>
+<th>Candidates</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>smooth</strong></td>
+<td>ETS, SARIMA, Prophet, moving average, XGBoost, LightGBM</td>
+</tr>
+<tr>
+<td><strong>erratic</strong></td>
+<td>ETS, quantile regression, LightGBM, moving average</td>
+</tr>
+<tr>
+<td><strong>intermittent</strong></td>
+<td><strong>Croston</strong>, <strong>SBA</strong>, <strong>TSB</strong>, quantile regression</td>
+</tr>
+<tr>
+<td><strong>lumpy</strong></td>
+<td><strong>SBA</strong>, <strong>TSB</strong>, quantile regression, LightGBM</td>
+</tr>
+<tr>
+<td><strong>insufficient_history</strong></td>
+<td>moving average / naive only</td>
+</tr>
+</tbody>
+</table>
+<p>Temporal Fusion Transformer is a candidate <strong>only</strong> if the full history is &gt;= 3 years across a wide
+part panel; on a short panel it will overfit and win the backtest for the wrong reason. Gate it on a
+minimum-panel-size check rather than optimism.</p>
+<blockquote>
+<p>Classical seasonal models need <strong>two full seasonal cycles</strong>. With 3 years you have that; with the
+8-month sample you do not. Assert the available history at runtime and drop SARIMA/Prophet from the
+candidate set when it is short, rather than letting them fit noise.</p>
+</blockquote>
+<h2>Evaluation</h2>
+<p><strong>Rolling-origin backtest.</strong> Expanding window, step one month, forecast horizon = lead time + review
+= <strong>4 months</strong>. Never a random split - shuffling time series leaks the future into the past.</p>
+<p>Metric by quadrant:</p>
+<table>
+<thead>
+<tr>
+<th>Quadrant</th>
+<th>Metric</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>smooth, erratic</td>
+<td><strong>MASE</strong></td>
+<td>scale-free, comparable across parts</td>
+</tr>
+<tr>
+<td>intermittent, lumpy</td>
+<td><strong>pinball loss</strong> at the service quantile</td>
+<td>MAPE is undefined on zeros; MASE rewards forecasting zero</td>
+</tr>
+</tbody>
+</table>
+<p>Never MAPE. Half these series contain zeros.</p>
+<h2>Selection</h2>
+<p>Per classification combination (quadrant x ABC x behaviour), aggregate backtest scores across its
+parts and pick the winner. <strong>Champion-challenger</strong>: the incumbent is replaced only if the challenger
+is better by a stated margin. Record the decision, the margin and the sample size in a registry.</p>
+<p>A combination with too few parts to judge inherits its parent quadrant's champion. Say so in the
+registry rather than pretending a 3-part combination selected a model.</p>
+<h2>The holdout</h2>
+<p>Split off the <strong>final 12 months</strong> of history as a protected holdout before any of this runs. It is
+not touched here and not touched in Step 08. It is opened once, in Step 13, and never re-opened.</p>
+<p>With ~3 years of data that leaves ~24 months for training and selection - workable. If the full file
+turns out shorter, reduce the holdout to 6 months and <strong>state it</strong>; do not silently shrink it.</p>
+<h2>Output</h2>
+<p><code>model_registry</code>: classification combination, chosen model, hyperparameters, backtest score, runner-up
+and its score, sample size, selection date.</p>
+<h2>Validation</h2>
+<ol>
+<li>Leakage audit: pick 3 random (part, origin) pairs and prove the fit used only data &lt;= origin.</li>
+<li>Every quadrant has a champion; no combination is left unassigned.</li>
+<li>Champions beat the naive baseline. <strong>If a champion cannot beat naive, use naive</strong> and record it -
+   that is a real result, not a failure to hide.</li>
+</ol>
+<h2>Protocol</h2>
+<p><strong>Clarify -&gt; Architect -&gt; Code -&gt; Validate.</strong> Ask the open questions below first. Present an
+architecture note and <strong>wait for confirmation</strong> before writing code. Finish with tests and a
+validation report reconciled against the source file.</p>
+<h2>Open questions</h2>
+<ol>
+<li>Confirm the true span of the full order file so the holdout can be sized.</li>
+<li>Is a seasonal pattern expected in Sri Lankan motorcycle parts demand - monsoon, festival season,
+   year-end? If so, which months?</li>
+<li>Forecast at <code>active_sku_id</code> level for all ~30k parts, or only the moving subset (6,422 appear in
+   the 8-month sample)?</li>
+<li>Is there budget/time for TFT, or should the stack stay classical plus gradient boosting?</li>
+</ol></div></article>
+<article id="step08" class="doc"><header class="dh"><div><p class="dfile">Step08_Material_Forecast.md</p></div><button class="copy" data-id="step08">Copy prompt</button></header><div class="md"><h1>Step 08 - Order Material Forecast</h1>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Builds</strong></td>
+<td><code>src/forecast/parc_demand.py - src/forecast/run.py</code></td>
+</tr>
+<tr>
+<td><strong>Reads</strong></td>
+<td><code>model_registry</code>, <code>demand_history</code>, <code>part_master_enriched</code>, <code>uio_age_matrix</code></td>
+</tr>
+<tr>
+<td><strong>Writes</strong></td>
+<td><code>forecast_protection</code> -&gt; appended to <code>part_master_enriched</code></td>
+</tr>
+<tr>
+<td><strong>Format</strong></td>
+<td>Python modules under <code>src/</code>. Never a notebook. <code>run(ctx) -&gt; StageResult</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2>Objective</h2>
+<p>Forecast monthly order quantity 12 months ahead for every part - from its own history and from the vehicle parc by age - and quantify the uncertainty around it.</p>
+<h2>Two forecasts, reconciled</h2>
+<p><strong>Baseline</strong> - the champion model from Step 07 applied to each part's own history, 12 months ahead,
+monthly, weighted toward the <strong>last 24 months</strong>.</p>
+<p><strong>Parc-driven</strong> - demand implied by the vehicle fleet:</p>
+<pre><code>D(p,t) = SUM over models m in compat(p), SUM over ages a:
+             UIO(m, a, t) * lambda(p, a) * s(t) * k(p)
+</code></pre>
+<ul>
+<li><code>UIO(m,a,t)</code> - units in operation, model m, age bucket a, month t (from Step 10)</li>
+<li><code>lambda(p,a)</code> - consumption of part p per vehicle-year at age a</li>
+<li><code>s(t)</code> - seasonal factor</li>
+<li><code>k(p)</code> - a calibration scalar per part</li>
+</ul>
+<h2>Estimating lambda</h2>
+<p>Penalised <strong>non-negative least squares</strong> over observed monthly demand:</p>
+<pre><code>minimise  SUM_t ( D_obs(p,t) - SUM_a UIO(a,t) * lambda_a )^2
+          + alpha * SUM_a ( lambda_a - lambda_{a-1} )^2
+subject to lambda_a &gt;= 0
+</code></pre>
+<p>The smoothness penalty encodes the physical fact that consumption does not jump between adjacent age
+years. Choose <code>alpha</code> by cross-validation.</p>
+<p><strong>Pool by behaviour class</strong> (Step 06). A single part rarely has enough signal to fit 16 age
+coefficients; a whole class does.</p>
+<blockquote>
+<p><strong>Collinearity warning.</strong> Cohort sizes move together over time, so individual <code>lambda_a</code> values are
+weakly identified even when the fitted total is accurate. Always report <strong>confidence intervals</strong> on
+lambda, and never present a single age coefficient as a finding without them. The fitted <em>curve</em> is
+trustworthy; any one point on it is much less so.</p>
+</blockquote>
+<h2>The Sri Lankan parc is bimodal - this is the whole point</h2>
+<p>Registrations by year, from <code>Sales Summery.xlsx</code>:</p>
+<pre><code>2014  8,895     2018  55,516     2021       85
+2015 16,407     2019  53,681     2022-24  none
+2016 23,493     2020  26,701     2025   22,084
+2017 39,526                      2026   32,344
+</code></pre>
+<p>The 2021-2024 gap is the <strong>vehicle import ban</strong>, not missing data. So the fleet is two blocks: a large
+2014-2020 block now aged <strong>6-12 years</strong>, and a young 2025-2026 block.</p>
+<p>Consequences you must not average away:</p>
+<ol>
+<li>The old block sits squarely in the <strong>high-consumption age band</strong> - wear parts for those models are
+   where demand is now.</li>
+<li>The young block will demand <strong>almost nothing for several years</strong>, then step up sharply.</li>
+<li>A part fitting only 2025-2026 models has essentially <strong>no demand history</strong> and cannot be forecast
+   from its own past at all. Parc-driven is the only route for those parts.</li>
+<li>A part fitting only pre-2021 models faces a parc that is <strong>shrinking through retirement</strong> and will
+   not be replenished by new registrations.</li>
+</ol>
+<p>Any model that extrapolates recent parts demand forward without the parc will miss all four.</p>
+<h2>Reconciliation</h2>
+<p>Where both forecasts exist, blend with weights driven by data sufficiency: parts with long history
+lean baseline; parts on young models lean parc. Publish <strong>both</strong> plus the blend - a buyer who cannot
+see the disagreement cannot judge it.</p>
+<h2>Uncertainty</h2>
+<p>Produce, per part, the <strong>distribution</strong> of demand over the protection interval P = L + R = 4 months,
+not just a point:</p>
+<ul>
+<li>smooth / erratic: normal approximation, <code>sigma_P</code> from residuals</li>
+<li>intermittent / lumpy: <strong>empirical bootstrap</strong> of the 4-month sum from residuals</li>
+</ul>
+<p>Step 13 needs the distribution. A point forecast cannot size a buffer.</p>
+<h2>Supersession weighting</h2>
+<p>Weight toward the <strong>latest</strong> part number in each chain when history is split across superseded
+numbers - the old number's demand is real but will not recur under that number.</p>
+<h2>Output</h2>
+<p><code>forecast_protection</code>: <code>active_sku_id</code>, <code>month</code>, <code>mu</code>, <code>sigma</code>, quantiles (P50/P90/P95), <code>method</code>,
+<code>mu_P</code>, <code>sigma_P</code>, plus the bootstrap sample reference. Appended to <code>part_master_enriched</code>, refreshed
+monthly.</p>
+<h2>Validation</h2>
+<ol>
+<li>Holdout untouched - assert programmatically that no row with <code>month &gt; holdout_start</code> entered any
+   fit.</li>
+<li>Parc reconstruction: predicted vs actual total demand by model family, plotted.</li>
+<li><code>lambda</code> curves plotted per behaviour class <strong>with confidence bands</strong>.</li>
+<li>Parts on 2025-2026-only models are flagged <code>parc_only</code> and reported separately.</li>
+</ol>
+<h2>Protocol</h2>
+<p><strong>Clarify -&gt; Architect -&gt; Code -&gt; Validate.</strong> Ask the open questions below first. Present an
+architecture note and <strong>wait for confirmation</strong> before writing code. Finish with tests and a
+validation report reconciled against the source file.</p>
+<h2>Open questions</h2>
+<ol>
+<li>Does <code>s(t)</code> need real seasonality, or is monthly variation mostly noise at part level?</li>
+<li>For parts fitting both old and new models, should lambda be fitted jointly or per model family?</li>
+<li>How should the 2021-2024 gap be treated in survival - no registrations, or registrations recorded
+   elsewhere (grey imports, re-registrations)?</li>
+<li>Confirm the 12-month horizon and the 3-month lead time are still right.</li>
+</ol></div></article>
+<article id="step09" class="doc"><header class="dh"><div><p class="dfile">Step09_Unit_Sales.md</p></div><button class="copy" data-id="step09">Copy prompt</button></header><div class="md"><h1>Step 09 - Vehicle Unit Sales</h1>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Builds</strong></td>
+<td><code>src/parc/unit_sales.py</code></td>
+</tr>
+<tr>
+<td><strong>Reads</strong></td>
+<td><code>MCSI.xlsx</code>, <code>dealers.xlsx</code></td>
+</tr>
+<tr>
+<td><strong>Writes</strong></td>
+<td><code>unit_sales</code>, <code>unit_performance</code></td>
+</tr>
+<tr>
+<td><strong>Format</strong></td>
+<td>Python modules under <code>src/</code>. Never a notebook. <code>run(ctx) -&gt; StageResult</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2>Objective</h2>
+<p>Build the VIN-level record of motorcycles sold, with model, colour, geography and time - the registration cohorts that feed the parc model.</p>
+<h2>What the file actually is</h2>
+<p><code>MCSI.xlsx</code>, sheet <code>Unit Sales</code>: <strong>56,211 rows x 58 columns</strong>, <strong>2025-2026 only</strong> (2025: 23,443;
+2026: 32,768). <strong>54,433 distinct VINs</strong>, 12 model codes, 13 model names.</p>
+<p>This is VIN-level retail registration - the best possible parc source, but it covers only the last two
+years. Everything before 2025 comes from <code>Sales Summery.xlsx</code> (Step 10).</p>
+<p>Useful columns beyond the standard SAP block:</p>
+<pre><code>VIN, Year, Month, Model, Model Name, Color, Type,
+Dealer code, Dealer Name, Province, District, RM, ASE,
+Customer Id, Age At Purchase, Age Today
+</code></pre>
+<p><code>Type</code> is Motorcycle (29,205) / Scooter (27,006).</p>
+<h2>Rules</h2>
+<ul>
+<li><code>SlsVolQty</code> negative = <strong>return</strong> (891 rows). Net them; do not drop them.</li>
+<li><code>Sales Organization</code> and <code>Sales Office</code> are glued code+label - use the Step 00 parser.</li>
+<li><code>Payer</code> here is a <strong>retail customer name</strong>, not a dealer. Do <strong>not</strong> join it to <code>dealers.xlsx</code>.</li>
+<li>Watch the dealer columns: in some rows <code>Dealer code</code>, <code>Dealer Name</code>, <code>Province</code>, <code>RM</code>, <code>ASE</code> and
+  <code>District</code> all carry the same value (e.g. <code>Borella</code>), which is the sales office leaking into them.
+  Detect and report this rather than treating it as geography.</li>
+<li><code>Customer Id</code>, <code>Age At Purchase</code>, <code>Age Today</code> contain the literal string <code>"No order record"</code> in some
+  rows - treat as null, not as a value.</li>
+</ul>
+<h2>Analysis to produce</h2>
+<ul>
+<li>Units by <strong>model</strong>, by <strong>model x colour</strong>, by <strong>dealer</strong></li>
+<li>By <strong>RM, ASE, Province, District</strong></li>
+<li><strong>Time series</strong> of unit sales by model - monthly, using <code>Year</code> and <code>Month</code></li>
+<li><strong>Price against unit sales</strong> by model, from <code>Net Sales</code> / <code>SlsVolQty</code></li>
+</ul>
+<h2>Output</h2>
+<p><code>unit_sales</code>: <code>vin</code>, <code>model_code</code>, <code>model_name</code>, <code>colour</code>, <code>type</code>, <code>year</code>, <code>month</code>, <code>dealer_code</code>,
+<code>province</code>, <code>district</code>, <code>rm</code>, <code>ase</code>, <code>qty</code>, <code>net_sales</code>, <code>cost</code>.</p>
+<p>This is the <strong>registration cohort feed</strong> for Step 10: each VIN is one vehicle entering the parc in a
+known month.</p>
+<h2>Validation</h2>
+<ol>
+<li>VIN uniqueness: 54,433 distinct across 56,211 rows - explain the difference (returns, amendments).</li>
+<li>Unit totals by year reconcile against <code>Sales Summery.xlsx</code> 2025 (22,084) and 2026 (32,344). <strong>They
+   will not match exactly</strong> - MCSI is retail, Sales Summery is the ZVOR order export. Quantify and
+   explain the gap; do not force them to agree.</li>
+<li>Model codes reconcile to the <code>Model Classification</code> sheet.</li>
+</ol>
+<h2>Protocol</h2>
+<p><strong>Clarify -&gt; Architect -&gt; Code -&gt; Validate.</strong> Ask the open questions below first. Present an
+architecture note and <strong>wait for confirmation</strong> before writing code. Finish with tests and a
+validation report reconciled against the source file.</p>
+<h2>Open questions</h2>
+<ol>
+<li>MCSI covers 2025-2026 and shows 12 model codes; <code>Model Classification</code> lists 113. Confirm MCSI is
+   current-range only.</li>
+<li>MCSI 2025 = 23,443 rows vs Sales Summery 2025 = 22,084 units. Which is authoritative for the parc?</li>
+<li>Do the corrupted dealer columns (all fields = <code>Borella</code>) affect many rows, and is there a clean
+   dealer field to use instead?</li>
+<li>Is there a VIN-level source before 2025, or is annual Sales Summery the only pre-2025 history?</li>
+</ol></div></article>
+<article id="step10" class="doc"><header class="dh"><div><p class="dfile">Step10_UIO_Cohorts.md</p></div><button class="copy" data-id="step10">Copy prompt</button></header><div class="md"><h1>Step 10 - UIO, Survival and Age Cohorts</h1>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Builds</strong></td>
+<td><code>src/parc/cohorts.py - src/parc/survival.py</code></td>
+</tr>
+<tr>
+<td><strong>Reads</strong></td>
+<td><code>Sales Summery.xlsx</code>, <code>unit_sales</code> (MCSI)</td>
+</tr>
+<tr>
+<td><strong>Writes</strong></td>
+<td><code>uio_age_matrix</code>, <code>survival_curves</code>, <code>registration_forecast</code></td>
+</tr>
+<tr>
+<td><strong>Format</strong></td>
+<td>Python modules under <code>src/</code>. Never a notebook. <code>run(ctx) -&gt; StageResult</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2>Objective</h2>
+<p>Build units-in-operation per model, per month, per yearly age bucket - rolled forward with age-specific survival. This matrix is what makes the demand forecast parc-driven.</p>
+<h2>What the file actually is</h2>
+<p><code>Sales Summery.xlsx</code> - <strong>20 sheets</strong>. The ones that matter:</p>
+<table>
+<thead>
+<tr>
+<th>Sheet</th>
+<th>Contents</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>All Years</code></td>
+<td>837 rows: Year x Model x Name x Colour with <code>Vehicle Units (ZVOR)</code>, Status, Family, Type, Segment, cc</td>
+</tr>
+<tr>
+<td><code>Model Classification</code></td>
+<td><strong>113 models</strong> with Status, First/Last Year Sold, Family, Type, Segment, cc</td>
+</tr>
+<tr>
+<td><code>Model Family x Year</code></td>
+<td>22 families x years</td>
+</tr>
+<tr>
+<td><code>Status x Year</code></td>
+<td>Active/Inactive split by family and year</td>
+</tr>
+<tr>
+<td><code>Color Master</code></td>
+<td>colour names, abbreviations, codes</td>
+</tr>
+<tr>
+<td>Year sheets</td>
+<td>2014-2021, 2025, 2026</td>
+</tr>
+</tbody>
+</table>
+<h2>Registrations by year - and the gap</h2>
+<pre><code>2014   8,895      2018  55,516      2021        85
+2015  16,407      2019  53,681      2022-2024  (no sheets)
+2016  23,493      2020  26,701      2025   22,084
+2017  39,526                        2026   32,344
+</code></pre>
+<p><strong>Total 2014-2026: 278,732 units.</strong></p>
+<p>The 2021-2024 collapse is Sri Lanka's <strong>vehicle import ban</strong>, not a data gap. 2021 has 85 units;
+2022-2024 have none. Model this as <strong>genuinely zero registrations</strong>, and make the code say so
+explicitly - a future maintainer will otherwise "fix" it by interpolating, and destroy the age
+structure.</p>
+<h2>Cohort assembly</h2>
+<pre><code>cohort(model, year) = units registered
+</code></pre>
+<p>Convert to monthly where MCSI supports it (2025-2026), annual before that. Age buckets are <strong>yearly</strong>:
+<code>0-1</code>, <code>1-2</code>, ... <code>14-15</code>, <code>15+</code>.</p>
+<p>Status comes from <code>Model Classification</code>: models last sold 2014-2021 are <strong>Inactive</strong>; 2025-2026
+models are <strong>Active</strong>. Both stay in the parc - an inactive model still has bikes on the road consuming
+parts. Inactive only means no new units enter.</p>
+<h2>Survival analysis</h2>
+<p>Fit vehicle retirement, <strong>age-specific</strong>:</p>
+<ul>
+<li><strong>Kaplan-Meier</strong> - non-parametric baseline</li>
+<li><strong>Weibull</strong> - parametric, extrapolates past observed ages</li>
+<li><strong>Cox</strong> - if covariates (type, segment, cc) prove informative</li>
+</ul>
+<p>Select on held-out concordance / log-likelihood. Report which won and by how much.</p>
+<blockquote>
+<p>Survival must be <strong>age-specific</strong>, not a flat annual attrition rate. A flat rate says a 1-year-old
+bike and a 14-year-old bike retire at the same pace, which is false and flattens exactly the age
+structure the demand model depends on.</p>
+</blockquote>
+<p><strong>The identification problem, stated honestly:</strong> with registrations but no de-registration records,
+retirement is not directly observed. If that is the case here, the survival curve is an <em>assumption</em>
+calibrated against whatever signal exists (service visits, parts demand decay, registry data if
+obtainable) - not a measurement. Say which it is in the report, and run the downstream policy under
+at least two survival scenarios so the sensitivity is visible.</p>
+<h2>Roll forward</h2>
+<pre><code>UIO(m, a+1, t+1) = UIO(m, a, t) * survival(m, a)
+UIO(m, 0,   t)   = new registrations in month t
+</code></pre>
+<h2>Output</h2>
+<pre><code>uio_age_matrix
+  enterprise_model_id : str
+  month               : date
+  age_bucket          : str     # &quot;0-1&quot; ... &quot;14-15&quot;, &quot;15+&quot;
+  units               : float
+  is_forecast         : bool
+  is_estimated        : bool
+  scenario            : str
+</code></pre>
+<p><code>is_estimated</code> marks cohorts inferred rather than observed. <code>scenario</code> carries the survival variant.</p>
+<h2>Forecasting new registrations</h2>
+<p>Forecast forward for <strong>active</strong> models only; inactive models contribute no new units. Try several
+models against the annual series and select on accuracy - but note the series is short and broken by
+the ban, so a simple approach that respects the structural break will likely beat a clever one.</p>
+<h2>Validation</h2>
+<ol>
+<li>Total UIO reconciles to cumulative registrations minus cumulative retirements.</li>
+<li>The age histogram is plotted and inspected - the 2021-2024 hole must be visible in it. If it is
+   not, the roll-forward is wrong.</li>
+<li>Survival curves plotted per model family with confidence bands.</li>
+<li>Model naming reconciles between MCSI, <code>All Years</code> and <code>Model Classification</code>; mismatches listed.</li>
+</ol>
+<h2>Protocol</h2>
+<p><strong>Clarify -&gt; Architect -&gt; Code -&gt; Validate.</strong> Ask the open questions below first. Present an
+architecture note and <strong>wait for confirmation</strong> before writing code. Finish with tests and a
+validation report reconciled against the source file.</p>
+<h2>Open questions</h2>
+<ol>
+<li><strong>Are de-registration or scrappage records available anywhere?</strong> This decides whether survival is
+   measured or assumed - the single biggest uncertainty in the parc model.</li>
+<li>Should 2022-2024 be modelled as exactly zero, or were there grey/used imports not in ZVOR?</li>
+<li>Do model codes mean the same thing across MCSI, <code>All Years</code> and <code>Model Classification</code>? Any renames?</li>
+<li>Confirm yearly age buckets with a <code>15+</code> tail, or do you want finer resolution for young bikes?</li>
+</ol></div></article>
+<article id="step11" class="doc"><header class="dh"><div><p class="dfile">Step11_Targets.md</p></div><button class="copy" data-id="step11">Copy prompt</button></header><div class="md"><h1>Step 11 - Target and Scenario Simulator</h1>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Builds</strong></td>
+<td><code>src/parc/targets.py - src/parc/scenarios.py</code></td>
+</tr>
+<tr>
+<td><strong>Reads</strong></td>
+<td><code>Sales Summery.xlsx</code>, <code>uio_age_matrix</code>, <code>unit_sales</code></td>
+</tr>
+<tr>
+<td><strong>Writes</strong></td>
+<td><code>scenarios</code>, <code>scenario_uio</code>, <code>scenario_demand</code></td>
+</tr>
+<tr>
+<td><strong>Format</strong></td>
+<td>Python modules under <code>src/</code>. Never a notebook. <code>run(ctx) -&gt; StageResult</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2>Objective</h2>
+<p>Forecast unit sales for active models and let a planner simulate yearly targets, seeing how each flows through the parc into parts demand.</p>
+<h2>Purpose</h2>
+<p>A planning surface on top of the parc: what unit sales look like next year under different
+assumptions, and what that implies for the parts business.</p>
+<h2>Inputs</h2>
+<p>Active models only - the ones still sold. From <code>Status x Year</code>, the active families are RAY, FZ, MT,
+R15, NMAX, XSR and FASCINO; everything else is inactive and contributes no new units.</p>
+<h2>Part A - sales forecast</h2>
+<p>Forecast unit sales for currently active models from the <code>Sales Summery</code> annual series plus the
+MCSI monthly detail. Try several models; select on accuracy.</p>
+<p><strong>Caveat to carry into the report:</strong> the usable series for active models is effectively <strong>2025-2026</strong>,
+because the import ban zeroed 2021-2024 and pre-ban volumes came from a different market regime. Two
+years is a thin basis for a model selection contest. Prefer simple, explainable methods here and say
+plainly that the interval is wide, rather than reporting a winner as if it were well-tested.</p>
+<h2>Part B - target simulator</h2>
+<p>Let a planner set a yearly unit target per model or family and see the consequences flow through:</p>
+<pre><code>target units -&gt; registration cohorts -&gt; uio_age_matrix (scenario) -&gt; parts demand -&gt; stock and orders
+</code></pre>
+<p>Scenarios to support:</p>
+<ul>
+<li><strong>Base</strong> - the forecast as fitted</li>
+<li><strong>Target</strong> - planner-supplied unit targets</li>
+<li><strong>Upside / downside</strong> - percentage shifts on the base</li>
+<li><strong>Survival variants</strong> - the alternate curves from Step 10</li>
+</ul>
+<p>Each writes a <code>uio_age_matrix</code> with its own <code>scenario</code> label; nothing downstream is overwritten.</p>
+<blockquote>
+<p>Scenario output is <strong>planning information, not the order</strong>. The monthly purchase order in Step 14
+runs on the base scenario unless a human explicitly switches it. Scenario runs must never silently
+become the operational number.</p>
+</blockquote>
+<h2>Output</h2>
+<p><code>scenarios</code> (definitions and parameters), <code>scenario_uio</code>, <code>scenario_demand</code>, and a comparison table
+showing parts-demand delta per scenario versus base.</p>
+<h2>Validation</h2>
+<ol>
+<li>Base scenario reproduces Step 10's <code>uio_age_matrix</code> exactly.</li>
+<li>A +10% unit target produces a demand increase that lags by the age profile - <strong>not</strong> an immediate
+   +10% in parts demand. If parts demand moves 1:1 with unit sales, the age mechanism is not wired up.</li>
+<li>Scenario runs are reproducible from their stored parameters.</li>
+</ol>
+<h2>Protocol</h2>
+<p><strong>Clarify -&gt; Architect -&gt; Code -&gt; Validate.</strong> Ask the open questions below first. Present an
+architecture note and <strong>wait for confirmation</strong> before writing code. Finish with tests and a
+validation report reconciled against the source file.</p>
+<h2>Open questions</h2>
+<ol>
+<li>Who sets the targets, and at what level - model, family or total?</li>
+<li>Should the simulator also handle price or margin scenarios, or units only?</li>
+<li>How far forward - 12 months, or 3-5 years for the parc build-out?</li>
+</ol></div></article>
+<article id="step12" class="doc"><header class="dh"><div><p class="dfile">Step12_Stock.md</p></div><button class="copy" data-id="step12">Copy prompt</button></header><div class="md"><h1>Step 12 - Stock and Inventory Position</h1>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Builds</strong></td>
+<td><code>src/inventory/stock.py</code></td>
+</tr>
+<tr>
+<td><strong>Reads</strong></td>
+<td><code>current_stock.xlsx</code>, <code>On_Orders.xlsx</code>, <code>PN_Yamaha.xlsx</code>, <code>part_master</code></td>
+</tr>
+<tr>
+<td><strong>Writes</strong></td>
+<td><code>stock_position</code> -&gt; appended to <code>part_master_enriched</code></td>
+</tr>
+<tr>
+<td><strong>Format</strong></td>
+<td>Python modules under <code>src/</code>. Never a notebook. <code>run(ctx) -&gt; StageResult</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2>Objective</h2>
+<p>Establish what is on the shelf at the PDC and what is already coming, and compute the inventory position correctly. This is the most common place a replenishment system goes wrong.</p>
+<h2>What the files actually are</h2>
+<p><code>current_stock.xlsx</code>: <strong>26,288 rows x 8 columns</strong>, 19,830 distinct materials.</p>
+<pre><code>Name 1, Plant, Material Group, Material, Material Description,
+Storage Location, Descr. of Storage Loc., Unrestricted
+</code></pre>
+<p><strong>There is only one quantity column: <code>Unrestricted</code>.</strong> No Quality Inspection, Restricted, Blocked,
+Returns or Transit buckets exist in this export. So <code>on_hand = Unrestricted</code>, directly - and the run
+report should note that non-sellable stock is invisible here, in case it matters later.</p>
+<p><code>On_Orders.xlsx</code>, sheet <code>Sheet3</code>: <strong>2,820 rows x 10 columns</strong> - <code>PN</code>, <code>Desc</code>, then <code>Jan</code>...<code>Aug</code>.
+A month-column pivot, <strong>2026</strong>, totalling <strong>252,568 units</strong>.</p>
+<h2>Scope - PDC only</h2>
+<p><strong>16 plants</strong> are present. Seeduwa PDC (<code>W1B4</code>) holds <strong>471,137 of 544,372 units - 86.6%</strong>.</p>
+<p>Filter to <strong><code>Plant == "W1B4"</code></strong> (15,493 rows). Branch stock is out of scope for replenishment; publish
+it as visibility only if wanted, but it never enters inventory position.</p>
+<table>
+<thead>
+<tr>
+<th>Plant</th>
+<th>Location</th>
+<th>Units</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>W1B4</td>
+<td>Seeduwa - PDC-Parts</td>
+<td>471,137</td>
+</tr>
+<tr>
+<td>W734</td>
+<td>Anuradhapura-Agri-Auto</td>
+<td>10,331</td>
+</tr>
+<tr>
+<td>W124</td>
+<td>Borella-After Sales</td>
+<td>8,550</td>
+</tr>
+<tr>
+<td>W1O4</td>
+<td>Union Place-YMC</td>
+<td>7,322</td>
+</tr>
+<tr>
+<td>...12 more</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2>Cleaning order</h2>
+<ol>
+<li>Drop fully null columns, then fully null rows.</li>
+<li>Filter to plant <code>W1B4</code>.</li>
+<li><strong>Remove every material not present in <code>PN_Yamaha.xlsx</code></strong> - match on <code>Material</code> and on all ten
+   supersede columns before rejecting. Report the count and value removed; do not drop silently.</li>
+<li>Aggregate to <code>active_sku_id</code> (multiple storage locations within the PDC roll up).</li>
+</ol>
+<p>No negative quantities appear in the sample - assert this and fail if that changes.</p>
+<h2>On order</h2>
+<p>Reshape <code>On_Orders.xlsx</code> from wide to long: <code>PN</code>, <code>month</code> (2026), <code>qty</code>. Join to <code>active_sku_id</code>
+through the supersession chain, same as stock.</p>
+<blockquote>
+<p><strong>Interpretation flag.</strong> Treat the month columns as <strong>expected arrival month</strong> by default -
+<code>on_order_interpretation: "arrival"</code> in config. If procurement confirms they are the month the PO
+was raised, switch to <code>"raised"</code> and the loader adds the 3-month lead to derive arrival. Print the
+active interpretation in every run report; this single assumption shifts the entire pipeline
+position by a quarter.</p>
+</blockquote>
+<p>Only months <strong>&gt;= <code>ctx.as_of</code></strong> count as on-order. Earlier months have already arrived and are inside
+<code>on_hand</code>; counting them again double-counts the pipeline.</p>
+<h2>Inventory position</h2>
+<pre><code>IP = on_hand + on_order - backorders
+</code></pre>
+<p>With a 3-month lead and monthly review there can be <strong>three orders in flight</strong>. Comparing against
+on-hand instead of IP over-orders by roughly a lead time's worth of demand, every month, until the
+pipeline lands. Assert <code>on_order</code> is populated and report its share of IP.</p>
+<p>Backorders: if no source exists, set to zero and <strong>say so</strong> - do not leave it implicit.</p>
+<h2>Output</h2>
+<p><code>stock_position</code>: <code>active_sku_id</code> (pk), <code>on_hand</code>, <code>on_order</code>, <code>backorders</code>, <code>ip</code>, <code>value_unrestricted</code>,
+<code>storage_locations</code>, <code>as_of</code>. Appended to <code>part_master_enriched</code>.</p>
+<h2>Validation</h2>
+<ol>
+<li>Cleaned stock + open orders reconciles to full position for the cycle.</li>
+<li>Materials removed for absence from <code>PN_Yamaha</code> reported with count and value.</li>
+<li>On-order share of IP stated; if it is zero everywhere, that is a data problem, not a fact.</li>
+<li>PDC share of network stock reported so the scope decision stays visible.</li>
+</ol>
+<h2>Protocol</h2>
+<p><strong>Clarify -&gt; Architect -&gt; Code -&gt; Validate.</strong> Ask the open questions below first. Present an
+architecture note and <strong>wait for confirmation</strong> before writing code. Finish with tests and a
+validation report reconciled against the source file.</p>
+<h2>Open questions</h2>
+<ol>
+<li><strong>Are the <code>On_Orders</code> months expected arrival, or when the PO was raised?</strong> Everything in Step 14
+   shifts by a quarter on this answer.</li>
+<li>Is there a backorder / open-commitment source, or is <code>backorders = 0</code>?</li>
+<li>Is <code>current_stock.xlsx</code> a point-in-time snapshot? If so, as of what date - we need <code>as_of</code>.</li>
+<li>Do any parts ship direct to branches, bypassing the PDC?</li>
+</ol></div></article>
+<article id="step13" class="doc"><header class="dh"><div><p class="dfile">Step13_Policy_Engine.md</p></div><button class="copy" data-id="step13">Copy prompt</button></header><div class="md"><h1>Step 13 - Safety Stock, Reorder Level, Reorder Quantity</h1>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Builds</strong></td>
+<td><code>src/inventory/policy.py - src/inventory/simulation.py</code></td>
+</tr>
+<tr>
+<td><strong>Reads</strong></td>
+<td><code>forecast_protection</code>, <code>sku_classification</code>, <code>supply_reliability</code>, <code>lead_time_stats</code>, <code>stock_position</code></td>
+</tr>
+<tr>
+<td><strong>Writes</strong></td>
+<td><code>policy_params</code>, <code>policy_selection</code>, <code>simulation_results</code> -&gt; appended to <code>part_master_enriched</code></td>
+</tr>
+<tr>
+<td><strong>Format</strong></td>
+<td>Python modules under <code>src/</code>. Never a notebook. <code>run(ctx) -&gt; StageResult</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2>Objective</h2>
+<p>Compute dynamic safety stock, reorder level and reorder quantity for every part - chosen by simulation rather than by formula alone, and proven on a protected holdout.</p>
+<h2>This is the project's acceptance gate</h2>
+<p>Everything before it is preparation. If this step cannot beat the current way of ordering on the
+holdout, the project has not succeeded - and that must be reportable, not hidden.</p>
+<h1>Part A - safety stock</h1>
+<p>Three strategies. <strong>Bracketing is computed for every part</strong> as a cross-check, whichever is used.</p>
+<table>
+<thead>
+<tr>
+<th>Strategy</th>
+<th>Formula</th>
+<th>Applied to</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Bracketing</td>
+<td><code>SS = max_monthly_demand * L_max - d_bar * L_bar</code> (floor 0)</td>
+<td>baseline, cross-check, <code>insufficient_history</code></td>
+</tr>
+<tr>
+<td>Normal approx</td>
+<td><code>SS = z * sqrt(P * sigma_d^2 + d_bar^2 * sigma_L^2)</code></td>
+<td>smooth, erratic</td>
+</tr>
+<tr>
+<td>Empirical quantile</td>
+<td><code>SS = Q_tau(D_P) - mu_P</code> from the Step 08 bootstrap</td>
+<td><strong>intermittent, lumpy</strong></td>
+</tr>
+</tbody>
+</table>
+<p><code>P = L + R = 4</code> months. <code>sigma_d = sigma_P / sqrt(P)</code>, <code>d_bar = mu_P / P</code>, <code>sigma_L</code> from Step 05.</p>
+<p>Empirical quantile is preferred for intermittent and lumpy because the normal assumption is simply
+<strong>false</strong> there. Fitting a normal to a part that sells <code>0,0,0,7,0,0,3</code> produces a negative lower tail
+and an understated upper one.</p>
+<h2>Fill rate is not service level</h2>
+<p>With target fill rate <code>beta</code>, expected units short per cycle is <code>EUS = sigma_eff * G(z)</code>, where
+<code>G(z) = phi(z) - z*(1 - Phi(z))</code> is the unit normal loss. Solve numerically (scipy <code>brentq</code>) for z
+such that:</p>
+<pre><code>sigma_eff * G(z) / (d_bar * R)  &lt;=  1 - beta
+</code></pre>
+<p>Clamp <code>z</code> to [0, 4.5].</p>
+<blockquote>
+<p><strong>Do not substitute a cycle-service-level lookup table.</strong> CSL asks "what fraction of cycles avoid a
+stockout"; fill rate asks "what fraction of units are served". Swapping them over-stocks slow movers
+and under-stocks fast ones - and the error is largest exactly where the money is.</p>
+</blockquote>
+<h1>Part B - candidate policies</h1>
+<table>
+<thead>
+<tr>
+<th>Policy</th>
+<th>Rule</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>(R,S)</strong></td>
+<td><code>S = mu_P + SS</code>; order <code>max(0, S - IP)</code> every review</td>
+</tr>
+<tr>
+<td><strong>(R,s,S)</strong></td>
+<td>order only when <code>IP &lt;= s</code>, up to <code>S = s + delta_econ</code>, <code>delta_econ = max(EOQ, MOQ, pack)</code></td>
+</tr>
+<tr>
+<td><strong>On-demand</strong></td>
+<td>no cycle stock; order against firm requirements only</td>
+</tr>
+<tr>
+<td><strong>No-stock</strong></td>
+<td>stop ordering (dead parts, pending owner review)</td>
+</tr>
+</tbody>
+</table>
+<p>All four are <strong>monthly-executable</strong>. Continuous review, Min-Max, VMI and JIT are <strong>excluded</strong> - none
+can execute on a monthly order cycle against a ~3-month import lead.</p>
+<h3>Assignment (config-driven)</h3>
+<table>
+<thead>
+<tr>
+<th>Segment</th>
+<th>Candidates</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>smooth</td>
+<td>RS</td>
+</tr>
+<tr>
+<td>erratic, intermittent</td>
+<td>RS, RsS</td>
+</tr>
+<tr>
+<td>lumpy</td>
+<td>RsS, RS</td>
+</tr>
+<tr>
+<td>lumpy x C-class x FSN=S</td>
+<td>RsS, RS, ON_DEMAND</td>
+</tr>
+<tr>
+<td>FSN=N or C-class zero-movers</td>
+<td>ON_DEMAND, NO_STOCK</td>
+</tr>
+<tr>
+<td><code>insufficient_history</code></td>
+<td>RS with bracketing floor</td>
+</tr>
+<tr>
+<td><strong>criticality = high</strong></td>
+<td>always includes RS; never ON_DEMAND or NO_STOCK</td>
+</tr>
+</tbody>
+</table>
+<h1>Part C - simulate, select, validate</h1>
+<p>One walk-forward monthly simulator. <strong>Monthly loop, in this exact order:</strong></p>
+<ol>
+<li><strong>Receive</strong> - pipeline orders due at t arrive at <code>qty * beta_hat</code>; the short-shipped remainder is
+   logged and gone (lost-sales world).</li>
+<li><strong>Demand</strong> - realise actual demand (raw, not outlier-adjusted; the policy must survive real
+   spikes). Serve from on-hand; shortfall is lost sales, recorded in units and value.</li>
+<li><strong>Review and order</strong> - use parameters computed from data <strong>&lt;= t only</strong> (wire in the Step 07
+   rolling-origin artefacts; never refit inside the simulator). <code>IP = on_hand + pipeline</code>. <code>q_final</code>
+   from the Step 14 order function. Append to pipeline with a sampled lead time.</li>
+<li>Snapshot state.</li>
+</ol>
+<p><strong>(A) Score</strong> every (part x candidate) over the selection window.</p>
+<p><strong>(B) Select</strong> - feasibility first (achieved fill &gt;= target), then minimum holding + ordering cost.
+If nothing is feasible, take maximum fill. <strong>Hysteresis: a challenger replaces the incumbent only if
+it improves cost by &gt;= 5% while feasible</strong>, so the policy mix does not churn every quarter.</p>
+<p><strong>(C) Validate on holdout</strong> - selected portfolio vs baseline vs sensitivities (<code>beta_hat</code> +/- 10pp,
+lead time +1 month, fill target +/- 2pp), on the untouched final 12 months, same seed across runs.</p>
+<blockquote>
+<p><strong>Never re-open selection based on holdout results.</strong> That un-blinds the holdout and the number
+stops meaning anything. A failed holdout sends you back to Step 06/08 configuration with a <strong>fresh</strong>
+split, recorded in the report.</p>
+</blockquote>
+<h2>Reporting views</h2>
+<p><code>ROL = mu_L + SS_L</code> and <code>months_of_cover = S / d_bar</code>, published for business familiarity.</p>
+<h2>Validation gates</h2>
+<ol>
+<li><strong>Hand-traced toy world</strong> - 2 parts, 12 months, one RS and one RsS (triggering both sides of <code>s</code>),
+   worked by hand in the report; the simulator reproduces it exactly. Committed as a golden test.</li>
+<li><strong>Conservation</strong> - per part-run: <code>received - served - delta_on_hand = 0</code>, and
+   <code>ordered * beta_hat = received</code> within rounding. Asserted across all runs.</li>
+<li><strong>Two leakage audits</strong> - (a) three random (part, t) cells used only data &lt;= t; (b) recompute three
+   random selections from stored scores and confirm no holdout month contributed.</li>
+<li>z-solver reproduces textbook z for <code>beta = 0.95</code> within tolerance.</li>
+<li>Worked example: <code>d_bar = 50/month</code>, <code>L = 3</code>, <code>SS = 40</code> -&gt; <strong>ROL = 190</strong>. Committed as a test.</li>
+</ol>
+<h2>Acceptance criteria</h2>
+<p>Portfolio achieved fill rate <strong>&gt;= target per ABC class</strong> <em>and</em> average inventory value <strong>&lt;= baseline</strong>,
+on the holdout.</p>
+<p>If it wins on only one axis, present the frontier honestly and let the owner choose. <strong>Do not massage
+a single-axis win into a pass.</strong></p>
+<h2>Definition of Done</h2>
+<p>All gates pass; both leakage audits clean; holdout report reviewed with the owner and a <strong>go / no-go
+verdict recorded</strong>.</p>
+<h2>Protocol</h2>
+<p><strong>Clarify -&gt; Architect -&gt; Code -&gt; Validate.</strong> Ask the open questions below first. Present an
+architecture note and <strong>wait for confirmation</strong> before writing code. Finish with tests and a
+validation report reconciled against the source file.</p>
+<h2>Open questions</h2>
+<ol>
+<li><strong>What are the target fill rates per ABC class?</strong> Nothing here can be sized without them.</li>
+<li>What is the current baseline ordering rule, so there is something to beat?</li>
+<li>Annual holding cost rate (% of unit value) and cost per purchase order?</li>
+<li>Is there a total inventory value cap, or a budget per cycle?</li>
+<li>For <code>criticality = high</code>, is there a different fill target?</li>
+</ol></div></article>
+<article id="step14" class="doc"><header class="dh"><div><p class="dfile">Step14_Monthly_Order.md</p></div><button class="copy" data-id="step14">Copy prompt</button></header><div class="md"><h1>Step 14 - Monthly Order Generation</h1>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Builds</strong></td>
+<td><code>src/inventory/ordering.py - src/marts/</code></td>
+</tr>
+<tr>
+<td><strong>Reads</strong></td>
+<td><code>part_master_enriched</code>, <code>policy_selection</code>, <code>stock_position</code></td>
+</tr>
+<tr>
+<td><strong>Writes</strong></td>
+<td><code>monthly_order_proposal</code>, <code>mart_*</code></td>
+</tr>
+<tr>
+<td><strong>Format</strong></td>
+<td>Python modules under <code>src/</code>. Never a notebook. <code>run(ctx) -&gt; StageResult</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2>Objective</h2>
+<p>Turn the selected policies into the actual monthly purchase order - quantities a buyer can send - and publish the marts that explain every line.</p>
+<h2>The order function</h2>
+<pre><code>q_raw    = policy_quantity(policy, IP, S, s)       # 0 if not triggered
+q_econ   = max(q_raw, EOQ)   if q_raw &gt; 0 and use_eoq  else q_raw
+q_moq    = max(q_econ, MOQ)  if q_econ &gt; 0             else 0
+q_pack   = ceil(q_moq / pack_size) * pack_size
+q_final  = apply_supply_reliability(q_pack)
+</code></pre>
+<h2>Objective</h2>
+<p>Subject to stock, MOQ, ROL and lead time: <strong>maximise service and margin, minimise total cost.</strong>
+Stated precisely, because "maximise profit and service and minimise cost" is three objectives and
+they conflict:</p>
+<pre><code>minimise   holding_cost + ordering_cost + lost_margin
+subject to achieved_fill_rate &gt;= target(ABC class)
+           q respects MOQ, pack size, and any budget cap
+</code></pre>
+<p>Lost margin, not lost revenue - a stockout costs the margin forgone. Treating service as a
+<strong>constraint</strong> and cost as the <strong>objective</strong> is what makes the problem well-posed; maximising a
+weighted blend of all three produces a number nobody can defend.</p>
+<h2>EOQ</h2>
+<p><code>EOQ = sqrt(2DS/H)</code> - D annual demand, S order cost, H annual holding cost per unit. Use it as a
+<strong>floor</strong> on a triggered order, never as the order itself: EOQ assumes constant deterministic demand,
+which no spare part has. Guard <code>H &gt; 0</code> and <code>D &gt; 0</code>. Publish the S and H assumptions in the report -
+the answer moves with them and nobody will otherwise know.</p>
+<h2>Supply reliability - the inflation trap</h2>
+<p>Suppliers under-ship: measured fill in the sample is <strong>0.745</strong>. To receive <code>q</code> you would order
+<code>q / beta_hat</code>.</p>
+<p><strong>This is dangerous and defaults to off.</strong> If <code>beta_hat</code> is low <em>because</em> we habitually over-order,
+inflating the order lowers <code>beta_hat</code> further, which inflates more - a feedback loop ending in a
+warehouse full of parts nobody asked for. Therefore:</p>
+<ul>
+<li><code>use_supply_inflation</code> is <strong>config, default <code>False</code></strong></li>
+<li>when on, cap the factor at <code>1 / beta_hat &lt;= 1.5</code></li>
+<li>estimate <code>beta_hat</code> per supplier and part group, never globally</li>
+<li>the <strong>simulator must use the same setting</strong>. A policy selected under inflation-off and executed with
+  inflation-on is not the policy that was validated.</li>
+</ul>
+<h2>MOQ, pack size, lead time</h2>
+<p>From the part master where present. Where absent, default to 1 and <strong>say so in the report</strong> - a silent
+pack default of 1 on a part that ships in cartons of 24 produces orders that cannot be placed.</p>
+<h2>Output contract</h2>
+<p><code>monthly_order_proposal</code>: <code>active_sku_id</code>, <code>cycle_month</code>, <code>policy</code>, <code>ip</code>, <code>on_hand</code>, <code>on_order</code>,
+<code>s</code>, <code>S</code>, <code>ss</code>, <code>rol</code>, <code>q_raw</code>, <code>q_final</code>, <code>unit_cost</code>, <code>value</code>, <code>lead_time_months</code>,
+<code>expected_arrival</code>, <code>trigger_reason</code>, <code>criticality</code>, <code>abc_class</code>, <code>flags</code>.</p>
+<p><strong>Every line carries why.</strong> A buyer who cannot see why a quantity was proposed will not send the
+order, and they will be right not to.</p>
+<h2>Published marts</h2>
+<table>
+<thead>
+<tr>
+<th>Mart</th>
+<th>Contents</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mart_monthly_order</code></td>
+<td>the proposal, buyer-ready</td>
+</tr>
+<tr>
+<td><code>mart_policy_summary</code></td>
+<td>policy mix by segment, SS and ROL distributions</td>
+</tr>
+<tr>
+<td><code>mart_forecast_accuracy</code></td>
+<td>backtest and live accuracy by segment and model</td>
+</tr>
+<tr>
+<td><code>mart_service_and_stock</code></td>
+<td>achieved fill, stockouts, lost sales (units and value), turns, cover</td>
+</tr>
+<tr>
+<td><code>mart_exceptions</code></td>
+<td>rejected rows, missing masters, data-quality flags</td>
+</tr>
+</tbody>
+</table>
+<h2>Explainability - required per part, on demand</h2>
+<p>The forecast and its model; sigma; lead time and its sigma; z and the fill target it came from; SS by
+all three strategies; the chosen policy and why it beat the alternatives; IP components; and the
+arithmetic from IP to <code>q_final</code>.</p>
+<h2>Monthly run</h2>
+<p>One command runs Steps 12 -&gt; 13 -&gt; 14 and emits the proposal plus a run report. Parameters refresh
+every cycle; policy <strong>selection</strong> re-runs on the configured cadence (default quarterly, with the 5%
+hysteresis rule), not every month.</p>
+<h2>Validation</h2>
+<ol>
+<li>Worked example: <code>IP = 120</code>, <code>S = 300</code>, <code>MOQ = 50</code>, <code>pack = 25</code> -&gt; <code>q_final = 200</code>. Committed test.</li>
+<li>Pack rounding never rounds down; MOQ never applies to a zero order.</li>
+<li>Marts reconcile to their step outputs row for row.</li>
+<li>A buyer walks three sample lines end to end and confirms they are placeable.</li>
+</ol>
+<h2>Protocol</h2>
+<p><strong>Clarify -&gt; Architect -&gt; Code -&gt; Validate.</strong> Ask the open questions below first. Present an
+architecture note and <strong>wait for confirmation</strong> before writing code. Finish with tests and a
+validation report reconciled against the source file.</p>
+<h2>Open questions</h2>
+<ol>
+<li><strong>Order cost <code>S</code> and annual holding rate <code>H</code></strong> - do finance have figures, or do we assume and
+   sensitivity-test?</li>
+<li>Are MOQ and pack size available anywhere? They are not in <code>PN_Yamaha.xlsx</code>.</li>
+<li>Is there a budget cap per monthly order cycle?</li>
+<li>What format does the buyer need - CSV, an SAP upload template, or an API call?</li>
+</ol></div></article>
+<article id="step15" class="doc"><header class="dh"><div><p class="dfile">Step15_FastAPI_Service.md</p></div><button class="copy" data-id="step15">Copy prompt</button></header><div class="md"><h1>Step 15 - FastAPI Service Layer</h1>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Builds</strong></td>
+<td><code>src/api/</code></td>
+</tr>
+<tr>
+<td><strong>Reads</strong></td>
+<td>all published marts</td>
+</tr>
+<tr>
+<td><strong>Writes</strong></td>
+<td>HTTP endpoints - no new data</td>
+</tr>
+<tr>
+<td><strong>Format</strong></td>
+<td>Python modules under <code>src/</code>. Never a notebook. <code>run(ctx) -&gt; StageResult</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2>Objective</h2>
+<p>Serve the pipeline's outputs - parts search, forecasts, parc, policy and the monthly order proposal - over a documented API, and let the monthly run be triggered and monitored.</p>
+<h2>Purpose</h2>
+<p>Expose the pipeline and its outputs as a service. <strong>FastAPI only</strong> - no Streamlit.</p>
+<h2>Structure</h2>
+<pre><code>src/api/
+  main.py
+  routers/
+    parts.py        search, lookup, supersession
+    demand.py       history, forecast
+    parc.py         uio, cohorts, scenarios
+    inventory.py    stock, policy, order proposal
+    runs.py         trigger and monitor pipeline runs
+  schemas/          pydantic response models
+  deps.py           mart loading, caching
+</code></pre>
+<h2>Endpoints</h2>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET</code></td>
+<td><code>/parts/search?q=&amp;brand=&amp;group=</code></td>
+<td>vector search (Step 02)</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/parts/{part_no}/supersession</code></td>
+<td>chain with QUERIED / CURRENT / OLDER / RELATED</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/parts/{sku}/explain</code></td>
+<td>the full Step 14 derivation for one part</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/demand/{sku}/history</code></td>
+<td>monthly ordered, confirmed, lost</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/demand/{sku}/forecast</code></td>
+<td>mu, sigma, quantiles, method</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/parc/uio?model=&amp;month=</code></td>
+<td>age-bucket matrix</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/parc/scenarios</code></td>
+<td>run a target scenario</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/inventory/{sku}/position</code></td>
+<td>on-hand, on-order, IP</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/inventory/policy/{sku}</code></td>
+<td>SS, ROL, ROQ, policy and why</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/orders/proposal?cycle=</code></td>
+<td>the monthly proposal, filterable</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/orders/proposal.csv?cycle=</code></td>
+<td>buyer-ready export</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/runs/monthly</code></td>
+<td>trigger Steps 12-14</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/runs/{run_id}</code></td>
+<td>status and run report</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/health</code></td>
+<td>liveness plus data freshness</td>
+</tr>
+</tbody>
+</table>
+<h2>Rules</h2>
+<ul>
+<li><strong>The API serves published marts. It computes nothing.</strong> Every number it returns was computed in a
+  step, tested, and written to a table. A figure derived in a request handler is a figure nobody can
+  reproduce.</li>
+<li>Pydantic response models on every endpoint; no raw dataframe dumps.</li>
+<li>Long runs are <strong>async with a job id</strong> - a monthly pipeline run must not block an HTTP request.</li>
+<li>Paginate anything that can return 30,000 rows.</li>
+<li><code>/orders/proposal</code> is a <strong>recommendation</strong>. There is no endpoint that submits a purchase order to
+  SAP. A human sends the order.</li>
+<li>Read-only by default; the only writes are run triggers and scenario definitions.</li>
+</ul>
+<h2>Operational</h2>
+<p>Structured logging with a run id through every layer. <code>/health</code> reports the age of each mart, so a
+stale pipeline is visible rather than silently serving last month's numbers. Config through
+pydantic-settings and environment variables - no secrets in code.</p>
+<h2>Validation</h2>
+<ol>
+<li>Contract tests per endpoint against a fixture dataset.</li>
+<li><code>/parts/{sku}/explain</code> output reconciles exactly to <code>mart_monthly_order</code> for the same part.</li>
+<li>Response time on the proposal endpoint measured with a realistic mart loaded.</li>
+<li>OpenAPI docs generated and reviewed.</li>
+</ol>
+<h2>Protocol</h2>
+<p><strong>Clarify -&gt; Architect -&gt; Code -&gt; Validate.</strong> Ask the open questions below first. Present an
+architecture note and <strong>wait for confirmation</strong> before writing code. Finish with tests and a
+validation report reconciled against the source file.</p>
+<h2>Open questions</h2>
+<ol>
+<li>Who and what consumes this API - a front end, SAP, a scheduled job, analysts?</li>
+<li>Is authentication needed, and if so which scheme (API key, OAuth, internal network only)?</li>
+<li>Where does it deploy - on-prem, cloud, container?</li>
+<li>Should scenario runs persist per user, or is it a single shared workspace?</li>
+</ol></div></article>
+  </main>
+  <footer>17 documents · verified against source files 2026-09-22</footer>
+</div>
+
+<script>
+const RAW = {"readme": "# Build Prompts - Yamaha Spare Parts Intelligence\n\nSixteen prompts, one per step. Each is self-contained: give a coding agent **one** file and it has\nthe objective, the real data shape, the rules, the output contract, the validation gates and the\nquestions to ask first.\n\nWritten against the **actual data files**, inspected 2026-09-22 - not against assumptions.\n\n| # | File | Builds |\n|---|---|---|\n| 00 | `Step00_Foundation.md` | repo, contracts, orchestration, the SAP column parser |\n| 01 | `Step01_Catalogue_Reader.md` | PDF extraction with the full colour-variant ruleset |\n| 02 | `Step02_Part_Master.md` | supersession chain, `active_sku_id`, vector search |\n| 03 | `Step03_Cleaned_Orders.md` | demand history and measured lost sales |\n| 04 | `Step04_Parts_Sales.md` | billed sales, revenue, margin, geography |\n| 05 | `Step05_Order_Analysis.md` | fulfilment, supply reliability, lead time |\n| 06 | `Step06_Classification.md` | behaviour, ADI/CV2, ABC/XYZ/FSN |\n| 07 | `Step07_Model_Selection.md` | rolling-origin backtest, champion per segment |\n| 08 | `Step08_Material_Forecast.md` | parc-driven forecast, lambda(p,a), uncertainty |\n| 09 | `Step09_Unit_Sales.md` | VIN-level registrations from MCSI |\n| 10 | `Step10_UIO_Cohorts.md` | UIO by age bucket, survival, roll-forward |\n| 11 | `Step11_Targets.md` | unit forecast and target simulator |\n| 12 | `Step12_Stock.md` | PDC stock, on-order, inventory position |\n| 13 | `Step13_Policy_Engine.md` | SS, ROL, ROQ - simulated and selected |\n| 14 | `Step14_Monthly_Order.md` | the buyer-ready order, marts, explainability |\n| 15 | `Step15_FastAPI_Service.md` | the service layer |\n\n## Scope decisions locked in these prompts\n\n| Decision | Value |\n|---|---|\n| Output format | Python modules under `src/`. **Never notebooks.** |\n| Stock scope | **PDC only** (`Plant == \"W1B4\"`), cleaned against `PN_Yamaha.xlsx` |\n| History | Full `orders.xlsx` is **~3 years**; the 8-month file supplied is a sample |\n| On-order months | **2026**, read as expected arrival (config flag, printed every run) |\n| Delivery | **FastAPI only** - no Streamlit |\n| Lead time | 3 months. Review 1 month. Protection interval **P = 4 months** |\n| Policies | (R,S), (R,s,S), on-demand, no-stock. **No VMI, JIT or continuous review** |\n\n## What the data actually contains\n\nVerified by reading all eight files.\n\n| File | Rows | Coverage | Note |\n|---|---|---|---|\n| `orders.xlsx` | 46,514 x 102 | Jan-Aug 2026 (sample) | fill rate **0.745**; 32% of lines fully rejected |\n| `sales.xlsx` | 21,301 x 41 | Jan-Aug 2026 | **May missing**; `Payer` and `Material` are glued code+label |\n| `MCSI.xlsx` | 56,211 x 58 | 2025-2026 | VIN-level, 12 model codes |\n| `Sales Summery.xlsx` | 20 sheets | 2014-2021, 2025-2026 | **278,732 units**; 113 models classified |\n| `current_stock.xlsx` | 26,288 x 8 | snapshot | 16 plants; **only an `Unrestricted` column** |\n| `On_Orders.xlsx` | 2,820 x 10 | 2026 Jan-Aug | wide month pivot; 252,568 units |\n| `PN_Yamaha.xlsx` | 30,216 x 16 | - | `Latest SS` already resolved |\n| `dealers.xlsx` | 414 x 12 | - | Type MC/OBM, RM, ASE, Province, District |\n\n## Three things the data settled\n\n**1. `Payer` was never a contradiction.** It holds both: `\"26198      Yamaha Sales Center\"`. So does\n`Material`: `\"676-42115-00       SHAFT STEERING YAMAHA 40 HP\"`. One shared parser, applied per column\nper file - `orders.xlsx` does not use this encoding.\n\n**2. The revenue formula needed no fixing.** `Revenue Re` and `Cost Reduc` are zero in all 21,301\nrows, and `Net Sales = Sales Pric + Discount` holds exactly. Revenue is `Net Sales`; margin is\n`Net Sales - Cost`.\n\n**3. The parc has a four-year hole, and it is real.** 2020: 26,701 units. 2021: **85**. 2022-2024:\nnone. 2025: 22,084. That is Sri Lanka's vehicle import ban. The fleet is bimodal - a large 2014-2020\nblock now aged 6-12, sitting in the high-consumption band, and a young 2025-2026 block that will\ndemand little for years. Step 08 and Step 10 both depend on modelling this rather than smoothing it.\n\n## How to use these\n\nHand a coding agent one step's file. It will ask its questions, propose an architecture, wait, then\nbuild. Do not hand it several at once - each step has a validation gate that should pass before the\nnext begins.\n\nSteps 01 and 02 can start immediately. Step 03 onward wants the full 3-year `orders.xlsx`.\n", "step00": "# Step 00 - Foundation\n\n| | |\n|---|---|\n| **Builds** | `src/core/ - src/io/ - tests/ - pyproject.toml` |\n| **Reads** | nothing |\n| **Writes** | `PlanningContext`, settings, stage registry, `src/io/sap.py` |\n| **Format** | Python modules under `src/`. Never a notebook. `run(ctx) -> StageResult`. |\n\n## Objective\n\nSet up the repository, the data contracts and the orchestration so every later step plugs into the same frame. No business logic here.\n\n## Environment\n\nPython >= 3.11 managed with `uv`. Dependencies: pandas, pyarrow, pandera, pydantic-settings, loguru,\nscipy, statsmodels, scikit-learn, chromadb, fastapi, uvicorn, pytest.\n\n## Layout\n\n```\nsrc/\n  core/        context.py  registry.py  contracts.py  errors.py\n  io/          excel.py  sap.py  parquet.py  chroma.py\n  catalogue/   parts/  demand/  forecast/  parc/  inventory/\n  api/         main.py  routers/\ndata/\n  raw/  staging/  facts/  marts/\ntests/\n```\n\n## The context object\n\n```python\n@dataclass(frozen=True)\nclass PlanningContext:\n    as_of: date\n    lead_time_months: int = 3\n    review_period_months: int = 1\n    plant: str = \"W1B4\"          # PDC only - see Step 12\n    currency: str = \"LKR\"\n    config: Mapping[str, Any] = field(default_factory=dict)\n```\n\nFrozen. Every stage receives it and returns `StageResult(rows_in, rows_out, rejected, warnings,\nartifacts)`. No stage reads global state; no stage mutates anything it did not create.\n\n## Contracts\n\nEvery table crossing a stage boundary carries a **pandera** schema. A violation raises - it does not\nwarn and continue. This matters more than usual here, because the source files are SAP exports whose\ncolumn meanings are not self-evident.\n\n## The SAP glued-column rule - applies everywhere\n\nSeveral columns in these exports pack a **code and a label into one string**, separated by runs of\nspaces. Verified in the real files:\n\n```\nPayer               \"26198      Yamaha Sales Center\"\nMaterial            \"676-42115-00       SHAFT STEERING YAMAHA 40 HP\"\nSales Organization  \"2501 Associated Motorways\"\nSales Office        \"W1B1 Seeduwa - PDC\"\nSales Employee      \"00171976 Arosha Edirisinghe\"\n```\n\nBuild **one** shared parser in `src/io/sap.py`:\n\n```python\ndef split_code_label(s: str) -> tuple[str | None, str | None]:\n    \"\"\"Split \"26198      Yamaha Sales Center\" -> (\"26198\", \"Yamaha Sales Center\").\"\"\"\n```\n\nSplit on the first run of two or more spaces; fall back to the first single space when the leading\ntoken is purely numeric or matches a part-number pattern. Emit both `*_code` and `*_name` columns and\n**never join on the raw glued string**.\n\n`orders.xlsx` does **not** use this encoding - it carries separate `Sold-to Party` (numeric) and\n`Sold-To Party Name`. `MCSI.xlsx` uses it for `Sales Organization` and `Sales Office` but its `Payer`\nis a retail customer name. So the parser is applied per column, per file, from a declared map - never\nblanket across a dataframe.\n\n## Excel loading\n\nSource files are large: `orders.xlsx` 20 MB, `MCSI.xlsx` 18 MB. Read each workbook **once**, convert\nto parquet under `data/raw/`, and have every later step read the parquet. Re-reading the workbook per\nstage wastes minutes per run.\n\n## Orchestration\n\nExplicit DAG, topologically sorted, fail-closed. A stage whose upstream failed does not run. Each run\nwrites a report: rows in and out per stage, rejects with reasons, warnings, elapsed time.\n\n## Definition of Done\n\n`uv run pytest` green; the DAG executes end to end on a two-stage stub; the glued-column parser has\ntests covering all five patterns above plus a no-op on `orders.xlsx`-style columns.\n\n## Protocol\n\n**Clarify -> Architect -> Code -> Validate.** Ask the open questions below first. Present an\narchitecture note and **wait for confirmation** before writing code. Finish with tests and a\nvalidation report reconciled against the source file.\n\n## Open questions\n\n1. Confirm Python version and whether `uv` is acceptable, or the team requires pip/conda.\n2. Where do the source files land in production - shared drive, scheduled SAP export, manual upload?\n3. Is the monthly run scheduled, or triggered by hand?\n4. Is there an existing repo and CI to fit into, or is this greenfield?\n", "step01": "# Step 01 - PDF Catalogue Reader\n\n| | |\n|---|---|\n| **Builds** | `src/catalogue/pdf_reader.py - src/catalogue/colour_rules.py` |\n| **Reads** | `pdf_catalogues/` (mixed layouts) |\n| **Writes** | `catalogue_parts`, `model_colour_variants` -> Chroma collection `catalogue` |\n| **Format** | Python modules under `src/`. Never a notebook. `run(ctx) -> StageResult`. |\n\n## Objective\n\nExtract the parts table from every Yamaha catalogue PDF and resolve, for each part, which model and which colour variant it belongs to. The colour logic below is specified in full - it is not inference to be improvised.\n\n## Shape of the input\n\nPDFs come in several layouts. The **model code appears on page 1** in most of them. Some are\nsingle-model; some are multimodal, with a quantity column per model.\n\n## Step A - the FOREWARD colour table\n\nRead the **FOREWARD** page first and extract the *Applicable Color Table*: abbreviation, colour name,\nand colour code number where present. This is the universe of possible colours for that PDF.\n\nAn abbreviation marked **`(*)`** is the **model colour** for that PDF.\n\n> **Do not promote the FOREWARD table straight into colour variants.** Real variants are equal to or\n> fewer than the table. A variant is confirmed only once its abbreviation or colour name is actually\n> observed in the parts table's remarks or descriptions.\n\n## Step B - remarks carrying abbreviations\n\nA row whose **Remark** contains an abbreviation from the table is a **coloured part** belonging to\nthat abbreviation's colour:\n\n| Remark pattern | Meaning |\n|---|---|\n| `ABBR` | belongs to that colour |\n| `UR ABBR` / `FOR ABBR` | belongs to that colour |\n| `EXCEPT ABBR` | **does not** belong - belongs to all *other* confirmed variants |\n| `ABBR1, ABBR2` | belongs to each listed colour |\n\n`EXCEPT` inverts against the **confirmed variant set**, not against the full FOREWARD table. Getting\nthis backwards silently assigns parts to colours that do not exist in the PDF.\n\n## Step C - remarks carrying numbers\n\nWhen remarks contain numbers and the colour table carries colour numbers, the **suffix after the\nfinal `-`** is the colour-variant number. The part is **shared** and belongs to that variant.\n\n## Step D - colour in the description\n\nWhere the remark cannot be resolved against the table, the colour abbreviation or name is often in\nthe **description** - as a suffix after `-`, or inside brackets. Treat it as a coloured part for that\nvariant. `UR` / `FOR` / `EXCEPT` apply identically.\n\n**Precedence when C and D disagree:** if remarks carry numbers and the descriptions imply more\ncolours than the table holds, **go with the suffix numbers**.\n\n## Step E - multimodal catalogues\n\nWhere quantities appear per model and remarks carry colour abbreviations:\n\n1. An abbreviation whose quantity appears for **exactly one model** is always a colour variant *of\n   that model*.\n2. A remark listing **comma-separated abbreviations** is split across models using the variants\n   identified in (1).\n3. A remark carrying **one abbreviation across several models** means that colour is available for\n   every model showing a quantity.\n\nRun (1) before (2). Step 2 has no basis without it.\n\n## Output\n\n`catalogue_parts`: `pdf_file`, `model_code`, `part_no`, `description`, `qty`, `remark_raw`,\n`part_kind` in {coloured, shared}, `colour_abbr`, `colour_name`, `colour_code`, `rule_applied`,\n`confidence`.\n\n`rule_applied` records which of B/C/D/E fired. Without it, a wrong extraction cannot be audited.\n\n## Accuracy check - required, not optional\n\nSample **at least 30 parts per PDF layout**, verify by eye against the PDF, and report precision per\nrule. Report model-code detection accuracy separately. Rows the rules cannot resolve go to an\nexceptions table with the raw remark - **never** guessed into a variant.\n\nLoad the resolved table into Chroma **model-variant-wise**, one document per part x variant.\n\n## Definition of Done\n\nAccuracy reported per layout and per rule; exceptions listed with raw remarks; Chroma collection\nqueryable by model code and colour.\n\n## Protocol\n\n**Clarify -> Architect -> Code -> Validate.** Ask the open questions below first. Present an\narchitecture note and **wait for confirmation** before writing code. Finish with tests and a\nvalidation report reconciled against the source file.\n\n## Open questions\n\n1. How many PDFs, and how many distinct layouts?\n2. Is the heading always spelled FOREWARD, or do some use FOREWORD or another word?\n3. A part with **no remark at all** - shared across every colour, or unknown?\n4. Are there PDFs where the model code is not on page 1? What is the fallback?\n5. Do the catalogue part numbers use the same format as `PN_Yamaha.xlsx` (`0NH9-28471-00`)?\n", "step02": "# Step 02 - Part Master and Supersession\n\n| | |\n|---|---|\n| **Builds** | `src/parts/master.py - src/parts/supersession.py - src/parts/search.py` |\n| **Reads** | Step 01 Chroma, `PN_Yamaha.xlsx`, `Sales Summery.xlsx` (Model Classification) |\n| **Writes** | `part_master`, `part_master_enriched`, Chroma collection `parts_master` |\n| **Format** | Python modules under `src/`. Never a notebook. `run(ctx) -> StageResult`. |\n\n## Objective\n\nEstablish one identity per physical part - resolving the supersession chain to a single `active_sku_id` - and attach model compatibility to it. Everything downstream aggregates on this identifier.\n\n## Inputs - what is actually there\n\n`PN_Yamaha.xlsx`, sheet `Supersession`: **30,216 rows x 16 columns**.\n\n```\nMaterial, Latest SS, Material description, Material Type, Material Group, Brand,\n1st Supersede ... 10th Supersede\n```\n\n`Latest SS` is **already resolved** in the source - do not recompute it, but **do** verify it against\nthe chain and report disagreements. Material Type is `ERSA`; Material Group looks like `AWPYM0027`;\nBrand like `YM`.\n\n## Part A - model compatibility\n\nFrom the Step 01 Chroma collection, derive for each unique part number the set of models it fits, as:\n\n```\nfamily name - model code (year)\n```\n\ne.g. `RAY - B2UG (2025)`. Model family, code and year come from the `Model Classification` sheet of\n`Sales Summery.xlsx`, which carries `Model`, `Model Name`, `Model Family`, `First Year Sold`,\n`Last Year Sold`, `Motorcycle Type`, `Segment`, `cc` for **113 models**. Join catalogue model codes to\nthat sheet; report any code that does not match.\n\nCarry `part_kind` (coloured / shared) through from Step 01.\n\n## Part B - the supersession tool\n\nTwo capabilities, both required.\n\n**1. Vector search.** Embed each part from its description, part number, all supersede numbers, group\nand brand. Search by description tolerant of typos (`\"oil seal yb50\"`), or by any part number.\nFilterable by Brand and Material Group. Persist to Chroma.\n\n**2. Part-number lookup.** Accept any number from `Material`, `Latest SS`, or any of the ten\nsupersede columns. Return every related part, each labelled:\n\n| Label | Meaning |\n|---|---|\n| `QUERIED` | the number asked for |\n| `CURRENT` | the latest number in the chain |\n| `OLDER` | a superseded predecessor |\n| `RELATED` | linked through the chain, neither of the above |\n\nAccept numbers **with or without dashes**, and **partial** numbers (`5VL-F341E` matches all its\nversions). Unknown number returns `not found` - never a fuzzy guess, because a wrong supersession\nmerge corrupts every downstream demand series.\n\n## Part C - the join\n\nLeft join **onto `PN_Yamaha`**: for each `Material`, look up the part master by `Material` and by\neach of the ten supersede columns, and bring across `description`, `part_kind` and\n`compatible_models`.\n\n## active_sku_id\n\nResolve every chain to one identifier - use `Latest SS` where it is present and consistent, otherwise\nthe chain head. **Every downstream step aggregates on `active_sku_id`, never on the raw material\nnumber.** Without it, demand for one physical part is split across its old and new numbers and every\nforecast is understated.\n\n## Output\n\n`part_master` -> parquet + Chroma. Then write `part_master_enriched` as a **separate copy**; Steps 6,\n8, 12 and 13 append their columns to that copy, never to the base.\n\n## Validation\n\n1. Chain integrity: no cycles; every `Latest SS` is its own chain head.\n2. `Latest SS` disagreements with the derived chain, counted and listed.\n3. Lookup returns identical results for `5VLF341E`, `5VL-F341E` and the partial form.\n4. Coverage: what share of the 30,216 parts got a model compatibility, and what share did not.\n\n## Protocol\n\n**Clarify -> Architect -> Code -> Validate.** Ask the open questions below first. Present an\narchitecture note and **wait for confirmation** before writing code. Finish with tests and a\nvalidation report reconciled against the source file.\n\n## Open questions\n\n1. Where `Latest SS` disagrees with the supersede chain, which wins?\n2. Should parts with **no catalogue match** stay in the master with empty compatibility, or be flagged\n   out of scope?\n3. Is `Material Group` (`AWPYM0027`, `AWPOB0119`) meaningful for classification, and is there a lookup\n   for what each group means?\n4. Brand `YM` vs others - is the scope Yamaha only, or all brands in the file?\n", "step03": "# Step 03 - Order Cleaning and Demand History\n\n| | |\n|---|---|\n| **Builds** | `src/demand/orders.py` |\n| **Reads** | `orders.xlsx`, `dealers.xlsx`, `part_master` |\n| **Writes** | `demand_history` (sales orders), `returns_history`, `order_exceptions` |\n| **Format** | Python modules under `src/`. Never a notebook. `run(ctx) -> StageResult`. |\n\n## Objective\n\nTurn the raw order export into a clean monthly demand history per part - including the **measured lost sales** that make this dataset unusually good for inventory work.\n\n## What the file actually is\n\n`orders.xlsx`, sheet `Sheet1`: the sample supplied is **46,514 rows x 102 columns**, Jan-Aug 2026.\n**The production file holds about 3 years.** Build for 3 years; never hard-code the 8-month window.\n\nOf the 102 columns, roughly 60 are empty contract/cancellation fields. Keep this shortlist:\n\n```\nDocument Date, Sales Document, Sales Document Item, Sales Document Type,\nSD Document Category, Sold-to Party, Sold-To Party Name, Material,\nMaterial Description, Order Quantity (Item), Confirmed Quantity (Item),\nNet Price, Net Value (Item), Plant, Storage Location, Reason for Rejection,\nDelivery Date, Item Category, Sales Office\n```\n\n`Material` here is the **bare part number** (`17540-53U01`) - no glued description. `Sold-to Party` is\nnumeric and separate from `Sold-To Party Name`.\n\n## Cleaning order - this order, not the reverse\n\n1. Drop **fully null columns**, then **fully null rows**. (Doing rows first leaves the ~60 empty\n   columns in place and they then block the row test.)\n2. Join `dealers.xlsx` (**414 rows**) on `Dealer Code` = `Sold-to Party` **and** `Dealer Name` =\n   `Sold-To Party Name`. Bring `Type` into a new **`Dealer Type`** column; unmatched becomes\n   `\"Not Found\"`.\n3. **Do not remove rows whose `Dealer Code` is `\"No Code\"`.** They are real demand.\n4. Join `part_master`. Drop rows matching neither `Material` nor any of the ten supersede columns -\n   to an exceptions table with counts, not silently.\n\n## Split by document category\n\n| `SD Document Category` | Meaning | Sample count |\n|---|---|---|\n| `C` | **Sales Order** | 46,320 |\n| `H` | **Return Sale** | 194 |\n\nSplit into two outputs. Everything downstream that says \"demand\" means the `C` set.\n\n## Material Category\n\n```\nDealer Type == \"MC\":\n    description contains \"YAMALUBE\"        -> Lubricant\n    description contains \"KARATE BATTERY\"  -> Battery\n    description contains \"KATANA TYRE\"     -> Tyre\n    otherwise                              -> MC Spare Parts\nDealer Type == \"OBM\":                      -> OBM Spare Parts\n```\n\nMatch case-insensitively on `Material Description`. Report the count falling in each bucket and the\ncount where `Dealer Type` is `\"Not Found\"` - those get no category and must not be silently dropped.\n\n## Lost sales - measured, not inferred\n\n```\nLost Quantity   = Order Quantity (Item) - Confirmed Quantity (Item)\nLost Sale Value = Lost Quantity x Net Price\nOrder Value     = Confirmed Quantity (Item) x Net Price\n```\n\n**This is the most valuable column in the project.** Most inventory systems have to infer stockouts\nfrom demand that never appears. Here the shortfall is recorded on every line.\n\nIn the sample: **74.5% overall fill rate**, 15,055 lines (32%) fully rejected. Expect the same shape\nacross 3 years and make sure nothing in the pipeline quietly treats confirmed quantity as demand.\n\n## Output\n\n`demand_history` at `active_sku_id` x month, carrying ordered, confirmed and lost quantity and value,\ndealer type, material category. Plus `returns_history` from the `H` set.\n\n## Validation\n\n1. Row counts reconcile: raw = kept + rejected, by reason.\n2. `Order Qty >= Confirmed Qty` on every row; any violation is a data error - list them.\n3. Monthly totals tie back to the raw file.\n4. Dealer join coverage stated; `\"Not Found\"` share reported.\n\n## Protocol\n\n**Clarify -> Architect -> Code -> Validate.** Ask the open questions below first. Present an\narchitecture note and **wait for confirmation** before writing code. Finish with tests and a\nvalidation report reconciled against the source file.\n\n## Open questions\n\n1. The sample is Jan-Aug 2026. What is the true start date of the full file, and are any months\n   missing the way May is missing from `sales.xlsx`?\n2. `Sales Document Type` is `ZP2A` (27,041) / `ZP1A` (19,279) / `ZRE` (194). What distinguishes ZP1A\n   from ZP2A - and should both count as demand?\n3. 32% of lines fully rejected is very high. Is that genuine unavailability, or do some rejection\n   reasons mean something else (credit block, cancelled by dealer)?\n4. `Reason for Rejection` - which codes mean \"no stock\" versus a commercial reason? Only the former is\n   lost sales.\n", "step04": "# Step 04 - Parts Sales and Revenue\n\n| | |\n|---|---|\n| **Builds** | `src/demand/sales.py` |\n| **Reads** | `sales.xlsx`, `dealers.xlsx`, `part_master` |\n| **Writes** | `parts_sales`, `sales_performance`, `sales_kpis` |\n| **Format** | Python modules under `src/`. Never a notebook. `run(ctx) -> StageResult`. |\n\n## Objective\n\nBuild the billed-sales view - revenue, cost and margin per part and per dealer - and the geographic and time-trend performance cuts.\n\n## What the file actually is\n\n`sales.xlsx`, sheet `Sheet1`: **21,301 rows x 41 columns**, billing dates **2026-01-05 to\n2026-08-31**. **May 2026 is absent entirely** - Jan 2,864 / Feb 2,816 / Mar 2,885 / Apr 2,784 /\n**May 0** / Jun 3,475 / Jul 2,969 / Aug 3,508. Confirm whether that is an export gap before\npublishing any trend that spans it.\n\n## The glued columns - resolved\n\n`Payer` contains **both** dealer code and dealer name:\n\n```\n\"26198      Yamaha Sales Center\"  ->  code 26198, name \"Yamaha Sales Center\"\n```\n\n`Material` does the same: `\"676-42115-00       SHAFT STEERING YAMAHA 40 HP\"`. Use the Step 00 parser.\nJoin `Dealer Type` on the **extracted code** against `dealers.xlsx`; fall back to name match only when\nthe code misses. Unmatched -> `\"Not Found\"`.\n\nThis settles the old data-dictionary contradiction - \"Payer = Dealer Code\" and \"Payer = Dealer Name\"\nwere both correct descriptions of one column.\n\n## Money columns - verified against the data\n\n```\nNet Sales = Sales Pric + Discount        (exact, max abs diff 0.0 over all 21,301 rows)\nMargin    = Net Sales - Cost\n```\n\n`Discount` is stored **negative**. `Tax Amount` sits outside `Net Sales`. `Revenue Re` and\n`Cost Reduc` are **zero in every row** - they are not part of any revenue calculation here.\n\n> Use this. Do not implement the old dictionary formula\n> `Net Sales - (Tax - Revenue Re - Dealer Commission - Cost of Sales)`; it referenced columns that do\n> not exist or are never populated, and as bracketed it added cost to revenue.\n\n`SlsVolQty` is the sold quantity; **negative means a return** or a wrongly entered material being\nreversed - 250 such rows in the sample. Keep them and net them; do not filter them out.\n\n`Bill. Type`: F2 19,896 / ZVAT 1,150 / RE 154 / S1 81 / ZRVT 20. Confirm which are returns.\n\n## Cleaning order\n\nFully null columns first (`Batch` and `Cust. Clas` are entirely null), then fully null rows. Then\n`Dealer Type`, then the `part_master` filter, then `Material Category` by the same rules as Step 03\n(matching on the **extracted description**, not the glued string).\n\n## Analysis to produce\n\n- Material-wise performance for unique materials\n- Dealer-wise, and by **RM, ASE, Province, District** (all four come from `dealers.xlsx`)\n- Monthly trend - with the May gap marked, not interpolated\n\n## KPIs\n\nTotal invoices, total order lines, total quantity, total cost, total sales, unique SKUs sold.\n\n## Validation\n\n1. `Net Sales == Sales Pric + Discount` asserted row-wise; report any failures.\n2. Totals reconcile to the raw file before and after cleaning.\n3. Dealer code/name extraction: report how many `Payer` values parsed, and list the unparsed ones.\n4. The 328 distinct `Payer` values map to how many of the 414 dealers?\n\n## Protocol\n\n**Clarify -> Architect -> Code -> Validate.** Ask the open questions below first. Present an\narchitecture note and **wait for confirmation** before writing code. Finish with tests and a\nvalidation report reconciled against the source file.\n\n## Open questions\n\n1. **Is May 2026 genuinely missing, or an export error?** Everything monthly depends on the answer.\n2. Does the full `sales.xlsx` also cover ~3 years, like orders?\n3. Which `Bill. Type` codes are returns - RE and ZRVT only, or also S1?\n4. `sales.xlsx` shows 3,794 distinct materials against 6,422 in orders. Is sales a narrower scope\n   (one sales org, one channel), or a shorter window?\n", "step05": "# Step 05 - Order Analysis, Lost Sales and Lead Time\n\n| | |\n|---|---|\n| **Builds** | `src/demand/order_analysis.py` |\n| **Reads** | `demand_history`, `returns_history`, `part_master` |\n| **Writes** | `fulfilment_stats`, `supply_reliability` (beta_hat), `lead_time_stats`, `returns_summary` |\n| **Format** | Python modules under `src/`. Never a notebook. `run(ctx) -> StageResult`. |\n\n## Objective\n\nQuantify how well orders are being served, how reliable supply is, and how long replenishment actually takes. These three feed the safety-stock maths directly.\n\n## Part A - fulfilment, from the sales-order set\n\nPer line, classify:\n\n| Condition | Class |\n|---|---|\n| `Order Qty == Confirmed Qty` | **fully confirmed** |\n| `Order Qty > Confirmed Qty > 0` | **partially confirmed** |\n| `Confirmed Qty == 0` | **fully rejected** |\n\nReport **lines and quantities** for each, and roll the same classification up to the **purchase\norder** (`Sales Document`) level: a PO is fully confirmed only if all its lines are.\n\nSample baseline to reproduce: 30,553 fully confirmed / 913 partial / 15,055 fully rejected lines;\n592,829 ordered vs 441,737 confirmed units - **fill rate 0.745**.\n\n## Part B - supply reliability\n\n```\nbeta_hat = confirmed / ordered\n```\n\nEstimate **per part** and **per material category**, with a monthly series so drift is visible. Guard\nagainst parts with only one or two order lines - use a shrinkage estimator toward the category mean\nrather than letting a single fully-rejected line produce beta_hat = 0.\n\n`beta_hat` feeds Step 14, where **inflating orders by 1/beta_hat is off by default**. Record it here;\ndecide there.\n\n## Part C - lead time\n\nThe order export carries `Document Date`, `Delivery Date` and `Material Availability Date`.\n\n```\nlead_time = Delivery Date - Document Date\n```\n\nCompute the distribution per part and per category: mean, **standard deviation**, P50, P90. The\nstandard deviation is what Step 13 needs - a point estimate of lead time is not enough to size safety\nstock.\n\nIf those date fields prove unreliable, fall back to the planning assumption of **3 months** and say so\nloudly in the run report, because a wrong sigma_L silently mis-sizes every buffer.\n\n## Part D - returns\n\nFrom the `H` set (194 rows in the sample): number of return invoices, total return quantity, total\nreturn value, unique SKUs returned, and **return rate** against sales. Break down by Material\nCategory.\n\n## Part E - performance cuts\n\nMaterial-wise, dealer-wise, and by RM / ASE / Province / District - mirroring Step 04 so the ordered\nand billed views can be compared side by side.\n\n## KPIs\n\nTotal invoices, total ordered quantity, total confirmed quantity, total sales value, unique SKUs\nordered.\n\n## Validation\n\n1. The three fulfilment classes partition the line set exactly - no row in two classes, none in none.\n2. Line-level and PO-level rollups reconcile.\n3. `beta_hat` between 0 and 1 for every part; list any part where it is exactly 0 and say how many\n   lines produced it.\n4. Lead-time distribution plotted and eyeballed before it is used.\n\n## Protocol\n\n**Clarify -> Architect -> Code -> Validate.** Ask the open questions below first. Present an\narchitecture note and **wait for confirmation** before writing code. Finish with tests and a\nvalidation report reconciled against the source file.\n\n## Open questions\n\n1. Are `Delivery Date` and `Material Availability Date` reliably populated in the full file? They are\n   the only route to a measured lead-time sigma.\n2. Should `Reason for Rejection` filter what counts as lost sales? A credit-block rejection is not a\n   stock failure.\n3. For `beta_hat`, what minimum number of order lines makes a part's estimate trustworthy?\n", "step06": "# Step 06 - Parts Classification\n\n| | |\n|---|---|\n| **Builds** | `src/parts/classify.py - src/parts/behaviour_model.py` |\n| **Reads** | `part_master`, `demand_history`, `PN_Yamaha.xlsx`, Chroma `parts_master` |\n| **Writes** | `sku_classification` -> appended to `part_master_enriched` |\n| **Format** | Python modules under `src/`. Never a notebook. `run(ctx) -> StageResult`. |\n\n## Objective\n\nLabel every part four ways - behaviour, demand pattern, value and movement - because each later decision routes on these labels rather than treating 30,000 parts alike.\n\n## Classification 1 - behaviour class\n\nAssign every part to exactly one of:\n\n```\nservice part | wear part | crash part | cosmetic part | engine part\n```\n\nDerived from description text, `Material Group`, catalogue section and demand shape. This is a\n**text-plus-features classification problem**, so:\n\n1. Hand-label a stratified sample (aim for 300-500 parts across groups).\n2. Train several candidates - TF-IDF + linear SVM, gradient boosting on description embeddings plus\n   demand features, and a rules baseline from keyword lists.\n3. **Select on held-out macro-F1**, not accuracy - the classes are imbalanced, and accuracy will\n   reward a model that predicts \"service part\" for everything.\n4. Report the confusion matrix. Report per-class precision and recall, not one number.\n\nThe behaviour class is what makes the age-cohort model work: it is the pooling key for `lambda(p,a)`\nin Step 08. Wear parts consume on a rising curve with vehicle age; crash parts are roughly flat;\ncosmetic parts fall away. Pooling across the wrong class destroys the signal.\n\n## Classification 2 - demand pattern\n\nFrom `demand_history`, per `active_sku_id`:\n\n```\nADI  = mean interval between non-zero demand periods\nCV^2 = (sigma / mean)^2 of non-zero demand sizes\n```\n\nSyntetos-Boylan quadrants, cutoffs **ADI = 1.32**, **CV^2 = 0.49**:\n\n| | CV^2 <= 0.49 | CV^2 > 0.49 |\n|---|---|---|\n| **ADI <= 1.32** | smooth | erratic |\n| **ADI > 1.32** | intermittent | lumpy |\n\nThis quadrant decides which forecasting family Step 07 is allowed to use, and which safety-stock\nstrategy Step 13 applies. It is not a report - it is a routing key.\n\n## Classification 3 - value and movement\n\n- **ABC** on annual consumption value (Pareto; default 80/15/5, configurable)\n- **XYZ** on demand variability (CV of monthly demand)\n- **FSN** on movement frequency (Fast / Slow / Non-moving)\n\nPlus **criticality** (VED) where it can be derived - a part that immobilises a motorcycle is not the\nsame as a decal, whatever its value. If no source exists for criticality, say so rather than\ninventing one; Step 13 treats `criticality = high` specially and must not be fed a guess.\n\n## Minimum history\n\nA part with fewer than **12 non-zero months** gets `insufficient_history = True` and is routed to the\nconservative path in Steps 07 and 13. Do not force a quadrant onto a part with four data points.\n\n## Output\n\nAppend all classifications to **`part_master_enriched`** (the copy), keyed on `active_sku_id` so the\nlabels follow the supersession chain. Never write to the base `part_master`.\n\n## Validation\n\n1. Every part gets exactly one label per scheme; no nulls, no doubles.\n2. ABC value shares reconcile to total consumption value.\n3. The behaviour classifier's held-out macro-F1 and confusion matrix are in the report.\n4. Quadrant counts are sane - if 95% of parts land in one quadrant, the cutoffs or the history window\n   are wrong.\n\n## Protocol\n\n**Clarify -> Architect -> Code -> Validate.** Ask the open questions below first. Present an\narchitecture note and **wait for confirmation** before writing code. Finish with tests and a\nvalidation report reconciled against the source file.\n\n## Open questions\n\n1. Is there an existing list or convention at AMW for the five behaviour classes, or do we label from\n   scratch?\n2. Can you hand-label ~400 parts, or should the first pass be rules-only with labels added later?\n3. Is there any criticality / VED source - a \"bike does not run without it\" flag anywhere?\n4. ABC on **value** or on **quantity**? Value is the default; confirm.\n", "step07": "# Step 07 - Forecast Model Selection\n\n| | |\n|---|---|\n| **Builds** | `src/forecast/backtest.py - src/forecast/selection.py` |\n| **Reads** | `demand_history`, `part_master_enriched` |\n| **Writes** | `model_registry`, `backtest_results`, protected holdout split |\n| **Format** | Python modules under `src/`. Never a notebook. `run(ctx) -> StageResult`. |\n\n## Objective\n\nFor each classification combination, find the forecasting model that actually performs best on a rolling-origin backtest - and record why it won.\n\n## What this step does\n\nIt does **not** forecast. It decides, for each classification combination, which model to use - then\nhands that decision to Step 08.\n\n## Candidate models, routed by quadrant\n\n| Quadrant | Candidates |\n|---|---|\n| **smooth** | ETS, SARIMA, Prophet, moving average, XGBoost, LightGBM |\n| **erratic** | ETS, quantile regression, LightGBM, moving average |\n| **intermittent** | **Croston**, **SBA**, **TSB**, quantile regression |\n| **lumpy** | **SBA**, **TSB**, quantile regression, LightGBM |\n| **insufficient_history** | moving average / naive only |\n\nTemporal Fusion Transformer is a candidate **only** if the full history is >= 3 years across a wide\npart panel; on a short panel it will overfit and win the backtest for the wrong reason. Gate it on a\nminimum-panel-size check rather than optimism.\n\n> Classical seasonal models need **two full seasonal cycles**. With 3 years you have that; with the\n> 8-month sample you do not. Assert the available history at runtime and drop SARIMA/Prophet from the\n> candidate set when it is short, rather than letting them fit noise.\n\n## Evaluation\n\n**Rolling-origin backtest.** Expanding window, step one month, forecast horizon = lead time + review\n= **4 months**. Never a random split - shuffling time series leaks the future into the past.\n\nMetric by quadrant:\n\n| Quadrant | Metric | Why |\n|---|---|---|\n| smooth, erratic | **MASE** | scale-free, comparable across parts |\n| intermittent, lumpy | **pinball loss** at the service quantile | MAPE is undefined on zeros; MASE rewards forecasting zero |\n\nNever MAPE. Half these series contain zeros.\n\n## Selection\n\nPer classification combination (quadrant x ABC x behaviour), aggregate backtest scores across its\nparts and pick the winner. **Champion-challenger**: the incumbent is replaced only if the challenger\nis better by a stated margin. Record the decision, the margin and the sample size in a registry.\n\nA combination with too few parts to judge inherits its parent quadrant's champion. Say so in the\nregistry rather than pretending a 3-part combination selected a model.\n\n## The holdout\n\nSplit off the **final 12 months** of history as a protected holdout before any of this runs. It is\nnot touched here and not touched in Step 08. It is opened once, in Step 13, and never re-opened.\n\nWith ~3 years of data that leaves ~24 months for training and selection - workable. If the full file\nturns out shorter, reduce the holdout to 6 months and **state it**; do not silently shrink it.\n\n## Output\n\n`model_registry`: classification combination, chosen model, hyperparameters, backtest score, runner-up\nand its score, sample size, selection date.\n\n## Validation\n\n1. Leakage audit: pick 3 random (part, origin) pairs and prove the fit used only data <= origin.\n2. Every quadrant has a champion; no combination is left unassigned.\n3. Champions beat the naive baseline. **If a champion cannot beat naive, use naive** and record it -\n   that is a real result, not a failure to hide.\n\n## Protocol\n\n**Clarify -> Architect -> Code -> Validate.** Ask the open questions below first. Present an\narchitecture note and **wait for confirmation** before writing code. Finish with tests and a\nvalidation report reconciled against the source file.\n\n## Open questions\n\n1. Confirm the true span of the full order file so the holdout can be sized.\n2. Is a seasonal pattern expected in Sri Lankan motorcycle parts demand - monsoon, festival season,\n   year-end? If so, which months?\n3. Forecast at `active_sku_id` level for all ~30k parts, or only the moving subset (6,422 appear in\n   the 8-month sample)?\n4. Is there budget/time for TFT, or should the stack stay classical plus gradient boosting?\n", "step08": "# Step 08 - Order Material Forecast\n\n| | |\n|---|---|\n| **Builds** | `src/forecast/parc_demand.py - src/forecast/run.py` |\n| **Reads** | `model_registry`, `demand_history`, `part_master_enriched`, `uio_age_matrix` |\n| **Writes** | `forecast_protection` -> appended to `part_master_enriched` |\n| **Format** | Python modules under `src/`. Never a notebook. `run(ctx) -> StageResult`. |\n\n## Objective\n\nForecast monthly order quantity 12 months ahead for every part - from its own history and from the vehicle parc by age - and quantify the uncertainty around it.\n\n## Two forecasts, reconciled\n\n**Baseline** - the champion model from Step 07 applied to each part's own history, 12 months ahead,\nmonthly, weighted toward the **last 24 months**.\n\n**Parc-driven** - demand implied by the vehicle fleet:\n\n```\nD(p,t) = SUM over models m in compat(p), SUM over ages a:\n             UIO(m, a, t) * lambda(p, a) * s(t) * k(p)\n```\n\n- `UIO(m,a,t)` - units in operation, model m, age bucket a, month t (from Step 10)\n- `lambda(p,a)` - consumption of part p per vehicle-year at age a\n- `s(t)` - seasonal factor\n- `k(p)` - a calibration scalar per part\n\n## Estimating lambda\n\nPenalised **non-negative least squares** over observed monthly demand:\n\n```\nminimise  SUM_t ( D_obs(p,t) - SUM_a UIO(a,t) * lambda_a )^2\n          + alpha * SUM_a ( lambda_a - lambda_{a-1} )^2\nsubject to lambda_a >= 0\n```\n\nThe smoothness penalty encodes the physical fact that consumption does not jump between adjacent age\nyears. Choose `alpha` by cross-validation.\n\n**Pool by behaviour class** (Step 06). A single part rarely has enough signal to fit 16 age\ncoefficients; a whole class does.\n\n> **Collinearity warning.** Cohort sizes move together over time, so individual `lambda_a` values are\n> weakly identified even when the fitted total is accurate. Always report **confidence intervals** on\n> lambda, and never present a single age coefficient as a finding without them. The fitted *curve* is\n> trustworthy; any one point on it is much less so.\n\n## The Sri Lankan parc is bimodal - this is the whole point\n\nRegistrations by year, from `Sales Summery.xlsx`:\n\n```\n2014  8,895     2018  55,516     2021       85\n2015 16,407     2019  53,681     2022-24  none\n2016 23,493     2020  26,701     2025   22,084\n2017 39,526                      2026   32,344\n```\n\nThe 2021-2024 gap is the **vehicle import ban**, not missing data. So the fleet is two blocks: a large\n2014-2020 block now aged **6-12 years**, and a young 2025-2026 block.\n\nConsequences you must not average away:\n\n1. The old block sits squarely in the **high-consumption age band** - wear parts for those models are\n   where demand is now.\n2. The young block will demand **almost nothing for several years**, then step up sharply.\n3. A part fitting only 2025-2026 models has essentially **no demand history** and cannot be forecast\n   from its own past at all. Parc-driven is the only route for those parts.\n4. A part fitting only pre-2021 models faces a parc that is **shrinking through retirement** and will\n   not be replenished by new registrations.\n\nAny model that extrapolates recent parts demand forward without the parc will miss all four.\n\n## Reconciliation\n\nWhere both forecasts exist, blend with weights driven by data sufficiency: parts with long history\nlean baseline; parts on young models lean parc. Publish **both** plus the blend - a buyer who cannot\nsee the disagreement cannot judge it.\n\n## Uncertainty\n\nProduce, per part, the **distribution** of demand over the protection interval P = L + R = 4 months,\nnot just a point:\n\n- smooth / erratic: normal approximation, `sigma_P` from residuals\n- intermittent / lumpy: **empirical bootstrap** of the 4-month sum from residuals\n\nStep 13 needs the distribution. A point forecast cannot size a buffer.\n\n## Supersession weighting\n\nWeight toward the **latest** part number in each chain when history is split across superseded\nnumbers - the old number's demand is real but will not recur under that number.\n\n## Output\n\n`forecast_protection`: `active_sku_id`, `month`, `mu`, `sigma`, quantiles (P50/P90/P95), `method`,\n`mu_P`, `sigma_P`, plus the bootstrap sample reference. Appended to `part_master_enriched`, refreshed\nmonthly.\n\n## Validation\n\n1. Holdout untouched - assert programmatically that no row with `month > holdout_start` entered any\n   fit.\n2. Parc reconstruction: predicted vs actual total demand by model family, plotted.\n3. `lambda` curves plotted per behaviour class **with confidence bands**.\n4. Parts on 2025-2026-only models are flagged `parc_only` and reported separately.\n\n## Protocol\n\n**Clarify -> Architect -> Code -> Validate.** Ask the open questions below first. Present an\narchitecture note and **wait for confirmation** before writing code. Finish with tests and a\nvalidation report reconciled against the source file.\n\n## Open questions\n\n1. Does `s(t)` need real seasonality, or is monthly variation mostly noise at part level?\n2. For parts fitting both old and new models, should lambda be fitted jointly or per model family?\n3. How should the 2021-2024 gap be treated in survival - no registrations, or registrations recorded\n   elsewhere (grey imports, re-registrations)?\n4. Confirm the 12-month horizon and the 3-month lead time are still right.\n", "step09": "# Step 09 - Vehicle Unit Sales\n\n| | |\n|---|---|\n| **Builds** | `src/parc/unit_sales.py` |\n| **Reads** | `MCSI.xlsx`, `dealers.xlsx` |\n| **Writes** | `unit_sales`, `unit_performance` |\n| **Format** | Python modules under `src/`. Never a notebook. `run(ctx) -> StageResult`. |\n\n## Objective\n\nBuild the VIN-level record of motorcycles sold, with model, colour, geography and time - the registration cohorts that feed the parc model.\n\n## What the file actually is\n\n`MCSI.xlsx`, sheet `Unit Sales`: **56,211 rows x 58 columns**, **2025-2026 only** (2025: 23,443;\n2026: 32,768). **54,433 distinct VINs**, 12 model codes, 13 model names.\n\nThis is VIN-level retail registration - the best possible parc source, but it covers only the last two\nyears. Everything before 2025 comes from `Sales Summery.xlsx` (Step 10).\n\nUseful columns beyond the standard SAP block:\n\n```\nVIN, Year, Month, Model, Model Name, Color, Type,\nDealer code, Dealer Name, Province, District, RM, ASE,\nCustomer Id, Age At Purchase, Age Today\n```\n\n`Type` is Motorcycle (29,205) / Scooter (27,006).\n\n## Rules\n\n- `SlsVolQty` negative = **return** (891 rows). Net them; do not drop them.\n- `Sales Organization` and `Sales Office` are glued code+label - use the Step 00 parser.\n- `Payer` here is a **retail customer name**, not a dealer. Do **not** join it to `dealers.xlsx`.\n- Watch the dealer columns: in some rows `Dealer code`, `Dealer Name`, `Province`, `RM`, `ASE` and\n  `District` all carry the same value (e.g. `Borella`), which is the sales office leaking into them.\n  Detect and report this rather than treating it as geography.\n- `Customer Id`, `Age At Purchase`, `Age Today` contain the literal string `\"No order record\"` in some\n  rows - treat as null, not as a value.\n\n## Analysis to produce\n\n- Units by **model**, by **model x colour**, by **dealer**\n- By **RM, ASE, Province, District**\n- **Time series** of unit sales by model - monthly, using `Year` and `Month`\n- **Price against unit sales** by model, from `Net Sales` / `SlsVolQty`\n\n## Output\n\n`unit_sales`: `vin`, `model_code`, `model_name`, `colour`, `type`, `year`, `month`, `dealer_code`,\n`province`, `district`, `rm`, `ase`, `qty`, `net_sales`, `cost`.\n\nThis is the **registration cohort feed** for Step 10: each VIN is one vehicle entering the parc in a\nknown month.\n\n## Validation\n\n1. VIN uniqueness: 54,433 distinct across 56,211 rows - explain the difference (returns, amendments).\n2. Unit totals by year reconcile against `Sales Summery.xlsx` 2025 (22,084) and 2026 (32,344). **They\n   will not match exactly** - MCSI is retail, Sales Summery is the ZVOR order export. Quantify and\n   explain the gap; do not force them to agree.\n3. Model codes reconcile to the `Model Classification` sheet.\n\n## Protocol\n\n**Clarify -> Architect -> Code -> Validate.** Ask the open questions below first. Present an\narchitecture note and **wait for confirmation** before writing code. Finish with tests and a\nvalidation report reconciled against the source file.\n\n## Open questions\n\n1. MCSI covers 2025-2026 and shows 12 model codes; `Model Classification` lists 113. Confirm MCSI is\n   current-range only.\n2. MCSI 2025 = 23,443 rows vs Sales Summery 2025 = 22,084 units. Which is authoritative for the parc?\n3. Do the corrupted dealer columns (all fields = `Borella`) affect many rows, and is there a clean\n   dealer field to use instead?\n4. Is there a VIN-level source before 2025, or is annual Sales Summery the only pre-2025 history?\n", "step10": "# Step 10 - UIO, Survival and Age Cohorts\n\n| | |\n|---|---|\n| **Builds** | `src/parc/cohorts.py - src/parc/survival.py` |\n| **Reads** | `Sales Summery.xlsx`, `unit_sales` (MCSI) |\n| **Writes** | `uio_age_matrix`, `survival_curves`, `registration_forecast` |\n| **Format** | Python modules under `src/`. Never a notebook. `run(ctx) -> StageResult`. |\n\n## Objective\n\nBuild units-in-operation per model, per month, per yearly age bucket - rolled forward with age-specific survival. This matrix is what makes the demand forecast parc-driven.\n\n## What the file actually is\n\n`Sales Summery.xlsx` - **20 sheets**. The ones that matter:\n\n| Sheet | Contents |\n|---|---|\n| `All Years` | 837 rows: Year x Model x Name x Colour with `Vehicle Units (ZVOR)`, Status, Family, Type, Segment, cc |\n| `Model Classification` | **113 models** with Status, First/Last Year Sold, Family, Type, Segment, cc |\n| `Model Family x Year` | 22 families x years |\n| `Status x Year` | Active/Inactive split by family and year |\n| `Color Master` | colour names, abbreviations, codes |\n| Year sheets | 2014-2021, 2025, 2026 |\n\n## Registrations by year - and the gap\n\n```\n2014   8,895      2018  55,516      2021        85\n2015  16,407      2019  53,681      2022-2024  (no sheets)\n2016  23,493      2020  26,701      2025   22,084\n2017  39,526                        2026   32,344\n```\n\n**Total 2014-2026: 278,732 units.**\n\nThe 2021-2024 collapse is Sri Lanka's **vehicle import ban**, not a data gap. 2021 has 85 units;\n2022-2024 have none. Model this as **genuinely zero registrations**, and make the code say so\nexplicitly - a future maintainer will otherwise \"fix\" it by interpolating, and destroy the age\nstructure.\n\n## Cohort assembly\n\n```\ncohort(model, year) = units registered\n```\n\nConvert to monthly where MCSI supports it (2025-2026), annual before that. Age buckets are **yearly**:\n`0-1`, `1-2`, ... `14-15`, `15+`.\n\nStatus comes from `Model Classification`: models last sold 2014-2021 are **Inactive**; 2025-2026\nmodels are **Active**. Both stay in the parc - an inactive model still has bikes on the road consuming\nparts. Inactive only means no new units enter.\n\n## Survival analysis\n\nFit vehicle retirement, **age-specific**:\n\n- **Kaplan-Meier** - non-parametric baseline\n- **Weibull** - parametric, extrapolates past observed ages\n- **Cox** - if covariates (type, segment, cc) prove informative\n\nSelect on held-out concordance / log-likelihood. Report which won and by how much.\n\n> Survival must be **age-specific**, not a flat annual attrition rate. A flat rate says a 1-year-old\n> bike and a 14-year-old bike retire at the same pace, which is false and flattens exactly the age\n> structure the demand model depends on.\n\n**The identification problem, stated honestly:** with registrations but no de-registration records,\nretirement is not directly observed. If that is the case here, the survival curve is an *assumption*\ncalibrated against whatever signal exists (service visits, parts demand decay, registry data if\nobtainable) - not a measurement. Say which it is in the report, and run the downstream policy under\nat least two survival scenarios so the sensitivity is visible.\n\n## Roll forward\n\n```\nUIO(m, a+1, t+1) = UIO(m, a, t) * survival(m, a)\nUIO(m, 0,   t)   = new registrations in month t\n```\n\n## Output\n\n```\nuio_age_matrix\n  enterprise_model_id : str\n  month               : date\n  age_bucket          : str     # \"0-1\" ... \"14-15\", \"15+\"\n  units               : float\n  is_forecast         : bool\n  is_estimated        : bool\n  scenario            : str\n```\n\n`is_estimated` marks cohorts inferred rather than observed. `scenario` carries the survival variant.\n\n## Forecasting new registrations\n\nForecast forward for **active** models only; inactive models contribute no new units. Try several\nmodels against the annual series and select on accuracy - but note the series is short and broken by\nthe ban, so a simple approach that respects the structural break will likely beat a clever one.\n\n## Validation\n\n1. Total UIO reconciles to cumulative registrations minus cumulative retirements.\n2. The age histogram is plotted and inspected - the 2021-2024 hole must be visible in it. If it is\n   not, the roll-forward is wrong.\n3. Survival curves plotted per model family with confidence bands.\n4. Model naming reconciles between MCSI, `All Years` and `Model Classification`; mismatches listed.\n\n## Protocol\n\n**Clarify -> Architect -> Code -> Validate.** Ask the open questions below first. Present an\narchitecture note and **wait for confirmation** before writing code. Finish with tests and a\nvalidation report reconciled against the source file.\n\n## Open questions\n\n1. **Are de-registration or scrappage records available anywhere?** This decides whether survival is\n   measured or assumed - the single biggest uncertainty in the parc model.\n2. Should 2022-2024 be modelled as exactly zero, or were there grey/used imports not in ZVOR?\n3. Do model codes mean the same thing across MCSI, `All Years` and `Model Classification`? Any renames?\n4. Confirm yearly age buckets with a `15+` tail, or do you want finer resolution for young bikes?\n", "step11": "# Step 11 - Target and Scenario Simulator\n\n| | |\n|---|---|\n| **Builds** | `src/parc/targets.py - src/parc/scenarios.py` |\n| **Reads** | `Sales Summery.xlsx`, `uio_age_matrix`, `unit_sales` |\n| **Writes** | `scenarios`, `scenario_uio`, `scenario_demand` |\n| **Format** | Python modules under `src/`. Never a notebook. `run(ctx) -> StageResult`. |\n\n## Objective\n\nForecast unit sales for active models and let a planner simulate yearly targets, seeing how each flows through the parc into parts demand.\n\n## Purpose\n\nA planning surface on top of the parc: what unit sales look like next year under different\nassumptions, and what that implies for the parts business.\n\n## Inputs\n\nActive models only - the ones still sold. From `Status x Year`, the active families are RAY, FZ, MT,\nR15, NMAX, XSR and FASCINO; everything else is inactive and contributes no new units.\n\n## Part A - sales forecast\n\nForecast unit sales for currently active models from the `Sales Summery` annual series plus the\nMCSI monthly detail. Try several models; select on accuracy.\n\n**Caveat to carry into the report:** the usable series for active models is effectively **2025-2026**,\nbecause the import ban zeroed 2021-2024 and pre-ban volumes came from a different market regime. Two\nyears is a thin basis for a model selection contest. Prefer simple, explainable methods here and say\nplainly that the interval is wide, rather than reporting a winner as if it were well-tested.\n\n## Part B - target simulator\n\nLet a planner set a yearly unit target per model or family and see the consequences flow through:\n\n```\ntarget units -> registration cohorts -> uio_age_matrix (scenario) -> parts demand -> stock and orders\n```\n\nScenarios to support:\n\n- **Base** - the forecast as fitted\n- **Target** - planner-supplied unit targets\n- **Upside / downside** - percentage shifts on the base\n- **Survival variants** - the alternate curves from Step 10\n\nEach writes a `uio_age_matrix` with its own `scenario` label; nothing downstream is overwritten.\n\n> Scenario output is **planning information, not the order**. The monthly purchase order in Step 14\n> runs on the base scenario unless a human explicitly switches it. Scenario runs must never silently\n> become the operational number.\n\n## Output\n\n`scenarios` (definitions and parameters), `scenario_uio`, `scenario_demand`, and a comparison table\nshowing parts-demand delta per scenario versus base.\n\n## Validation\n\n1. Base scenario reproduces Step 10's `uio_age_matrix` exactly.\n2. A +10% unit target produces a demand increase that lags by the age profile - **not** an immediate\n   +10% in parts demand. If parts demand moves 1:1 with unit sales, the age mechanism is not wired up.\n3. Scenario runs are reproducible from their stored parameters.\n\n## Protocol\n\n**Clarify -> Architect -> Code -> Validate.** Ask the open questions below first. Present an\narchitecture note and **wait for confirmation** before writing code. Finish with tests and a\nvalidation report reconciled against the source file.\n\n## Open questions\n\n1. Who sets the targets, and at what level - model, family or total?\n2. Should the simulator also handle price or margin scenarios, or units only?\n3. How far forward - 12 months, or 3-5 years for the parc build-out?\n", "step12": "# Step 12 - Stock and Inventory Position\n\n| | |\n|---|---|\n| **Builds** | `src/inventory/stock.py` |\n| **Reads** | `current_stock.xlsx`, `On_Orders.xlsx`, `PN_Yamaha.xlsx`, `part_master` |\n| **Writes** | `stock_position` -> appended to `part_master_enriched` |\n| **Format** | Python modules under `src/`. Never a notebook. `run(ctx) -> StageResult`. |\n\n## Objective\n\nEstablish what is on the shelf at the PDC and what is already coming, and compute the inventory position correctly. This is the most common place a replenishment system goes wrong.\n\n## What the files actually are\n\n`current_stock.xlsx`: **26,288 rows x 8 columns**, 19,830 distinct materials.\n\n```\nName 1, Plant, Material Group, Material, Material Description,\nStorage Location, Descr. of Storage Loc., Unrestricted\n```\n\n**There is only one quantity column: `Unrestricted`.** No Quality Inspection, Restricted, Blocked,\nReturns or Transit buckets exist in this export. So `on_hand = Unrestricted`, directly - and the run\nreport should note that non-sellable stock is invisible here, in case it matters later.\n\n`On_Orders.xlsx`, sheet `Sheet3`: **2,820 rows x 10 columns** - `PN`, `Desc`, then `Jan`...`Aug`.\nA month-column pivot, **2026**, totalling **252,568 units**.\n\n## Scope - PDC only\n\n**16 plants** are present. Seeduwa PDC (`W1B4`) holds **471,137 of 544,372 units - 86.6%**.\n\nFilter to **`Plant == \"W1B4\"`** (15,493 rows). Branch stock is out of scope for replenishment; publish\nit as visibility only if wanted, but it never enters inventory position.\n\n| Plant | Location | Units |\n|---|---|---|\n| W1B4 | Seeduwa - PDC-Parts | 471,137 |\n| W734 | Anuradhapura-Agri-Auto | 10,331 |\n| W124 | Borella-After Sales | 8,550 |\n| W1O4 | Union Place-YMC | 7,322 |\n| ...12 more | | |\n\n## Cleaning order\n\n1. Drop fully null columns, then fully null rows.\n2. Filter to plant `W1B4`.\n3. **Remove every material not present in `PN_Yamaha.xlsx`** - match on `Material` and on all ten\n   supersede columns before rejecting. Report the count and value removed; do not drop silently.\n4. Aggregate to `active_sku_id` (multiple storage locations within the PDC roll up).\n\nNo negative quantities appear in the sample - assert this and fail if that changes.\n\n## On order\n\nReshape `On_Orders.xlsx` from wide to long: `PN`, `month` (2026), `qty`. Join to `active_sku_id`\nthrough the supersession chain, same as stock.\n\n> **Interpretation flag.** Treat the month columns as **expected arrival month** by default -\n> `on_order_interpretation: \"arrival\"` in config. If procurement confirms they are the month the PO\n> was raised, switch to `\"raised\"` and the loader adds the 3-month lead to derive arrival. Print the\n> active interpretation in every run report; this single assumption shifts the entire pipeline\n> position by a quarter.\n\nOnly months **>= `ctx.as_of`** count as on-order. Earlier months have already arrived and are inside\n`on_hand`; counting them again double-counts the pipeline.\n\n## Inventory position\n\n```\nIP = on_hand + on_order - backorders\n```\n\nWith a 3-month lead and monthly review there can be **three orders in flight**. Comparing against\non-hand instead of IP over-orders by roughly a lead time's worth of demand, every month, until the\npipeline lands. Assert `on_order` is populated and report its share of IP.\n\nBackorders: if no source exists, set to zero and **say so** - do not leave it implicit.\n\n## Output\n\n`stock_position`: `active_sku_id` (pk), `on_hand`, `on_order`, `backorders`, `ip`, `value_unrestricted`,\n`storage_locations`, `as_of`. Appended to `part_master_enriched`.\n\n## Validation\n\n1. Cleaned stock + open orders reconciles to full position for the cycle.\n2. Materials removed for absence from `PN_Yamaha` reported with count and value.\n3. On-order share of IP stated; if it is zero everywhere, that is a data problem, not a fact.\n4. PDC share of network stock reported so the scope decision stays visible.\n\n## Protocol\n\n**Clarify -> Architect -> Code -> Validate.** Ask the open questions below first. Present an\narchitecture note and **wait for confirmation** before writing code. Finish with tests and a\nvalidation report reconciled against the source file.\n\n## Open questions\n\n1. **Are the `On_Orders` months expected arrival, or when the PO was raised?** Everything in Step 14\n   shifts by a quarter on this answer.\n2. Is there a backorder / open-commitment source, or is `backorders = 0`?\n3. Is `current_stock.xlsx` a point-in-time snapshot? If so, as of what date - we need `as_of`.\n4. Do any parts ship direct to branches, bypassing the PDC?\n", "step13": "# Step 13 - Safety Stock, Reorder Level, Reorder Quantity\n\n| | |\n|---|---|\n| **Builds** | `src/inventory/policy.py - src/inventory/simulation.py` |\n| **Reads** | `forecast_protection`, `sku_classification`, `supply_reliability`, `lead_time_stats`, `stock_position` |\n| **Writes** | `policy_params`, `policy_selection`, `simulation_results` -> appended to `part_master_enriched` |\n| **Format** | Python modules under `src/`. Never a notebook. `run(ctx) -> StageResult`. |\n\n## Objective\n\nCompute dynamic safety stock, reorder level and reorder quantity for every part - chosen by simulation rather than by formula alone, and proven on a protected holdout.\n\n## This is the project's acceptance gate\n\nEverything before it is preparation. If this step cannot beat the current way of ordering on the\nholdout, the project has not succeeded - and that must be reportable, not hidden.\n\n# Part A - safety stock\n\nThree strategies. **Bracketing is computed for every part** as a cross-check, whichever is used.\n\n| Strategy | Formula | Applied to |\n|---|---|---|\n| Bracketing | `SS = max_monthly_demand * L_max - d_bar * L_bar` (floor 0) | baseline, cross-check, `insufficient_history` |\n| Normal approx | `SS = z * sqrt(P * sigma_d^2 + d_bar^2 * sigma_L^2)` | smooth, erratic |\n| Empirical quantile | `SS = Q_tau(D_P) - mu_P` from the Step 08 bootstrap | **intermittent, lumpy** |\n\n`P = L + R = 4` months. `sigma_d = sigma_P / sqrt(P)`, `d_bar = mu_P / P`, `sigma_L` from Step 05.\n\nEmpirical quantile is preferred for intermittent and lumpy because the normal assumption is simply\n**false** there. Fitting a normal to a part that sells `0,0,0,7,0,0,3` produces a negative lower tail\nand an understated upper one.\n\n## Fill rate is not service level\n\nWith target fill rate `beta`, expected units short per cycle is `EUS = sigma_eff * G(z)`, where\n`G(z) = phi(z) - z*(1 - Phi(z))` is the unit normal loss. Solve numerically (scipy `brentq`) for z\nsuch that:\n\n```\nsigma_eff * G(z) / (d_bar * R)  <=  1 - beta\n```\n\nClamp `z` to [0, 4.5].\n\n> **Do not substitute a cycle-service-level lookup table.** CSL asks \"what fraction of cycles avoid a\n> stockout\"; fill rate asks \"what fraction of units are served\". Swapping them over-stocks slow movers\n> and under-stocks fast ones - and the error is largest exactly where the money is.\n\n# Part B - candidate policies\n\n| Policy | Rule |\n|---|---|\n| **(R,S)** | `S = mu_P + SS`; order `max(0, S - IP)` every review |\n| **(R,s,S)** | order only when `IP <= s`, up to `S = s + delta_econ`, `delta_econ = max(EOQ, MOQ, pack)` |\n| **On-demand** | no cycle stock; order against firm requirements only |\n| **No-stock** | stop ordering (dead parts, pending owner review) |\n\nAll four are **monthly-executable**. Continuous review, Min-Max, VMI and JIT are **excluded** - none\ncan execute on a monthly order cycle against a ~3-month import lead.\n\n### Assignment (config-driven)\n\n| Segment | Candidates |\n|---|---|\n| smooth | RS |\n| erratic, intermittent | RS, RsS |\n| lumpy | RsS, RS |\n| lumpy x C-class x FSN=S | RsS, RS, ON_DEMAND |\n| FSN=N or C-class zero-movers | ON_DEMAND, NO_STOCK |\n| `insufficient_history` | RS with bracketing floor |\n| **criticality = high** | always includes RS; never ON_DEMAND or NO_STOCK |\n\n# Part C - simulate, select, validate\n\nOne walk-forward monthly simulator. **Monthly loop, in this exact order:**\n\n1. **Receive** - pipeline orders due at t arrive at `qty * beta_hat`; the short-shipped remainder is\n   logged and gone (lost-sales world).\n2. **Demand** - realise actual demand (raw, not outlier-adjusted; the policy must survive real\n   spikes). Serve from on-hand; shortfall is lost sales, recorded in units and value.\n3. **Review and order** - use parameters computed from data **<= t only** (wire in the Step 07\n   rolling-origin artefacts; never refit inside the simulator). `IP = on_hand + pipeline`. `q_final`\n   from the Step 14 order function. Append to pipeline with a sampled lead time.\n4. Snapshot state.\n\n**(A) Score** every (part x candidate) over the selection window.\n\n**(B) Select** - feasibility first (achieved fill >= target), then minimum holding + ordering cost.\nIf nothing is feasible, take maximum fill. **Hysteresis: a challenger replaces the incumbent only if\nit improves cost by >= 5% while feasible**, so the policy mix does not churn every quarter.\n\n**(C) Validate on holdout** - selected portfolio vs baseline vs sensitivities (`beta_hat` +/- 10pp,\nlead time +1 month, fill target +/- 2pp), on the untouched final 12 months, same seed across runs.\n\n> **Never re-open selection based on holdout results.** That un-blinds the holdout and the number\n> stops meaning anything. A failed holdout sends you back to Step 06/08 configuration with a **fresh**\n> split, recorded in the report.\n\n## Reporting views\n\n`ROL = mu_L + SS_L` and `months_of_cover = S / d_bar`, published for business familiarity.\n\n## Validation gates\n\n1. **Hand-traced toy world** - 2 parts, 12 months, one RS and one RsS (triggering both sides of `s`),\n   worked by hand in the report; the simulator reproduces it exactly. Committed as a golden test.\n2. **Conservation** - per part-run: `received - served - delta_on_hand = 0`, and\n   `ordered * beta_hat = received` within rounding. Asserted across all runs.\n3. **Two leakage audits** - (a) three random (part, t) cells used only data <= t; (b) recompute three\n   random selections from stored scores and confirm no holdout month contributed.\n4. z-solver reproduces textbook z for `beta = 0.95` within tolerance.\n5. Worked example: `d_bar = 50/month`, `L = 3`, `SS = 40` -> **ROL = 190**. Committed as a test.\n\n## Acceptance criteria\n\nPortfolio achieved fill rate **>= target per ABC class** *and* average inventory value **<= baseline**,\non the holdout.\n\nIf it wins on only one axis, present the frontier honestly and let the owner choose. **Do not massage\na single-axis win into a pass.**\n\n## Definition of Done\n\nAll gates pass; both leakage audits clean; holdout report reviewed with the owner and a **go / no-go\nverdict recorded**.\n\n## Protocol\n\n**Clarify -> Architect -> Code -> Validate.** Ask the open questions below first. Present an\narchitecture note and **wait for confirmation** before writing code. Finish with tests and a\nvalidation report reconciled against the source file.\n\n## Open questions\n\n1. **What are the target fill rates per ABC class?** Nothing here can be sized without them.\n2. What is the current baseline ordering rule, so there is something to beat?\n3. Annual holding cost rate (% of unit value) and cost per purchase order?\n4. Is there a total inventory value cap, or a budget per cycle?\n5. For `criticality = high`, is there a different fill target?\n", "step14": "# Step 14 - Monthly Order Generation\n\n| | |\n|---|---|\n| **Builds** | `src/inventory/ordering.py - src/marts/` |\n| **Reads** | `part_master_enriched`, `policy_selection`, `stock_position` |\n| **Writes** | `monthly_order_proposal`, `mart_*` |\n| **Format** | Python modules under `src/`. Never a notebook. `run(ctx) -> StageResult`. |\n\n## Objective\n\nTurn the selected policies into the actual monthly purchase order - quantities a buyer can send - and publish the marts that explain every line.\n\n## The order function\n\n```\nq_raw    = policy_quantity(policy, IP, S, s)       # 0 if not triggered\nq_econ   = max(q_raw, EOQ)   if q_raw > 0 and use_eoq  else q_raw\nq_moq    = max(q_econ, MOQ)  if q_econ > 0             else 0\nq_pack   = ceil(q_moq / pack_size) * pack_size\nq_final  = apply_supply_reliability(q_pack)\n```\n\n## Objective\n\nSubject to stock, MOQ, ROL and lead time: **maximise service and margin, minimise total cost.**\nStated precisely, because \"maximise profit and service and minimise cost\" is three objectives and\nthey conflict:\n\n```\nminimise   holding_cost + ordering_cost + lost_margin\nsubject to achieved_fill_rate >= target(ABC class)\n           q respects MOQ, pack size, and any budget cap\n```\n\nLost margin, not lost revenue - a stockout costs the margin forgone. Treating service as a\n**constraint** and cost as the **objective** is what makes the problem well-posed; maximising a\nweighted blend of all three produces a number nobody can defend.\n\n## EOQ\n\n`EOQ = sqrt(2DS/H)` - D annual demand, S order cost, H annual holding cost per unit. Use it as a\n**floor** on a triggered order, never as the order itself: EOQ assumes constant deterministic demand,\nwhich no spare part has. Guard `H > 0` and `D > 0`. Publish the S and H assumptions in the report -\nthe answer moves with them and nobody will otherwise know.\n\n## Supply reliability - the inflation trap\n\nSuppliers under-ship: measured fill in the sample is **0.745**. To receive `q` you would order\n`q / beta_hat`.\n\n**This is dangerous and defaults to off.** If `beta_hat` is low *because* we habitually over-order,\ninflating the order lowers `beta_hat` further, which inflates more - a feedback loop ending in a\nwarehouse full of parts nobody asked for. Therefore:\n\n- `use_supply_inflation` is **config, default `False`**\n- when on, cap the factor at `1 / beta_hat <= 1.5`\n- estimate `beta_hat` per supplier and part group, never globally\n- the **simulator must use the same setting**. A policy selected under inflation-off and executed with\n  inflation-on is not the policy that was validated.\n\n## MOQ, pack size, lead time\n\nFrom the part master where present. Where absent, default to 1 and **say so in the report** - a silent\npack default of 1 on a part that ships in cartons of 24 produces orders that cannot be placed.\n\n## Output contract\n\n`monthly_order_proposal`: `active_sku_id`, `cycle_month`, `policy`, `ip`, `on_hand`, `on_order`,\n`s`, `S`, `ss`, `rol`, `q_raw`, `q_final`, `unit_cost`, `value`, `lead_time_months`,\n`expected_arrival`, `trigger_reason`, `criticality`, `abc_class`, `flags`.\n\n**Every line carries why.** A buyer who cannot see why a quantity was proposed will not send the\norder, and they will be right not to.\n\n## Published marts\n\n| Mart | Contents |\n|---|---|\n| `mart_monthly_order` | the proposal, buyer-ready |\n| `mart_policy_summary` | policy mix by segment, SS and ROL distributions |\n| `mart_forecast_accuracy` | backtest and live accuracy by segment and model |\n| `mart_service_and_stock` | achieved fill, stockouts, lost sales (units and value), turns, cover |\n| `mart_exceptions` | rejected rows, missing masters, data-quality flags |\n\n## Explainability - required per part, on demand\n\nThe forecast and its model; sigma; lead time and its sigma; z and the fill target it came from; SS by\nall three strategies; the chosen policy and why it beat the alternatives; IP components; and the\narithmetic from IP to `q_final`.\n\n## Monthly run\n\nOne command runs Steps 12 -> 13 -> 14 and emits the proposal plus a run report. Parameters refresh\nevery cycle; policy **selection** re-runs on the configured cadence (default quarterly, with the 5%\nhysteresis rule), not every month.\n\n## Validation\n\n1. Worked example: `IP = 120`, `S = 300`, `MOQ = 50`, `pack = 25` -> `q_final = 200`. Committed test.\n2. Pack rounding never rounds down; MOQ never applies to a zero order.\n3. Marts reconcile to their step outputs row for row.\n4. A buyer walks three sample lines end to end and confirms they are placeable.\n\n## Protocol\n\n**Clarify -> Architect -> Code -> Validate.** Ask the open questions below first. Present an\narchitecture note and **wait for confirmation** before writing code. Finish with tests and a\nvalidation report reconciled against the source file.\n\n## Open questions\n\n1. **Order cost `S` and annual holding rate `H`** - do finance have figures, or do we assume and\n   sensitivity-test?\n2. Are MOQ and pack size available anywhere? They are not in `PN_Yamaha.xlsx`.\n3. Is there a budget cap per monthly order cycle?\n4. What format does the buyer need - CSV, an SAP upload template, or an API call?\n", "step15": "# Step 15 - FastAPI Service Layer\n\n| | |\n|---|---|\n| **Builds** | `src/api/` |\n| **Reads** | all published marts |\n| **Writes** | HTTP endpoints - no new data |\n| **Format** | Python modules under `src/`. Never a notebook. `run(ctx) -> StageResult`. |\n\n## Objective\n\nServe the pipeline's outputs - parts search, forecasts, parc, policy and the monthly order proposal - over a documented API, and let the monthly run be triggered and monitored.\n\n## Purpose\n\nExpose the pipeline and its outputs as a service. **FastAPI only** - no Streamlit.\n\n## Structure\n\n```\nsrc/api/\n  main.py\n  routers/\n    parts.py        search, lookup, supersession\n    demand.py       history, forecast\n    parc.py         uio, cohorts, scenarios\n    inventory.py    stock, policy, order proposal\n    runs.py         trigger and monitor pipeline runs\n  schemas/          pydantic response models\n  deps.py           mart loading, caching\n```\n\n## Endpoints\n\n| Method | Path | Returns |\n|---|---|---|\n| `GET` | `/parts/search?q=&brand=&group=` | vector search (Step 02) |\n| `GET` | `/parts/{part_no}/supersession` | chain with QUERIED / CURRENT / OLDER / RELATED |\n| `GET` | `/parts/{sku}/explain` | the full Step 14 derivation for one part |\n| `GET` | `/demand/{sku}/history` | monthly ordered, confirmed, lost |\n| `GET` | `/demand/{sku}/forecast` | mu, sigma, quantiles, method |\n| `GET` | `/parc/uio?model=&month=` | age-bucket matrix |\n| `POST` | `/parc/scenarios` | run a target scenario |\n| `GET` | `/inventory/{sku}/position` | on-hand, on-order, IP |\n| `GET` | `/inventory/policy/{sku}` | SS, ROL, ROQ, policy and why |\n| `GET` | `/orders/proposal?cycle=` | the monthly proposal, filterable |\n| `GET` | `/orders/proposal.csv?cycle=` | buyer-ready export |\n| `POST` | `/runs/monthly` | trigger Steps 12-14 |\n| `GET` | `/runs/{run_id}` | status and run report |\n| `GET` | `/health` | liveness plus data freshness |\n\n## Rules\n\n- **The API serves published marts. It computes nothing.** Every number it returns was computed in a\n  step, tested, and written to a table. A figure derived in a request handler is a figure nobody can\n  reproduce.\n- Pydantic response models on every endpoint; no raw dataframe dumps.\n- Long runs are **async with a job id** - a monthly pipeline run must not block an HTTP request.\n- Paginate anything that can return 30,000 rows.\n- `/orders/proposal` is a **recommendation**. There is no endpoint that submits a purchase order to\n  SAP. A human sends the order.\n- Read-only by default; the only writes are run triggers and scenario definitions.\n\n## Operational\n\nStructured logging with a run id through every layer. `/health` reports the age of each mart, so a\nstale pipeline is visible rather than silently serving last month's numbers. Config through\npydantic-settings and environment variables - no secrets in code.\n\n## Validation\n\n1. Contract tests per endpoint against a fixture dataset.\n2. `/parts/{sku}/explain` output reconciles exactly to `mart_monthly_order` for the same part.\n3. Response time on the proposal endpoint measured with a realistic mart loaded.\n4. OpenAPI docs generated and reviewed.\n\n## Protocol\n\n**Clarify -> Architect -> Code -> Validate.** Ask the open questions below first. Present an\narchitecture note and **wait for confirmation** before writing code. Finish with tests and a\nvalidation report reconciled against the source file.\n\n## Open questions\n\n1. Who and what consumes this API - a front end, SAP, a scheduled job, analysts?\n2. Is authentication needed, and if so which scheme (API key, OAuth, internal network only)?\n3. Where does it deploy - on-prem, cloud, container?\n4. Should scenario runs persist per user, or is it a single shared workspace?\n"};
+
+document.querySelectorAll('.copy').forEach(b => {
+  b.addEventListener('click', async () => {
+    const txt = RAW[b.dataset.id];
+    let ok = false;
+    try { await navigator.clipboard.writeText(txt); ok = true; }
+    catch (e) {
+      const ta = document.createElement('textarea');
+      ta.value = txt; ta.setAttribute('readonly','');
+      ta.style.cssText = 'position:fixed;top:-2000px;left:0;opacity:0';
+      document.body.appendChild(ta); ta.select();
+      try { ok = document.execCommand('copy'); } catch (e2) { ok = false; }
+      document.body.removeChild(ta);
+    }
+    const was = b.textContent;
+    b.textContent = ok ? 'Copied' : 'Press Ctrl+C';
+    b.classList.add('ok');
+    setTimeout(() => { b.textContent = was; b.classList.remove('ok'); }, 1800);
+  });
+});
+
+// wrap tables so wide ones scroll inside their own container
+document.querySelectorAll('.md table').forEach(t => {
+  const w = document.createElement('div'); w.className = 'tw';
+  t.parentNode.insertBefore(w, t); w.appendChild(t);
+});
+
+const links = [...document.querySelectorAll('nav a')];
+const mark = id => links.forEach(a => a.classList.toggle('on', a.dataset.id === id));
+mark(links[0].dataset.id);
+if ('IntersectionObserver' in window) {
+  const seen = new Map();
+  const io = new IntersectionObserver(es => {
+    es.forEach(e => seen.set(e.target.id, e.intersectionRatio));
+    let best = null, top = -1;
+    seen.forEach((v, k) => { if (v > top) { top = v; best = k; } });
+    if (best && top > 0) mark(best);
+  }, { rootMargin: '-15% 0px -70% 0px', threshold: [0, 0.2, 0.6, 1] });
+  document.querySelectorAll('.doc').forEach(d => io.observe(d));
+}
+links.forEach(a => a.addEventListener('click', () => mark(a.dataset.id)));
+</script>

@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Step 14 - Monthly Order Generation</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@400&display=swap">
+<style>
+:root{
+  --sans:'IBM Plex Sans',ui-sans-serif,system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,monospace;
+  --serif:'IBM Plex Serif',Georgia,serif;
+  --bg:#eceff1; --surface:#ffffff; --ink:#151a1e; --muted:#5c6a72;
+  --line:#c3ced3; --accent:#0d6068; --accent-soft:#e2eff0;
+  --gate:#8a5d00; --gate-soft:#f8eed9; --code:#f2f5f6;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12171a; --surface:#1b2226; --ink:#e8eef0; --muted:#94a5ac;
+  --line:#323f45; --accent:#63c3c8; --accent-soft:#0f2c2e;
+  --gate:#d9a441; --gate-soft:#2b2416; --code:#151b1e;}}
+:root[data-theme="dark"]{
+  --bg:#12171a; --surface:#1b2226; --ink:#e8eef0; --muted:#94a5ac;
+  --line:#323f45; --accent:#63c3c8; --accent-soft:#0f2c2e;
+  --gate:#d9a441; --gate-soft:#2b2416; --code:#151b1e;}
+html,body{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);
+     -webkit-font-smoothing:antialiased;line-height:1.6}
+.shell{max-width:1140px;margin:0 auto;padding-inline:20px;padding-block:40px 72px;
+       display:grid;grid-template-columns:216px minmax(0,1fr);gap:34px;align-items:start}
+@media (max-width:840px){.shell{grid-template-columns:minmax(0,1fr);gap:22px}}
+
+nav{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow-y:auto}
+@media (max-width:840px){nav{position:static;max-height:none}}
+.nh{font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);
+    font-weight:600;margin:0 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+nav ul{list-style:none;padding:0;margin:0}
+nav a{display:grid;grid-template-columns:24px 1fr;gap:9px;align-items:baseline;
+      padding:6px 8px;border-radius:4px;text-decoration:none;color:var(--muted);
+      font-size:13px;line-height:1.35}
+nav a:hover{background:var(--accent-soft);color:var(--accent)}
+nav a.on{background:var(--accent-soft);color:var(--accent);font-weight:500}
+.nn{font-family:var(--mono);font-size:10.5px;color:var(--accent);font-variant-numeric:tabular-nums}
+
+main{min-width:0}
+.hero{margin-bottom:38px}
+.eyebrow{font-size:11px;letter-spacing:1.6px;text-transform:uppercase;color:var(--accent);
+         font-weight:600;margin:0 0 10px}
+h1.big{font-size:clamp(28px,5.5vw,40px);line-height:1.1;margin:0 0 15px;font-weight:600;
+       letter-spacing:-.02em;text-wrap:balance}
+.lede{font-family:var(--serif);font-size:16.5px;line-height:1.6;max-width:62ch;margin:0;
+      color:var(--ink)}
+.lede em{color:var(--accent);font-style:italic}
+
+.doc{background:var(--surface);border:1px solid var(--line);border-radius:7px;
+     padding:26px 28px 30px;margin-bottom:22px;scroll-margin-top:16px}
+@media (max-width:560px){.doc{padding:20px 18px 24px}}
+.dh{display:flex;align-items:center;justify-content:space-between;gap:14px;
+    padding-bottom:12px;margin-bottom:18px;border-bottom:1px solid var(--line)}
+.dfile{font-family:var(--mono);font-size:11px;color:var(--muted);margin:0}
+.copy{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:5px;
+      padding:6px 13px;font-family:var(--sans);font-size:12px;cursor:pointer;white-space:nowrap}
+.copy:hover{border-color:var(--accent);color:var(--accent)}
+.copy:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.copy.ok{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+
+.md h1{font-size:23px;font-weight:600;letter-spacing:-.01em;margin:0 0 16px;line-height:1.2}
+.md h2{font-size:12px;letter-spacing:1.3px;text-transform:uppercase;color:var(--muted);
+       font-weight:600;margin:30px 0 13px;padding-bottom:7px;border-bottom:1px solid var(--line)}
+.md h3{font-size:15px;font-weight:600;margin:22px 0 9px}
+.md p{font-size:14.5px;margin:0 0 13px;max-width:70ch}
+.md ul,.md ol{font-size:14.5px;margin:0 0 13px;padding-left:20px;max-width:70ch}
+.md li{margin-bottom:5px}
+.md li::marker{color:var(--accent)}
+.md strong{font-weight:600}
+.md a{color:var(--accent)}
+.md hr{border:none;border-top:1px solid var(--line);margin:26px 0}
+.md code{font-family:var(--mono);font-size:12.5px;background:var(--accent-soft);
+         color:var(--accent);padding:1.5px 5px;border-radius:3px}
+.md pre{background:var(--code);border:1px solid var(--line);border-radius:6px;
+        padding:14px 16px;overflow-x:auto;margin:0 0 15px}
+.md pre code{background:none;color:var(--ink);padding:0;font-size:12.5px;line-height:1.55}
+.md blockquote{border-left:3px solid var(--gate);background:var(--gate-soft);margin:0 0 16px;
+               padding:13px 16px;border-radius:0 5px 5px 0}
+.md blockquote p{margin:0 0 8px;font-size:13.5px;color:var(--muted)}
+.md blockquote p:last-child{margin:0}
+.md blockquote strong{color:var(--ink)}
+.tw{overflow-x:auto;margin:0 0 16px}
+.md table{width:100%;border-collapse:collapse;font-size:13px;min-width:min(100%,420px)}
+.md th{text-align:left;font-size:10px;letter-spacing:1px;text-transform:uppercase;
+       color:var(--muted);font-weight:600;padding:0 12px 7px 0;border-bottom:1px solid var(--line);
+       white-space:nowrap}
+.md td{padding:8px 12px 8px 0;border-bottom:1px solid var(--line);vertical-align:top}
+.md td code{font-size:12px}
+footer{grid-column:1/-1;margin-top:14px;padding-top:16px;border-top:1px solid var(--line);
+       font-size:12px;color:var(--muted);font-family:var(--mono)}
+
+.shell{grid-template-columns:minmax(0,1fr)}
+.solo{max-width:860px;margin:0 auto;padding-inline:20px;padding-block:36px 64px}
+.back{font-family:var(--mono);font-size:11.5px;color:var(--accent);text-decoration:none}
+.back:hover{text-decoration:underline}
+</style></head>
+<body><div class="solo">
+<p style="margin:0 0 18px"><a class="back" href="index.html">&larr; all prompts</a></p>
+<article class="doc"><header class="dh"><p class="dfile">Step14_Monthly_Order.md</p></header>
+<div class="md"><h1>Step 14 - Monthly Order Generation</h1>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Builds</strong></td>
+<td><code>src/inventory/ordering.py - src/marts/</code></td>
+</tr>
+<tr>
+<td><strong>Reads</strong></td>
+<td><code>part_master_enriched</code>, <code>policy_selection</code>, <code>stock_position</code></td>
+</tr>
+<tr>
+<td><strong>Writes</strong></td>
+<td><code>monthly_order_proposal</code>, <code>mart_*</code></td>
+</tr>
+<tr>
+<td><strong>Format</strong></td>
+<td>Python modules under <code>src/</code>. Never a notebook. <code>run(ctx) -&gt; StageResult</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2>Objective</h2>
+<p>Turn the selected policies into the actual monthly purchase order - quantities a buyer can send - and publish the marts that explain every line.</p>
+<h2>The order function</h2>
+<pre><code>q_raw    = policy_quantity(policy, IP, S, s)       # 0 if not triggered
+q_econ   = max(q_raw, EOQ)   if q_raw &gt; 0 and use_eoq  else q_raw
+q_moq    = max(q_econ, MOQ)  if q_econ &gt; 0             else 0
+q_pack   = ceil(q_moq / pack_size) * pack_size
+q_final  = apply_supply_reliability(q_pack)
+</code></pre>
+<h2>Objective</h2>
+<p>Subject to stock, MOQ, ROL and lead time: <strong>maximise service and margin, minimise total cost.</strong>
+Stated precisely, because "maximise profit and service and minimise cost" is three objectives and
+they conflict:</p>
+<pre><code>minimise   holding_cost + ordering_cost + lost_margin
+subject to achieved_fill_rate &gt;= target(ABC class)
+           q respects MOQ, pack size, and any budget cap
+</code></pre>
+<p>Lost margin, not lost revenue - a stockout costs the margin forgone. Treating service as a
+<strong>constraint</strong> and cost as the <strong>objective</strong> is what makes the problem well-posed; maximising a
+weighted blend of all three produces a number nobody can defend.</p>
+<h2>EOQ</h2>
+<p><code>EOQ = sqrt(2DS/H)</code> - D annual demand, S order cost, H annual holding cost per unit. Use it as a
+<strong>floor</strong> on a triggered order, never as the order itself: EOQ assumes constant deterministic demand,
+which no spare part has. Guard <code>H &gt; 0</code> and <code>D &gt; 0</code>. Publish the S and H assumptions in the report -
+the answer moves with them and nobody will otherwise know.</p>
+<h2>Supply reliability - the inflation trap</h2>
+<p>Suppliers under-ship: measured fill in the sample is <strong>0.745</strong>. To receive <code>q</code> you would order
+<code>q / beta_hat</code>.</p>
+<p><strong>This is dangerous and defaults to off.</strong> If <code>beta_hat</code> is low <em>because</em> we habitually over-order,
+inflating the order lowers <code>beta_hat</code> further, which inflates more - a feedback loop ending in a
+warehouse full of parts nobody asked for. Therefore:</p>
+<ul>
+<li><code>use_supply_inflation</code> is <strong>config, default <code>False</code></strong></li>
+<li>when on, cap the factor at <code>1 / beta_hat &lt;= 1.5</code></li>
+<li>estimate <code>beta_hat</code> per supplier and part group, never globally</li>
+<li>the <strong>simulator must use the same setting</strong>. A policy selected under inflation-off and executed with
+  inflation-on is not the policy that was validated.</li>
+</ul>
+<h2>MOQ, pack size, lead time</h2>
+<p>From the part master where present. Where absent, default to 1 and <strong>say so in the report</strong> - a silent
+pack default of 1 on a part that ships in cartons of 24 produces orders that cannot be placed.</p>
+<h2>Output contract</h2>
+<p><code>monthly_order_proposal</code>: <code>active_sku_id</code>, <code>cycle_month</code>, <code>policy</code>, <code>ip</code>, <code>on_hand</code>, <code>on_order</code>,
+<code>s</code>, <code>S</code>, <code>ss</code>, <code>rol</code>, <code>q_raw</code>, <code>q_final</code>, <code>unit_cost</code>, <code>value</code>, <code>lead_time_months</code>,
+<code>expected_arrival</code>, <code>trigger_reason</code>, <code>criticality</code>, <code>abc_class</code>, <code>flags</code>.</p>
+<p><strong>Every line carries why.</strong> A buyer who cannot see why a quantity was proposed will not send the
+order, and they will be right not to.</p>
+<h2>Published marts</h2>
+<table>
+<thead>
+<tr>
+<th>Mart</th>
+<th>Contents</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mart_monthly_order</code></td>
+<td>the proposal, buyer-ready</td>
+</tr>
+<tr>
+<td><code>mart_policy_summary</code></td>
+<td>policy mix by segment, SS and ROL distributions</td>
+</tr>
+<tr>
+<td><code>mart_forecast_accuracy</code></td>
+<td>backtest and live accuracy by segment and model</td>
+</tr>
+<tr>
+<td><code>mart_service_and_stock</code></td>
+<td>achieved fill, stockouts, lost sales (units and value), turns, cover</td>
+</tr>
+<tr>
+<td><code>mart_exceptions</code></td>
+<td>rejected rows, missing masters, data-quality flags</td>
+</tr>
+</tbody>
+</table>
+<h2>Explainability - required per part, on demand</h2>
+<p>The forecast and its model; sigma; lead time and its sigma; z and the fill target it came from; SS by
+all three strategies; the chosen policy and why it beat the alternatives; IP components; and the
+arithmetic from IP to <code>q_final</code>.</p>
+<h2>Monthly run</h2>
+<p>One command runs Steps 12 -&gt; 13 -&gt; 14 and emits the proposal plus a run report. Parameters refresh
+every cycle; policy <strong>selection</strong> re-runs on the configured cadence (default quarterly, with the 5%
+hysteresis rule), not every month.</p>
+<h2>Validation</h2>
+<ol>
+<li>Worked example: <code>IP = 120</code>, <code>S = 300</code>, <code>MOQ = 50</code>, <code>pack = 25</code> -&gt; <code>q_final = 200</code>. Committed test.</li>
+<li>Pack rounding never rounds down; MOQ never applies to a zero order.</li>
+<li>Marts reconcile to their step outputs row for row.</li>
+<li>A buyer walks three sample lines end to end and confirms they are placeable.</li>
+</ol>
+<h2>Protocol</h2>
+<p><strong>Clarify -&gt; Architect -&gt; Code -&gt; Validate.</strong> Ask the open questions below first. Present an
+architecture note and <strong>wait for confirmation</strong> before writing code. Finish with tests and a
+validation report reconciled against the source file.</p>
+<h2>Open questions</h2>
+<ol>
+<li><strong>Order cost <code>S</code> and annual holding rate <code>H</code></strong> - do finance have figures, or do we assume and
+   sensitivity-test?</li>
+<li>Are MOQ and pack size available anywhere? They are not in <code>PN_Yamaha.xlsx</code>.</li>
+<li>Is there a budget cap per monthly order cycle?</li>
+<li>What format does the buyer need - CSV, an SAP upload template, or an API call?</li>
+</ol></div></article>
+</div>
+<script>
+document.querySelectorAll('.md table').forEach(t=>{const w=document.createElement('div');
+w.className='tw';t.parentNode.insertBefore(w,t);w.appendChild(t);});
+</script></body></html>

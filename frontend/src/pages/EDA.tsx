@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
   Legend, PieChart, Pie,
@@ -7,9 +8,10 @@ import {
   fetchOrdersEda, fetchSalesEda,
   type OrdersEdaData, type SalesEdaData,
   type DealerType, type McCategoryType,
-  fetchInventoryPosition, type M3InvPositionResponse,
 } from "../api/client";
 import { KpiCard } from "../components/KpiCard";
+import { SkuClassificationTab } from "../components/SkuClassificationTab";
+import { InventoryStatusTab } from "../components/InventoryStatusTab";
 import { TimePicker, filterByRange, type TimeRange, YearPicker, filterByYear, getYears, monthLabel } from "../components/TimePicker";
 
 const CAT_COLORS = ["#EF4444","#F97316","#FFC107","#4361EE","#2CC56F","#7C3AED","#94A3B8"];
@@ -45,33 +47,90 @@ function ValueBar({ pct }: { pct: number }) {
   );
 }
 
-type Tab = "orders" | "sales" | "inv-pos";
-type OrdersView = "overview" | "parts" | "dealers" | "geography";
-type OrdersAnalysisSeg = "parts" | "geography";
+type Tab = "orders" | "sales" | "classification" | "inventory";
+type EdaSection = "overview" | "performance";
+type EdaPanel   = "parts" | "dealers" | "rm" | "ase" | "province" | "district";
+
+const SECTION_TABS: { key: EdaSection; label: string }[] = [
+  { key: "overview",    label: "Overview" },
+  { key: "performance", label: "Performance" },
+];
+const PANEL_OPTIONS: { key: EdaPanel; label: string }[] = [
+  { key: "parts",    label: "Spare Parts" },
+  { key: "dealers",  label: "Dealers" },
+  { key: "rm",       label: "RM" },
+  { key: "ase",      label: "ASE" },
+  { key: "province", label: "Province" },
+  { key: "district", label: "District" },
+];
+const NO_PANELS: Set<EdaPanel> = new Set();
+
+function togglePanel(set: Set<EdaPanel>, setSet: (s: Set<EdaPanel>) => void, key: EdaPanel) {
+  const next = new Set(set);
+  if (next.has(key)) next.delete(key); else next.add(key);
+  setSet(next);
+}
+
+/** Overview / Performance — single-select, styled to match the page's top-level tab row. */
+function SectionTabs({ value, onChange }: { value: EdaSection; onChange: (s: EdaSection) => void }) {
+  return (
+    <div className="flex gap-1 border-b border-slate-100 pb-2 flex-wrap">
+      {SECTION_TABS.map(t => (
+        <button key={t.key} onClick={() => onChange(t.key)}
+          className={`px-4 py-1.5 text-sm rounded-lg font-medium transition-colors ${
+            value === t.key ? "bg-brand-blue text-white" : "text-slate-500 hover:bg-slate-50"
+          }`}>
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Multi-select toggles shown under the Performance tab — each switches its panel on/off. */
+function PanelToggles({ selected, onToggle }: { selected: Set<EdaPanel>; onToggle: (k: EdaPanel) => void }) {
+  return (
+    <div className="flex gap-1.5 flex-wrap items-center">
+      {PANEL_OPTIONS.map(({ key, label }) => (
+        <button key={key} type="button" aria-pressed={selected.has(key)} onClick={() => onToggle(key)}
+          className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${
+            selected.has(key) ? "bg-slate-700 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+          }`}>
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export function EDA() {
   const [ordersData,       setOrdersData]       = useState<OrdersEdaData | null>(null);
   const [_ordersSalesData, setOrdersSalesData] = useState<SalesEdaData | null>(null);
   const [salesData,        setSalesData]        = useState<SalesEdaData | null>(null);
-  const [tab,             setTab]             = useState<Tab>("orders");
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get("tab");
+  const [tab,             setTab]             = useState<Tab>(
+    initialTab === "classification" || initialTab === "inventory" ? initialTab : "orders"
+  );
   const [ordersDt,        setOrdersDt]        = useState<DealerType>("ALL");
   const [ordersMcCat,     setOrdersMcCat]     = useState<McCategoryType>("ALL");
   const [ordersApiYear,   setOrdersApiYear]   = useState<number>(0);  // 0 = latest year (API resolves)
   const [ordersYear,      setOrdersYear]      = useState<number | "All">("All");
   const [ordersRange,     setOrdersRange]     = useState<TimeRange>("YTD");
-  const [ordersView,      setOrdersView]      = useState<OrdersView>("overview");
-  const [ordersAnalysisSeg, setOrdersAnalysisSeg] = useState<OrdersAnalysisSeg>("parts");
+  const [ordersSection,   setOrdersSection]   = useState<EdaSection>("overview");
+  const [ordersPanels,    setOrdersPanels]    = useState<Set<EdaPanel>>(new Set(["parts"]));
   const [salesDt,     setSalesDt]     = useState<DealerType>("ALL");
   const [salesMcCat,  setSalesMcCat]  = useState<string>("ALL");
   const [salesYear,   setSalesYear]   = useState<number>(0);   // 0 = latest year (API resolves)
   const [salesRange,  setSalesRange]  = useState<TimeRange>("YTD");
-  const [salesView,   setSalesView]   = useState<"kpi" | "parts" | "dealers" | "hierarchy">("kpi");
+  const [salesSection, setSalesSection] = useState<EdaSection>("overview");
+  const [salesPanels,  setSalesPanels]  = useState<Set<EdaPanel>>(new Set(["parts"]));
   const [salesPartSearch,   setSalesPartSearch]   = useState("");
   const [salesDealerSearch, setSalesDealerSearch] = useState("");
 
-  // ── Module 3 inventory position ───────────────────────────────────────────
-  const [invPosData,   setInvPosData]   = useState<M3InvPositionResponse | null>(null);
-  const [invPosSearch, setInvPosSearch] = useState("");
+  // Panel toggles only take effect while the Performance tab is active.
+  const activeOrdersPanels = ordersSection === "performance" ? ordersPanels : NO_PANELS;
+  const activeSalesPanels  = salesSection  === "performance" ? salesPanels  : NO_PANELS;
 
   useEffect(() => {
     fetchOrdersEda(ordersDt, ordersMcCat, ordersApiYear).then(d => {
@@ -104,22 +163,17 @@ export function EDA() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [salesDt, salesMcCat, salesYear]);
 
-  useEffect(() => {
-    fetchInventoryPosition({ limit: 500 })
-      .then(setInvPosData)
-      .catch(() => setInvPosData(null));
-  }, []);
-
   const TABS = [
-    { key: "orders"  as Tab, label: "Orders EDA (Stage 4)"         },
-    { key: "sales"   as Tab, label: "Sales EDA (Stage 5)"           },
-    { key: "inv-pos" as Tab, label: "Inventory Position (Module 3)" },
+    { key: "orders" as Tab, label: "Orders EDA (Stage 4)" },
+    { key: "sales"  as Tab, label: "Sales EDA (Stage 5)"  },
+    { key: "classification" as Tab, label: "SKU Classification" },
+    { key: "inventory"      as Tab, label: "Inventory Status"   },
   ];
 
   return (
     <div className="flex-1 p-6 space-y-6 overflow-y-auto">
       <h2 className="text-xl font-bold text-slate-800">Motorcycle Spare Parts EDA</h2>
-      <p className="text-xs text-slate-500 -mt-4">Stages 4 &amp; 5 · MC dealer orders &amp; sales performance</p>
+      <p className="text-xs text-slate-500 -mt-4">Stages 4, 5, 9 &amp; 11 · dealer orders, sales, SKU classification &amp; inventory status</p>
 
       {/* Global KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -141,18 +195,10 @@ export function EDA() {
         {/* ── Orders EDA ── */}
         {tab === "orders" && (
           <div className="space-y-5">
-            {/* Segment + view + category selectors */}
+            {/* Year picker, section tabs, panel toggles + Spare Parts category filters */}
             <div className="space-y-2">
-              <div className="flex gap-2 flex-wrap items-center">
-                <div className="flex gap-1 flex-wrap">
-                  {([["ALL","All"],["MC","MC Spare Parts"],["OBM","OBM Spare Parts"]] as [DealerType,string][]).map(([dt,label]) => (
-                    <button key={dt} onClick={() => { setOrdersDt(dt); setOrdersMcCat("ALL"); }}
-                      className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${ordersDt===dt ? "bg-brand-blue text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                {ordersData && ordersData.available_years.length > 0 && (
+              {ordersData && ordersData.available_years.length > 0 && (
+                <div className="flex gap-2 flex-wrap items-center">
                   <select
                     value={ordersApiYear}
                     onChange={e => setOrdersApiYear(Number(e.target.value))}
@@ -160,46 +206,52 @@ export function EDA() {
                   >
                     {ordersData.available_years.map(y => <option key={y} value={y}>{y}</option>)}
                   </select>
-                )}
-              </div>
-              {(ordersView === "overview" || ordersView === "parts") && ordersDt === "MC" && (
-                <div className="flex gap-1 flex-wrap">
-                  {([
-                    { key: "ALL" as McCategoryType, label: "All MC" },
-                    { key: "Lubricant" as McCategoryType, label: "Lubricant" },
-                    { key: "Battery" as McCategoryType, label: "Battery" },
-                    { key: "Tyre" as McCategoryType, label: "Tyre" },
-                    { key: "SpareParts" as McCategoryType, label: "Spare Parts" },
-                  ]).map(({ key, label }) => (
-                    <button key={key} onClick={() => setOrdersMcCat(key)}
-                      className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${ordersMcCat===key ? "bg-purple-600 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>
-                      {label}
-                    </button>
-                  ))}
                 </div>
               )}
-              <div className="flex gap-1 flex-wrap">
-                {([
-                  { key: "overview"  as OrdersView, label: "Overview" },
-                  { key: "parts"     as OrdersView, label: "Parts" },
-                  { key: "dealers"   as OrdersView, label: "Dealers" },
-                  { key: "geography" as OrdersView, label: "RM/ASE/Geography" },
-                ]).map(({ key, label }) => (
-                  <button key={key} onClick={() => {
-                    if (key === "dealers" || key === "geography") setOrdersMcCat("ALL");
-                    setOrdersView(key);
-                  }}
-                    className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${ordersView===key ? "bg-slate-700 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>
-                    {label}
-                  </button>
-                ))}
-              </div>
+              <SectionTabs value={ordersSection} onChange={setOrdersSection}/>
+              {ordersSection === "performance" && (
+                <>
+                  <PanelToggles selected={ordersPanels} onToggle={k => togglePanel(ordersPanels, setOrdersPanels, k)}/>
+                  {ordersPanels.has("parts") && (
+                    <div className="flex gap-2 flex-wrap items-center">
+                      <select
+                        value={ordersDt}
+                        onChange={e => { setOrdersDt(e.target.value as DealerType); setOrdersMcCat("ALL"); }}
+                        className="border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-brand-blue/30 cursor-pointer"
+                      >
+                        <option value="ALL">All</option>
+                        <option value="MC">MC</option>
+                        <option value="OBM">OBM</option>
+                      </select>
+
+                      <select
+                        value={ordersMcCat}
+                        onChange={e => setOrdersMcCat(e.target.value as McCategoryType)}
+                        disabled={ordersDt === "OBM"}
+                        className="border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-medium text-purple-700 bg-white focus:outline-none focus:ring-2 focus:ring-brand-blue/30 cursor-pointer disabled:text-slate-400 disabled:bg-slate-50 disabled:cursor-default"
+                      >
+                        {ordersDt === "OBM" ? (
+                          <option value="ALL">OBM Spare Parts</option>
+                        ) : (
+                          <>
+                            <option value="ALL">{ordersDt === "MC" ? "All MC" : "All"}</option>
+                            <option value="Lubricant">Lubricant</option>
+                            <option value="Battery">Battery</option>
+                            <option value="Tyre">Tyre</option>
+                            <option value="SpareParts">Spare Parts</option>
+                          </>
+                        )}
+                      </select>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
 
           {ordersData ? (
             <div className="space-y-5">
-              {/* ── ALL / OBM / MC (All + Spare Parts) — 11-KPI overview — always renders first ── */}
-              {ordersView === "overview" && (
+              {/* ── ALL / OBM / MC (All + Spare Parts) — 11-KPI overview — renders first ── */}
+              {ordersSection === "overview" && (
                 ordersDt === "ALL" || ordersDt === "OBM" ||
                 (ordersDt === "MC" && (ordersMcCat === "ALL" || ordersMcCat === "SpareParts"))
               ) && (
@@ -250,50 +302,36 @@ export function EDA() {
                 </div>
               )}
 
-              {/* ── MC ALL charts (monthly + top dealers) — renders after KPIs ── */}
-              {ordersView === "overview" && ordersDt === "MC" && ordersMcCat === "ALL" && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <h3 className="text-sm font-semibold text-slate-700">Monthly Order Value (LKR)</h3>
-                        <p className="text-xs text-slate-400 mt-0.5">Order Received vs Confirmed Sales</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <YearPicker years={getYears(ordersData.monthly_trend)} value={ordersYear} onChange={setOrdersYear}/>
-                        <TimePicker value={ordersRange} onChange={setOrdersRange}/>
-                      </div>
+              {/* ── MC ALL monthly chart — renders after KPIs ── */}
+              {ordersSection === "overview" && ordersDt === "MC" && ordersMcCat === "ALL" && (
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-700">Monthly Order Value (LKR)</h3>
+                      <p className="text-xs text-slate-400 mt-0.5">Order Received vs Confirmed Sales</p>
                     </div>
-                    <ResponsiveContainer width="100%" height={220}>
-                      <BarChart data={filterByRange(filterByYear(ordersData.monthly_trend, ordersYear), ordersRange)} margin={{ top:5, right:10, left:0, bottom:5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9"/>
-                        <XAxis dataKey="period" tick={{ fontSize: 10 }} interval={0}
-                          tickFormatter={p => monthLabel(p, ordersYear !== "All")}/>
-                        <YAxis tick={{ fontSize: 10 }} tickFormatter={fmt}/>
-                        <Tooltip formatter={(v: unknown, n: unknown) => [`LKR ${fmt(Number(v))}`, String(n)]} labelFormatter={p => String(p)}/>
-                        <Legend wrapperStyle={{ fontSize: 10 }}/>
-                        <Bar dataKey="total_value_lkr"     fill="#94A3B8" name="Order Received" radius={[2,2,0,0]}/>
-                        <Bar dataKey="confirmed_value_lkr" fill="#4361EE" name="Total Sales"    radius={[2,2,0,0]}/>
-                      </BarChart>
-                    </ResponsiveContainer>
+                    <div className="flex items-center gap-2">
+                      <YearPicker years={getYears(ordersData.monthly_trend)} value={ordersYear} onChange={setOrdersYear}/>
+                      <TimePicker value={ordersRange} onChange={setOrdersRange}/>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-slate-700 mb-2">Top Dealers by Order Value</h3>
-                    <ResponsiveContainer width="100%" height={220}>
-                      <BarChart data={ordersData.top_dealers} layout="vertical" margin={{ top:0, right:40, left:5, bottom:0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" horizontal={false}/>
-                        <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={fmt}/>
-                        <YAxis type="category" dataKey="dealer" tick={{ fontSize: 9 }} width={140}/>
-                        <Tooltip formatter={(v: unknown) => `LKR ${fmt(Number(v))}`}/>
-                        <Bar dataKey="total_value_lkr" fill="#4361EE" name="Order Value (LKR)" radius={[0,3,3,0]}/>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart data={filterByRange(filterByYear(ordersData.monthly_trend, ordersYear), ordersRange)} margin={{ top:5, right:10, left:0, bottom:5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9"/>
+                      <XAxis dataKey="period" tick={{ fontSize: 10 }} interval={0}
+                        tickFormatter={p => monthLabel(p, ordersYear !== "All")}/>
+                      <YAxis tick={{ fontSize: 10 }} tickFormatter={fmt}/>
+                      <Tooltip formatter={(v: unknown, n: unknown) => [`LKR ${fmt(Number(v))}`, String(n)]} labelFormatter={p => String(p)}/>
+                      <Legend wrapperStyle={{ fontSize: 10 }}/>
+                      <Bar dataKey="total_value_lkr"     fill="#94A3B8" name="Order Received" radius={[2,2,0,0]}/>
+                      <Bar dataKey="confirmed_value_lkr" fill="#4361EE" name="Total Sales"    radius={[2,2,0,0]}/>
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
               )}
 
               {/* Rejection reasons pie — MC only */}
-              {ordersView === "overview" && ordersDt === "MC" && ordersMcCat === "ALL" && ordersData.rejection_reasons.length > 0 && (
+              {ordersSection === "overview" && ordersDt === "MC" && ordersMcCat === "ALL" && ordersData.rejection_reasons.length > 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <h3 className="text-sm font-semibold text-slate-700 mb-1">Rejection Reasons</h3>
@@ -338,7 +376,7 @@ export function EDA() {
 
 
               {/* ══ Fulfillment Analysis (Qty & Value) ══════════════════════ */}
-              {ordersView === "overview" && ordersData.fulfillment && (
+              {ordersSection === "overview" && ordersData.fulfillment && (
                 <div className="pt-3 border-t border-slate-200 space-y-4">
                   <div>
                     <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Fulfillment Analysis</p>
@@ -426,7 +464,7 @@ export function EDA() {
               )}
 
               {/* ══ Return Orders Analysis ════════════════════════════════════ */}
-              {ordersView === "overview" && ordersData.total_returns > 0 && (
+              {ordersSection === "overview" && ordersData.total_returns > 0 && (
                 <div className="pt-3 border-t border-slate-200 space-y-4">
                   <div>
                     <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Return Orders Analysis</p>
@@ -470,8 +508,40 @@ export function EDA() {
               )}
 
               {/* ══ Dealers view ══════════════════════════════════════════════ */}
-              {ordersView === "dealers" && (
+              {activeOrdersPanels.has("dealers") && (
                 <div className="space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {ordersData.top_dealers.length > 0 && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-slate-700 mb-2">Top Dealers by Order Value</h3>
+                        <ResponsiveContainer width="100%" height={220}>
+                          <BarChart data={ordersData.top_dealers} layout="vertical" margin={{ top:0, right:40, left:5, bottom:0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" horizontal={false}/>
+                            <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={fmt}/>
+                            <YAxis type="category" dataKey="dealer" tick={{ fontSize: 9 }} width={140}/>
+                            <Tooltip formatter={(v: unknown) => `LKR ${fmt(Number(v))}`}/>
+                            <Bar dataKey="total_value_lkr" fill="#4361EE" name="Order Value (LKR)" radius={[0,3,3,0]}/>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                    {ordersData.dealer_health_summary.total_dealers > 0 && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-slate-700 mb-1">Dealer Intelligence</h3>
+                        <p className="text-xs text-slate-400 mb-3">Value tiers: A = top 80%, B = next 15%, C = bottom 5%</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {([
+                            { label:"A-Tier Dealers", value: ordersData.dealer_health_summary.a_tier,     sub:"top 80% of value",    color:"green"  },
+                            { label:"B-Tier Dealers", value: ordersData.dealer_health_summary.b_tier,     sub:"next 15% of value",   color:"teal"   },
+                            { label:"C-Tier Dealers", value: ordersData.dealer_health_summary.c_tier,     sub:"bottom 5% of value",  color:"amber"  },
+                            { label:"Dormant (90d)",  value: ordersData.dealer_health_summary.dormant_count, sub:"no orders last 90d", color:"red"  },
+                          ] as const).map(({label,value,sub,color}) => (
+                            <KpiCard key={label} label={label} value={value.toLocaleString()} sub={sub} color={color}/>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   {ordersData.dealer_perf.length > 0 && (
                       <div>
                         <h3 className="text-sm font-semibold text-slate-700 mb-1">Dealer Performance <span className="text-xs font-normal text-slate-400 ml-1">(top 30 by order value · A=top 80% · B=next 15% · C=bottom 5%)</span></h3>
@@ -525,10 +595,10 @@ export function EDA() {
               )}
 
               {/* ══ RM/ASE/Geography view ════════════════════════════════════ */}
-              {ordersView === "geography" && (
+              {(activeOrdersPanels.has("rm") || activeOrdersPanels.has("ase") || activeOrdersPanels.has("province") || activeOrdersPanels.has("district")) && (
                 <div className="space-y-5">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {ordersData.rm_perf.length > 0 && (
+                    {activeOrdersPanels.has("rm") && ordersData.rm_perf.length > 0 && (
                       <div>
                         <h3 className="text-sm font-semibold text-slate-700 mb-1">RM Performance</h3>
                         <div className="overflow-x-auto">
@@ -567,7 +637,7 @@ export function EDA() {
                         </div>
                       </div>
                     )}
-                    {ordersData.ase_perf.length > 0 && (
+                    {activeOrdersPanels.has("ase") && ordersData.ase_perf.length > 0 && (
                       <div>
                         <h3 className="text-sm font-semibold text-slate-700 mb-1">ASE Performance</h3>
                         <div className="overflow-x-auto">
@@ -604,7 +674,7 @@ export function EDA() {
 
                   {/* Geography — District + Province */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {ordersData.district_perf.length > 0 && (
+                    {activeOrdersPanels.has("district") && ordersData.district_perf.length > 0 && (
                       <div>
                         <h3 className="text-sm font-semibold text-slate-700 mb-1">District-Wise Performance</h3>
                         <div className="overflow-x-auto">
@@ -641,7 +711,7 @@ export function EDA() {
                         </div>
                       </div>
                     )}
-                    {ordersData.province_analysis.length > 0 && (
+                    {activeOrdersPanels.has("province") && ordersData.province_analysis.length > 0 && (
                       <div>
                         <h3 className="text-sm font-semibold text-slate-700 mb-1">Province-Wise Performance</h3>
                         <div className="overflow-x-auto">
@@ -679,35 +749,52 @@ export function EDA() {
                       </div>
                     )}
                   </div>
+
+                  {/* Province order-value chart — pairs with the Province table above */}
+                  {activeOrdersPanels.has("province") && ordersData.province_perf.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-700 mb-1">Province Performance</h3>
+                      <p className="text-xs text-slate-400 mb-2">Order value · value share % · fill rate % · dealer count</p>
+                      <ResponsiveContainer width="100%" height={220}>
+                        <BarChart data={ordersData.province_perf} layout="vertical" margin={{ top:0, right:16, left:10, bottom:0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" horizontal={false}/>
+                          <XAxis type="number" tick={{ fontSize:10 }} tickFormatter={fmt}/>
+                          <YAxis type="category" dataKey="province" tick={{ fontSize:10 }} width={100}/>
+                          <Tooltip
+                            formatter={(_v:unknown, _n:unknown, p:any) => {
+                              const r = ordersData.province_perf[p.index];
+                              return [`LKR ${fmt(r?.order_value_lkr ?? 0)} · ${r?.value_share_pct?.toFixed(1) ?? 0}% share · fill ${r?.fill_rate_pct?.toFixed(1) ?? 0}% · ${r?.dealer_count ?? 0} dealers`,""];
+                            }}
+                            labelFormatter={s => String(s)}
+                          />
+                          <Bar dataKey="order_value_lkr" name="Order Value (LKR)" fill="#4361EE" radius={[0,3,3,0]}
+                            label={{ content: (p:any) => {
+                              const r = ordersData.province_perf[p.index];
+                              if (!r) return null;
+                              return <text x={p.x+p.width+6} y={p.y+p.height/2+4} fontSize={9} fill="#64748B">{r.value_share_pct.toFixed(0)}% · {r.fill_rate_pct.toFixed(0)}%fr</text>;
+                            }}}
+                          />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* ══ Per-Segment Analysis Tables ════════════════════════════════ */}
-              {ordersView === "parts" && ordersData.part_analysis.length > 0 && (<>
+              {activeOrdersPanels.has("parts") && ordersData.part_analysis.length > 0 && (<>
 
                 <div className="pt-3 border-t border-slate-200">
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div>
-                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Segment Analysis</p>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        {ordersDt === "MC" && ordersMcCat !== "ALL" ? `MC – ${ordersMcCat === "SpareParts" ? "Spare Parts" : ordersMcCat}` : ordersDt === "OBM" ? "OBM Spare Parts" : ordersDt === "ALL" ? "All Spare Parts (MC + OBM)" : "All MC Spare Parts"}
-                      </p>
-                    </div>
-                    <div className="flex gap-1">
-                      {([
-                        { key: "parts" as OrdersAnalysisSeg, label: "Parts" },
-                      ]).map(s => (
-                        <button key={s.key} onClick={() => setOrdersAnalysisSeg(s.key)}
-                          className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${ordersAnalysisSeg === s.key ? "bg-brand-blue text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>
-                          {s.label}
-                        </button>
-                      ))}
-                    </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Segment Analysis</p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {ordersDt === "MC" && ordersMcCat !== "ALL" ? `MC – ${ordersMcCat === "SpareParts" ? "Spare Parts" : ordersMcCat}` : ordersDt === "OBM" ? "OBM Spare Parts" : ordersDt === "ALL" ? "All Spare Parts (MC + OBM)" : "All MC Spare Parts"}
+                    </p>
                   </div>
                 </div>
 
                 {/* Parts sub-segment */}
-                {ordersAnalysisSeg === "parts" && (
+                {(
                   <div>
                     <h3 className="text-sm font-semibold text-slate-700 mb-1">Part-Wise Analysis <span className="text-xs font-normal text-slate-400 ml-1">(top 30 by order value)</span></h3>
                     <div className="overflow-x-auto">
@@ -750,7 +837,7 @@ export function EDA() {
               </>)}
 
               {/* ══ MC Monthly Order Value by Category ════════════════════════ */}
-              {ordersView === "overview" && ordersDt === "MC" && ordersMcCat === "ALL" && ordersData.mc_monthly_category.length > 0 && (
+              {ordersSection === "overview" && ordersDt === "MC" && ordersMcCat === "ALL" && ordersData.mc_monthly_category.length > 0 && (
                 <div>
                   <div className="pt-3 border-t border-slate-200 mb-3">
                     <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">MC Monthly Order Value by Category</p>
@@ -774,7 +861,7 @@ export function EDA() {
               )}
 
               {/* ══ Fraud Alerts ══════════════════════════════════════════════ */}
-              {ordersView === "dealers" && ordersData.fraud_alerts.length > 0 && (
+              {activeOrdersPanels.has("dealers") && ordersData.fraud_alerts.length > 0 && (
                 <div className="border border-red-200 bg-red-50 rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-red-600 font-bold text-sm">⚠ Concentration Alert</span>
@@ -806,7 +893,7 @@ export function EDA() {
               )}
 
               {/* ══ Business Insights ══════════════════════════════════════════ */}
-              {ordersView === "overview" && ordersDt === "MC" && ordersMcCat === "ALL" && ordersData.category_mix.length > 0 && (<>
+              {ordersSection === "overview" && ordersDt === "MC" && ordersMcCat === "ALL" && ordersData.category_mix.length > 0 && (<>
 
                 <div className="pt-3 border-t border-slate-200">
                   <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Business Insights</p>
@@ -870,54 +957,8 @@ export function EDA() {
                   )}
                 </div>
 
-                {/* Row 2: Province Performance */}
-                {ordersData.province_perf.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-slate-700 mb-1">Province Performance</h3>
-                    <p className="text-xs text-slate-400 mb-2">Order value · value share % · fill rate % · dealer count</p>
-                    <ResponsiveContainer width="100%" height={220}>
-                      <BarChart data={ordersData.province_perf} layout="vertical" margin={{ top:0, right:16, left:10, bottom:0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" horizontal={false}/>
-                        <XAxis type="number" tick={{ fontSize:10 }} tickFormatter={fmt}/>
-                        <YAxis type="category" dataKey="province" tick={{ fontSize:10 }} width={100}/>
-                        <Tooltip
-                          formatter={(_v:unknown, _n:unknown, p:any) => {
-                            const r = ordersData.province_perf[p.index];
-                            return [`LKR ${fmt(r?.order_value_lkr ?? 0)} · ${r?.value_share_pct?.toFixed(1) ?? 0}% share · fill ${r?.fill_rate_pct?.toFixed(1) ?? 0}% · ${r?.dealer_count ?? 0} dealers`,""];
-                          }}
-                          labelFormatter={s => String(s)}
-                        />
-                        <Bar dataKey="order_value_lkr" name="Order Value (LKR)" fill="#4361EE" radius={[0,3,3,0]}
-                          label={{ content: (p:any) => {
-                            const r = ordersData.province_perf[p.index];
-                            if (!r) return null;
-                            return <text x={p.x+p.width+6} y={p.y+p.height/2+4} fontSize={9} fill="#64748B">{r.value_share_pct.toFixed(0)}% · {r.fill_rate_pct.toFixed(0)}%fr</text>;
-                          }}}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
-
-                {/* Row 3: Dealer Intelligence + Pareto */}
+                {/* Row 2: Pareto (Province chart + Dealer Intelligence moved to their toggle panels) */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {ordersData.dealer_health_summary.total_dealers > 0 && (
-                    <div>
-                      <h3 className="text-sm font-semibold text-slate-700 mb-1">Dealer Intelligence</h3>
-                      <p className="text-xs text-slate-400 mb-3">Value tiers: A = top 80%, B = next 15%, C = bottom 5%</p>
-                      <div className="grid grid-cols-2 gap-2">
-                        {([
-                          { label:"A-Tier Dealers", value: ordersData.dealer_health_summary.a_tier,     sub:"top 80% of value",    color:"green"  },
-                          { label:"B-Tier Dealers", value: ordersData.dealer_health_summary.b_tier,     sub:"next 15% of value",   color:"teal"   },
-                          { label:"C-Tier Dealers", value: ordersData.dealer_health_summary.c_tier,     sub:"bottom 5% of value",  color:"amber"  },
-                          { label:"Dormant (90d)",  value: ordersData.dealer_health_summary.dormant_count, sub:"no orders last 90d", color:"red"  },
-                        ] as const).map(({label,value,sub,color}) => (
-                          <KpiCard key={label} label={label} value={value.toLocaleString()} sub={sub} color={color}/>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
                   {ordersData.pareto_summary.total_skus > 0 && (
                     <div>
                       <h3 className="text-sm font-semibold text-slate-700 mb-1">Pareto &amp; Category Cross</h3>
@@ -1029,60 +1070,61 @@ export function EDA() {
         {/* ── Sales EDA ── */}
         {tab === "sales" && (
           <div className="space-y-5">
-            {/* Dealer type + MC sub-category selectors */}
+            {/* Section tabs, panel toggles + Spare Parts category filters */}
             <div className="space-y-2">
-              <div className="flex gap-1">
-                {([["ALL","All"],["MC","MC Spare Parts"],["OBM","OBM Spare Parts"]] as [DealerType,string][]).map(([dt,label]) => (
-                  <button key={dt} onClick={() => { setSalesDt(dt); setSalesMcCat("ALL"); }}
-                    className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${salesDt===dt?"bg-brand-blue text-white":"bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>
-                    {label}
-                  </button>
-                ))}
-              </div>
-              {salesDt === "MC" && (
-                <div className="flex gap-1 flex-wrap">
-                  {[
-                    { key: "ALL",          label: "All MC" },
-                    { key: "Lubricant",    label: "Lubricant" },
-                    { key: "Battery",      label: "Battery" },
-                    { key: "Tyre",         label: "Tyre" },
-                    { key: "Spare Parts",  label: "Spare Parts" },
-                  ].map(o => (
-                    <button key={o.key} onClick={() => setSalesMcCat(o.key)}
-                      className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${salesMcCat===o.key?"bg-purple-600 text-white":"bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>
-                      {o.label}
-                    </button>
-                  ))}
-                </div>
+              <SectionTabs value={salesSection} onChange={setSalesSection}/>
+              {salesSection === "performance" && (
+                <>
+                  <PanelToggles selected={salesPanels} onToggle={k => togglePanel(salesPanels, setSalesPanels, k)}/>
+                  {salesPanels.has("parts") && (
+                    <div className="flex gap-2 flex-wrap items-center">
+                      <select
+                        value={salesDt}
+                        onChange={e => { setSalesDt(e.target.value as DealerType); setSalesMcCat("ALL"); }}
+                        className="border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-brand-blue/30 cursor-pointer"
+                      >
+                        <option value="ALL">All</option>
+                        <option value="MC">MC</option>
+                        <option value="OBM">OBM</option>
+                      </select>
+
+                      <select
+                        value={salesMcCat}
+                        onChange={e => setSalesMcCat(e.target.value)}
+                        disabled={salesDt === "OBM"}
+                        className="border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-medium text-purple-700 bg-white focus:outline-none focus:ring-2 focus:ring-brand-blue/30 cursor-pointer disabled:text-slate-400 disabled:bg-slate-50 disabled:cursor-default"
+                      >
+                        {salesDt === "OBM" ? (
+                          <option value="ALL">OBM Spare Parts</option>
+                        ) : (
+                          <>
+                            <option value="ALL">{salesDt === "MC" ? "All MC" : "All"}</option>
+                            <option value="Lubricant">Lubricant</option>
+                            <option value="Battery">Battery</option>
+                            <option value="Tyre">Tyre</option>
+                            <option value="Spare Parts">Spare Parts</option>
+                          </>
+                        )}
+                      </select>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
             {salesData ? (
               <>
-                {/* View tabs + year indicator */}
-                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                  <div className="flex gap-1">
-                    {[
-                      { key: "kpi" as const,       label: "Overview" },
-                      { key: "parts" as const,      label: "Parts" },
-                      { key: "dealers" as const,    label: "Dealers" },
-                      { key: "hierarchy" as const,  label: "RM / ASE / Geography" },
-                    ].map(v => (
-                      <button key={v.key} onClick={() => setSalesView(v.key)}
-                        className={`px-3 py-1.5 text-xs rounded-md font-medium transition-colors ${salesView===v.key?"bg-slate-700 text-white":"text-slate-500 hover:bg-slate-50"}`}>
-                        {v.label}
-                      </button>
-                    ))}
-                  </div>
-                  {salesData.data_year > 0 && (
+                {/* Year indicator */}
+                {salesData.data_year > 0 && (
+                  <div className="flex items-center justify-end border-b border-slate-100 pb-2">
                     <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
                       {salesData.data_year}
                     </span>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 {/* ── Overview ── */}
-                {salesView === "kpi" && (
+                {salesSection === "overview" && (
                   <div className="space-y-5">
                     {/* KPI cards — row 1 */}
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -1184,36 +1226,11 @@ export function EDA() {
                       </div>
                     )}
 
-                    {/* District Sales Value bar — mirrors dashboard Image 3 */}
-                    {salesData.district_perf.length > 0 && (
-                      <div>
-                        <h3 className="text-sm font-semibold text-slate-700 mb-1">District Sales Value (LKR)</h3>
-                        <p className="text-xs text-slate-400 mb-3">Sale value by district · sorted descending</p>
-                        <ResponsiveContainer width="100%" height={200}>
-                          <BarChart
-                            data={[...salesData.district_perf].sort((a, b) => b.sale_value_lkr - a.sale_value_lkr).slice(0, 25).map(d => ({
-                              name: d.district || "—",
-                              sale: d.sale_value_lkr,
-                              order: d.order_received_lkr,
-                            }))}
-                            margin={{ top:5, right:10, left:0, bottom:40 }}
-                          >
-                            <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9"/>
-                            <XAxis dataKey="name" tick={{ fontSize: 9 }} angle={-40} textAnchor="end" interval={0}/>
-                            <YAxis tick={{ fontSize: 10 }} tickFormatter={fmt}/>
-                            <Tooltip formatter={(v: unknown, n: unknown) => [`LKR ${fmt(Number(v))}`, String(n)]}/>
-                            <Legend wrapperStyle={{ fontSize: 10 }}/>
-                            <Bar dataKey="sale"  fill="#1D3461" name="Sale Value"      radius={[2,2,0,0]}/>
-                            <Bar dataKey="order" fill="#94A3B8" name="Order Received"  radius={[2,2,0,0]}/>
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                    )}
                   </div>
                 )}
 
                 {/* ── Parts analysis ── */}
-                {salesView === "parts" && (
+                {activeSalesPanels.has("parts") && (
                   <div>
                     <div className="flex items-center justify-between mb-3">
                       <div>
@@ -1284,7 +1301,7 @@ export function EDA() {
                 )}
 
                 {/* ── Dealer performance ── */}
-                {salesView === "dealers" && (
+                {activeSalesPanels.has("dealers") && (
                   <div>
                     <div className="flex items-center justify-between mb-3">
                       <div>
@@ -1353,9 +1370,10 @@ export function EDA() {
                 )}
 
                 {/* ── Hierarchy (Province / RM / ASE / District) ── */}
-                {salesView === "hierarchy" && (
+                {(activeSalesPanels.has("province") || activeSalesPanels.has("rm") || activeSalesPanels.has("ase") || activeSalesPanels.has("district")) && (
                   <div className="space-y-5">
                     {/* Province */}
+                    {activeSalesPanels.has("province") && (
                     <div className="rounded-lg border border-slate-100 overflow-hidden">
                       <div className="bg-slate-50 border-b border-slate-200 px-3 py-2.5">
                         <h3 className="text-sm font-semibold text-slate-700">Province Performance</h3>
@@ -1399,8 +1417,10 @@ export function EDA() {
                         );
                       })()}
                     </div>
+                    )}
 
                     {/* RM */}
+                    {activeSalesPanels.has("rm") && (
                     <div className="rounded-lg border border-slate-100 overflow-hidden">
                       <div className="bg-slate-50 border-b border-slate-200 px-3 py-2.5">
                         <h3 className="text-sm font-semibold text-slate-700">Regional Manager (RM) Performance</h3>
@@ -1442,8 +1462,10 @@ export function EDA() {
                         );
                       })()}
                     </div>
+                    )}
 
                     {/* ASE */}
+                    {activeSalesPanels.has("ase") && (
                     <div className="rounded-lg border border-slate-100 overflow-hidden">
                       <div className="bg-slate-50 border-b border-slate-200 px-3 py-2.5">
                         <h3 className="text-sm font-semibold text-slate-700">Area Sales Executive (ASE) Performance</h3>
@@ -1490,8 +1512,36 @@ export function EDA() {
                         );
                       })()}
                     </div>
+                    )}
+
+                    {/* District sale-value chart — pairs with the District table below */}
+                    {activeSalesPanels.has("district") && salesData.district_perf.length > 0 && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-slate-700 mb-1">District Sales Value (LKR)</h3>
+                        <p className="text-xs text-slate-400 mb-3">Sale value by district · sorted descending</p>
+                        <ResponsiveContainer width="100%" height={200}>
+                          <BarChart
+                            data={[...salesData.district_perf].sort((a, b) => b.sale_value_lkr - a.sale_value_lkr).slice(0, 25).map(d => ({
+                              name: d.district || "—",
+                              sale: d.sale_value_lkr,
+                              order: d.order_received_lkr,
+                            }))}
+                            margin={{ top:5, right:10, left:0, bottom:40 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9"/>
+                            <XAxis dataKey="name" tick={{ fontSize: 9 }} angle={-40} textAnchor="end" interval={0}/>
+                            <YAxis tick={{ fontSize: 10 }} tickFormatter={fmt}/>
+                            <Tooltip formatter={(v: unknown, n: unknown) => [`LKR ${fmt(Number(v))}`, String(n)]}/>
+                            <Legend wrapperStyle={{ fontSize: 10 }}/>
+                            <Bar dataKey="sale"  fill="#1D3461" name="Sale Value"      radius={[2,2,0,0]}/>
+                            <Bar dataKey="order" fill="#94A3B8" name="Order Received"  radius={[2,2,0,0]}/>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
 
                     {/* District */}
+                    {activeSalesPanels.has("district") && (
                     <div className="rounded-lg border border-slate-100 overflow-hidden">
                       <div className="bg-slate-50 border-b border-slate-200 px-3 py-2.5">
                         <h3 className="text-sm font-semibold text-slate-700">District Performance</h3>
@@ -1540,6 +1590,7 @@ export function EDA() {
                         );
                       })()}
                     </div>
+                    )}
                   </div>
                 )}
               </>
@@ -1547,120 +1598,8 @@ export function EDA() {
           </div>
         )}
 
-        {/* ── Inventory Position (Module 3) ── */}
-        {tab === "inv-pos" && (
-          <div className="space-y-5">
-            {!invPosData ? (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
-                <p className="text-sm font-semibold text-amber-700 mb-1">Module 3 output not found</p>
-                <code className="text-xs text-amber-600 bg-amber-100 px-2 py-1 rounded">
-                  python -m scripts.run_module 3 --save
-                </code>
-              </div>
-            ) : (
-              <>
-                {/* KPIs */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <KpiCard label="Total SKUs"     value={invPosData.total.toLocaleString()} color="blue"/>
-                  <KpiCard label="Total Stock"    value={invPosData.total_stock_qty.toLocaleString(undefined, { maximumFractionDigits: 0 })} sub="units on hand" color="green"/>
-                  <KpiCard label="Pipeline"       value={invPosData.total_pipeline_qty.toLocaleString(undefined, { maximumFractionDigits: 0 })} sub="in-transit / on order" color="teal"/>
-                  <KpiCard label="Net Position"   value={invPosData.total_net_position.toLocaleString(undefined, { maximumFractionDigits: 0 })} sub="stock + pipeline − backorder" color={invPosData.total_net_position < 0 ? "red" : "purple"}/>
-                </div>
-
-                {/* Net position distribution bar */}
-                <div className="bg-white rounded-xl shadow-sm p-5">
-                  <h3 className="text-sm font-semibold text-slate-700 mb-1">Net Position Distribution</h3>
-                  <p className="text-xs text-slate-400 mb-3">
-                    Stock + pipeline − backorder per SKU · {invPosData.total.toLocaleString()} parts ·
-                    source: <code className="bg-slate-100 px-1 rounded">m3_inventory_position.parquet</code>
-                  </p>
-                  {(() => {
-                    const rows = invPosData.rows;
-                    const negative   = rows.filter(r => r.net_position < 0).length;
-                    const zero       = rows.filter(r => r.net_position === 0).length;
-                    const lowPos     = rows.filter(r => r.net_position > 0 && r.net_position < 10).length;
-                    const medPos     = rows.filter(r => r.net_position >= 10 && r.net_position < 100).length;
-                    const highPos    = rows.filter(r => r.net_position >= 100).length;
-                    const bands = [
-                      { label: "Negative (backorder)", count: negative, fill: "#EF4444" },
-                      { label: "Zero",                 count: zero,     fill: "#94A3B8" },
-                      { label: "Low (1–9)",            count: lowPos,   fill: "#FFC107" },
-                      { label: "Medium (10–99)",       count: medPos,   fill: "#4361EE" },
-                      { label: "High (≥100)",          count: highPos,  fill: "#2CC56F" },
-                    ];
-                    return (
-                      <>
-                        <ResponsiveContainer width="100%" height={140}>
-                          <BarChart data={bands} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false}/>
-                            <XAxis dataKey="label" tick={{ fontSize: 9 }}/>
-                            <YAxis tick={{ fontSize: 10 }} tickFormatter={(v: number) => v >= 1000 ? `${(v/1000).toFixed(0)}K` : String(v)} width={36}/>
-                            <Tooltip formatter={(v: unknown) => Number(v).toLocaleString()}/>
-                            <Bar dataKey="count" name="SKUs" radius={[4,4,0,0]}>
-                              {bands.map(b => <Cell key={b.label} fill={b.fill}/>)}
-                            </Bar>
-                          </BarChart>
-                        </ResponsiveContainer>
-                        <div className="flex flex-wrap gap-3 mt-2">
-                          {bands.map(b => (
-                            <span key={b.label} className="flex items-center gap-1 text-xs text-slate-500">
-                              <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: b.fill }}/>
-                              {b.label}: <strong className="text-slate-700">{b.count.toLocaleString()}</strong>
-                            </span>
-                          ))}
-                        </div>
-                      </>
-                    );
-                  })()}
-                </div>
-
-                {/* Filter + table */}
-                <div className="bg-white rounded-xl shadow-sm p-5">
-                  <div className="flex gap-3 mb-4 flex-wrap">
-                    <input
-                      className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm flex-1 min-w-[160px] focus:outline-none focus:ring-2 focus:ring-brand-blue/30"
-                      placeholder="Filter by part no…"
-                      value={invPosSearch} onChange={e => setInvPosSearch(e.target.value)}
-                    />
-                    <span className="text-xs text-slate-400 self-center">
-                      {invPosData.total.toLocaleString()} total rows (showing up to 500)
-                    </span>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-slate-100 text-left text-xs text-slate-500 uppercase">
-                          <th className="py-2 pr-4">Part No</th>
-                          <th className="py-2 pr-4 text-right">Stock Qty</th>
-                          <th className="py-2 pr-4 text-right">Pipeline Qty</th>
-                          <th className="py-2 pr-4 text-right">Backorder Qty</th>
-                          <th className="py-2 text-right">Net Position</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {invPosData.rows
-                          .filter(r => !invPosSearch || r.part_no.toLowerCase().includes(invPosSearch.toLowerCase()))
-                          .slice(0, 200)
-                          .map((r, i) => (
-                            <tr key={`${r.part_no}-${i}`} className={`border-b border-slate-50 hover:bg-slate-50/50 ${r.net_position < 0 ? "bg-red-50/20" : ""}`}>
-                              <td className="py-1.5 pr-4 font-mono text-xs text-slate-700">{r.part_no}</td>
-                              <td className="py-1.5 pr-4 text-right text-xs text-slate-600">{r.stock_qty.toFixed(0)}</td>
-                              <td className="py-1.5 pr-4 text-right text-xs text-teal-600">{r.pipeline_qty.toFixed(0)}</td>
-                              <td className="py-1.5 pr-4 text-right text-xs text-amber-600">{r.backorder_qty.toFixed(0)}</td>
-                              <td className="py-1.5 text-right font-semibold text-xs"
-                                style={{ color: r.net_position < 0 ? "#EF4444" : r.net_position === 0 ? "#94A3B8" : "#2CC56F" }}>
-                                {r.net_position.toFixed(0)}
-                              </td>
-                            </tr>
-                          ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        )}
+        {tab === "classification" && <SkuClassificationTab/>}
+        {tab === "inventory"      && <InventoryStatusTab/>}
 
       </div>
     </div>

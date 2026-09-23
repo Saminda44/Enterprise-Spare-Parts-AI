@@ -1,0 +1,308 @@
+<title>Parts Intelligence Knowledge Graph</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@400&display=swap">
+<style>
+:root{
+  --sans:'IBM Plex Sans',ui-sans-serif,system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,monospace;
+  --serif:'IBM Plex Serif',Georgia,serif;
+  --bg:#eceff1; --surface:#ffffff; --ink:#151a1e; --muted:#5c6a72;
+  --line:#c3ced3; --accent:#0d6068; --accent-soft:#e2eff0;
+  --t-source:#5d7079; --t-step:#0d6068; --t-dataset:#8a5d00;
+  --t-method:#5b46a0; --t-decision:#2d6e46; --t-risk:#9e4035;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12171a; --surface:#1b2226; --ink:#e8eef0; --muted:#94a5ac;
+  --line:#323f45; --accent:#63c3c8; --accent-soft:#0f2c2e;
+  --t-source:#8ea3ad; --t-step:#63c3c8; --t-dataset:#d9a441;
+  --t-method:#a893e8; --t-decision:#6cc08d; --t-risk:#e08b7f;}}
+:root[data-theme="dark"]{
+  --bg:#12171a; --surface:#1b2226; --ink:#e8eef0; --muted:#94a5ac;
+  --line:#323f45; --accent:#63c3c8; --accent-soft:#0f2c2e;
+  --t-source:#8ea3ad; --t-step:#63c3c8; --t-dataset:#d9a441;
+  --t-method:#a893e8; --t-decision:#6cc08d; --t-risk:#e08b7f;}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);
+     -webkit-font-smoothing:antialiased;line-height:1.55}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:20px;padding-block:40px 64px}
+.eyebrow{font-size:11px;letter-spacing:1.6px;text-transform:uppercase;color:var(--accent);
+         font-weight:600;margin:0 0 10px}
+h1{font-size:clamp(28px,5.5vw,40px);line-height:1.1;margin:0 0 16px;font-weight:600;
+   letter-spacing:-.02em;text-wrap:balance}
+.lede{font-family:var(--serif);font-size:16.5px;line-height:1.6;max-width:64ch;margin:0 0 26px}
+.lede em{color:var(--accent);font-style:italic}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+.chip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);
+      background:var(--surface);color:var(--ink);border-radius:20px;padding:5px 13px 5px 10px;
+      font-family:var(--sans);font-size:12.5px;cursor:pointer;line-height:1.3}
+.chip .sw{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+.chip .ct{font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.chip[aria-pressed="false"]{opacity:.42}
+.chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#q{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:20px;
+   padding:6px 14px;font-family:var(--sans);font-size:12.5px;min-width:170px}
+#q:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.reset{margin-left:auto;background:none;border:none;color:var(--accent);font-family:var(--sans);
+       font-size:12.5px;cursor:pointer;text-decoration:underline;padding:4px}
+.stage{display:grid;grid-template-columns:minmax(0,1fr) 312px;gap:18px;align-items:start}
+@media (max-width:860px){.stage{grid-template-columns:1fr}}
+.canvas{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:7px}
+.canvas svg{display:block;min-width:760px;width:100%;height:auto;touch-action:none}
+.node{cursor:pointer}
+.node circle{stroke:var(--surface);stroke-width:1.6}
+.nlab{font-family:var(--sans);font-size:9.5px;fill:var(--ink);pointer-events:none;
+      paint-order:stroke;stroke:var(--surface);stroke-width:3px;stroke-linejoin:round}
+.elab{font-family:var(--mono);font-size:8.5px;fill:var(--muted);pointer-events:none;
+      paint-order:stroke;stroke:var(--surface);stroke-width:3px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:18px 18px 20px;
+       position:sticky;top:16px}
+.ptype{display:inline-block;font-family:var(--mono);font-size:9.5px;letter-spacing:1.1px;
+       text-transform:uppercase;padding:3px 9px;border-radius:11px;color:#fff;margin-bottom:10px}
+.pname{font-size:17px;font-weight:600;margin:0 0 9px;line-height:1.25}
+.pdesc{font-size:13.5px;color:var(--muted);margin:0 0 18px;line-height:1.55}
+.prel{border-top:1px solid var(--line);padding-top:13px}
+.prel h4{font-size:9.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);
+         font-weight:600;margin:0 0 8px}
+.prel ul{list-style:none;padding:0;margin:0 0 14px;display:grid;gap:5px}
+.prel li{font-size:12.5px;display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:baseline}
+.rel{font-family:var(--mono);font-size:9.5px;color:var(--muted);white-space:nowrap}
+.lnk{background:none;border:none;padding:0;text-align:left;color:var(--ink);cursor:pointer;
+     font-family:var(--sans);font-size:12.5px;line-height:1.4;border-bottom:1px solid transparent}
+.lnk:hover{border-bottom-color:var(--accent);color:var(--accent)}
+.hint{font-size:12.5px;color:var(--muted);margin:0}
+footer{margin-top:44px;padding-top:16px;border-top:1px solid var(--line);
+       font-size:12px;color:var(--muted);font-family:var(--mono)}
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">AMW · Yamaha spare parts</p>
+  <h1>Parts Intelligence Knowledge Graph</h1>
+  <p class="lede">Every source file, step, table, method, locked decision and open risk in the build —
+  and the typed relationships between them. Click any node to see what it is and what it touches; the
+  graph is the <em>same sixteen prompts</em>, arranged so the dependencies are visible rather than
+  implied.</p>
+
+  <div class="controls" id="filters"></div>
+
+  <div class="stage">
+    <div class="canvas">
+      <svg id="g" viewBox="95 22 855 738" role="img" aria-label="Knowledge graph of 71 nodes: nine source files, sixteen build steps, eighteen datasets, fourteen methods, seven locked decisions and seven open risks, connected by feeds, produces, uses, constrains and blocks relationships.">
+        <defs>
+          <marker id="mk" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+            <path d="M0,2 L9,5 L0,8 z" fill="var(--line)"/>
+          </marker>
+          <marker id="mkh" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse">
+            <path d="M0,2 L9,5 L0,8 z" fill="var(--accent)"/>
+          </marker>
+        </defs>
+        <g id="edges"></g><g id="elabs"></g><g id="nodes"></g>
+      </svg>
+    </div>
+    <aside class="panel" id="panel">
+      <p class="hint">Click a node to inspect it. Drag to rearrange. Toggle the chips above to hide a
+      whole category, or search to find one.</p>
+    </aside>
+  </div>
+
+  <footer>71 nodes · 101 relationships · verified against source files 2026-09-22</footer>
+</div>
+
+<script>
+const DATA = {"nodes": [{"id": "f_orders", "label": "orders.xlsx", "type": "source", "detail": "46,514 × 102, Jan–Aug 2026 in the sample; the production export covers about three years. Fill rate 0.745 — 15,055 lines (32%) fully rejected. Carries Order Qty and Confirmed Qty per line, which is what makes lost sales measurable.", "deg": 1}, {"id": "f_sales", "label": "sales.xlsx", "type": "source", "detail": "21,301 × 41, Jan–Aug 2026. May is absent entirely. Payer and Material each glue a code and a label into one string. Net Sales = Sales Pric + Discount holds exactly; Revenue Re and Cost Reduc are zero in every row.", "deg": 1}, {"id": "f_mcsi", "label": "MCSI.xlsx", "type": "source", "detail": "56,211 × 58, 2025–2026 only. VIN-level retail registration — 54,433 VINs across 12 model codes. Some rows have dealer, province, RM and district all carrying the sales-office name.", "deg": 2}, {"id": "f_summery", "label": "Sales Summery.xlsx", "type": "source", "detail": "20 sheets. All Years gives Year × Model × Colour units; Model Classification gives 113 models with family, type, segment, cc and first/last year sold. 278,732 units, 2014–2026.", "deg": 3}, {"id": "f_stock", "label": "current_stock.xlsx", "type": "source", "detail": "26,288 × 8 across 16 plants, 19,830 materials. Only one quantity column — Unrestricted. No quality, blocked, restricted or transit buckets exist in this export.", "deg": 1}, {"id": "f_onorders", "label": "On_Orders.xlsx", "type": "source", "detail": "2,820 × 10. A wide month pivot — PN, Desc, Jan…Aug — for 2026, totalling 252,568 units. No PO numbers and no dates.", "deg": 1}, {"id": "f_pn", "label": "PN_Yamaha.xlsx", "type": "source", "detail": "30,216 × 16. Material, Latest SS, description, type, group, brand, and 1st–10th Supersede. Latest SS is already resolved in the source — verify it against the chain rather than recomputing it.", "deg": 3}, {"id": "f_dealers", "label": "dealers.xlsx", "type": "source", "detail": "414 × 12. Dealer Code, Dealer Name, Type (MC / OBM), plus Province, District, ASE and RM — the whole geographic hierarchy for every performance cut.", "deg": 2}, {"id": "f_pdf", "label": "pdf_catalogues/", "type": "source", "detail": "Yamaha parts catalogues in several PDF layouts. Model code usually on page 1. Some are single-model, some multimodal with a quantity column per model.", "deg": 1}, {"id": "s00", "label": "00 Foundation", "type": "step", "detail": "Repo, pandera contracts, fail-closed DAG, and the one shared parser for SAP's glued columns. No business logic — everything else plugs into this frame.", "deg": 3}, {"id": "s01", "label": "01 Catalogue Reader", "type": "step", "detail": "Extract parts tables from mixed PDF layouts and resolve which model and colour variant each part belongs to. Every row records which rule fired, so a wrong extraction can be audited.", "deg": 6}, {"id": "s02", "label": "02 Part Master", "type": "step", "detail": "Resolve the supersession chain to one active_sku_id and attach model compatibility. Vector search tolerant of typos; lookup labels every hit QUERIED, CURRENT, OLDER or RELATED.", "deg": 7}, {"id": "s03", "label": "03 Order Cleaning", "type": "step", "detail": "46,514 order lines into monthly demand history. Dealer join, C/H split, material category, and Lost Quantity = Ordered − Confirmed.", "deg": 8}, {"id": "s04", "label": "04 Parts Sales", "type": "step", "detail": "Billed sales, revenue and margin, with performance by dealer, RM, ASE, province and district. Revenue is Net Sales; margin is Net Sales − Cost.", "deg": 6}, {"id": "s05", "label": "05 Order Analysis", "type": "step", "detail": "Fulfilment classes, supply reliability β̂ with shrinkage for thin parts, and the lead-time distribution — the σ, not just the mean.", "deg": 5}, {"id": "s06", "label": "06 Classification", "type": "step", "detail": "Behaviour class by trained classifier scored on macro-F1, ADI/CV² quadrants, ABC, XYZ, FSN and criticality. These are routing keys for later steps, not reports.", "deg": 4}, {"id": "s07", "label": "07 Model Selection", "type": "step", "detail": "Rolling-origin backtest at horizon 4 months. MASE for smooth series, pinball loss for intermittent, never MAPE. Champion per segment, and the holdout split happens here.", "deg": 5}, {"id": "s08", "label": "08 Material Forecast", "type": "step", "detail": "Own-history forecast and parc-driven demand, reconciled and both published. Produces the full distribution over the protection interval, not a point.", "deg": 6}, {"id": "s09", "label": "09 Unit Sales", "type": "step", "detail": "VIN-level registrations from MCSI — model, colour, geography, month. The cohort feed for the parc.", "deg": 3}, {"id": "s10", "label": "10 UIO Cohorts", "type": "step", "detail": "Units in operation per model, month and yearly age bucket, rolled forward with age-specific survival. The import-ban hole must survive into the age histogram.", "deg": 7}, {"id": "s11", "label": "11 Targets", "type": "step", "detail": "Unit forecast for active models plus a scenario simulator. Scenario output is planning information — never the operational order.", "deg": 3}, {"id": "s12", "label": "12 Stock Position", "type": "step", "detail": "PDC stock cleaned against PN_Yamaha, on-order reshaped from the month pivot, and inventory position computed properly.", "deg": 9}, {"id": "s13", "label": "13 Policy Engine", "type": "step", "detail": "Safety stock, reorder level and reorder quantity — chosen by simulation, proven once on the sealed holdout. This is the project's acceptance gate.", "deg": 15}, {"id": "s14", "label": "14 Monthly Order", "type": "step", "detail": "Turn selected policies into quantities a buyer can send, and publish the marts that explain every line.", "deg": 7}, {"id": "s15", "label": "15 FastAPI Service", "type": "step", "detail": "Parts search, forecasts, parc, policy and the order proposal over a documented API. Serves marts, computes nothing.", "deg": 3}, {"id": "d_cat", "label": "catalogue_parts", "type": "dataset", "detail": "Part, model, colour variant, part_kind and rule_applied — one row per part × variant, loaded to Chroma model-variant-wise.", "deg": 2}, {"id": "d_pm", "label": "part_master", "type": "dataset", "detail": "One identity per physical part: active_sku_id, description, kind, compatible models as 'family — code (year)'.", "deg": 4}, {"id": "d_enr", "label": "part_master_enriched", "type": "dataset", "detail": "The working copy. Steps 06, 08, 12 and 13 append their columns here; the base master is never written to.", "deg": 2}, {"id": "d_dem", "label": "demand_history", "type": "dataset", "detail": "Monthly ordered, confirmed and lost quantity and value per active_sku_id, with dealer type and material category.", "deg": 5}, {"id": "d_ret", "label": "returns_history", "type": "dataset", "detail": "The SD category H set — 194 rows in the sample. Return invoices, quantity, value and rate by material category.", "deg": 2}, {"id": "d_sal", "label": "parts_sales", "type": "dataset", "detail": "Billed lines with revenue, cost and margin, plus the geographic and monthly performance cuts.", "deg": 1}, {"id": "d_beta", "label": "supply_reliability β̂", "type": "dataset", "detail": "Confirmed ÷ ordered, per part and per category, as a monthly series so drift is visible. Shrunk toward the category mean for thin parts.", "deg": 3}, {"id": "d_lead", "label": "lead_time_stats", "type": "dataset", "detail": "Mean, standard deviation, P50 and P90 of lead time. The σ is what sizes the buffer — a point estimate is not enough.", "deg": 2}, {"id": "d_cls", "label": "sku_classification", "type": "dataset", "detail": "Behaviour class, ADI/CV² quadrant, ABC, XYZ, FSN and criticality, keyed on active_sku_id so labels follow the chain.", "deg": 3}, {"id": "d_reg", "label": "model_registry", "type": "dataset", "detail": "Chosen model per classification combination, with backtest score, runner-up, margin and sample size.", "deg": 2}, {"id": "d_fc", "label": "forecast_protection", "type": "dataset", "detail": "μ, σ and quantiles over the 4-month protection interval, plus the bootstrap sample for intermittent parts.", "deg": 2}, {"id": "d_unit", "label": "unit_sales", "type": "dataset", "detail": "VIN-level registrations with model, colour, type, month, dealer and geography.", "deg": 2}, {"id": "d_uio", "label": "uio_age_matrix", "type": "dataset", "detail": "Units in operation by model, month and yearly age bucket 0-1 … 15+, with is_forecast, is_estimated and scenario flags.", "deg": 4}, {"id": "d_stk", "label": "stock_position", "type": "dataset", "detail": "on_hand, on_order, backorders and IP per active_sku_id at the PDC, with the as-of date.", "deg": 2}, {"id": "d_pol", "label": "policy_selection", "type": "dataset", "detail": "The chosen policy per part with its parameters, the candidates it beat, and the simulation scores behind the choice.", "deg": 2}, {"id": "d_ord", "label": "monthly_order_proposal", "type": "dataset", "detail": "Buyer-ready lines: policy, IP components, s, S, SS, ROL, q_raw, q_final, expected arrival and trigger_reason.", "deg": 1}, {"id": "d_mart", "label": "mart_*", "type": "dataset", "detail": "Five published marts — order, policy summary, forecast accuracy, service and stock, exceptions.", "deg": 2}, {"id": "d_chr", "label": "ChromaDB", "type": "dataset", "detail": "Search index for catalogue and parts. Never a contract: no pipeline decision reads from it, so a re-index can never change a number.", "deg": 3}, {"id": "m_sap", "label": "SAP code+label parser", "type": "method", "detail": "Splits '26198      Yamaha Sales Center' into code and name. Applied per column per file from a declared map — orders.xlsx does not use this encoding, so blanket application would corrupt it.", "deg": 3}, {"id": "m_col", "label": "Colour variant rules", "type": "method", "detail": "FOREWARD table first, then remarks: a bare abbreviation or UR/FOR includes, EXCEPT inverts against the confirmed set. Numeric suffix after the final dash wins when descriptions imply more colours than the table holds.", "deg": 1}, {"id": "m_multi", "label": "Multimodal rule", "type": "method", "detail": "A colour shown for exactly one model is that model's variant. Only then can comma-separated abbreviations be split across models. Order matters — step two has no basis without step one.", "deg": 1}, {"id": "m_ss", "label": "active_sku_id", "type": "method", "detail": "Supersession resolved to one identifier across Material, Latest SS and ten supersede columns. Aggregate on anything else and one part's demand splits across its own numbers.", "deg": 3}, {"id": "m_adi", "label": "ADI / CV² quadrants", "type": "method", "detail": "Syntetos–Boylan at cutoffs 1.32 and 0.49, giving smooth, erratic, intermittent and lumpy. A routing key that decides which forecast family and which safety-stock strategy apply.", "deg": 1}, {"id": "m_int", "label": "Croston · SBA · TSB", "type": "method", "detail": "The intermittent-demand family. Required because half these series contain zeros, where MAPE is undefined and MASE rewards forecasting zero.", "deg": 2}, {"id": "m_nnls", "label": "λ(p,a) penalised NNLS", "type": "method", "detail": "Non-negative least squares with a smoothness penalty across adjacent age years, pooled by behaviour class. Cohort collinearity means the fitted curve is trustworthy but any single coefficient is weak — always report confidence intervals.", "deg": 2}, {"id": "m_surv", "label": "Kaplan-Meier · Weibull · Cox", "type": "method", "detail": "Age-specific vehicle retirement. A flat annual attrition rate would say a 1-year-old and a 14-year-old bike retire at the same pace, flattening the very structure the demand model depends on.", "deg": 2}, {"id": "m_z", "label": "Fill rate → z", "type": "method", "detail": "Solve σ·G(z)/(d̄·R) ≤ 1−β through the unit normal loss. Not a cycle-service-level lookup: CSL asks what fraction of cycles avoid a stockout, fill rate asks what fraction of units are served.", "deg": 1}, {"id": "m_ssq", "label": "Three SS strategies", "type": "method", "detail": "Bracketing as cross-check for all; normal approximation for smooth and erratic; empirical quantile from the bootstrap for intermittent and lumpy, where the normal assumption is simply false.", "deg": 1}, {"id": "m_pol", "label": "Four candidate policies", "type": "method", "detail": "(R,S), (R,s,S), on-demand and no-stock — all monthly-executable, assigned by segment, with criticality = high always keeping (R,S) available.", "deg": 2}, {"id": "m_sim", "label": "Walk-forward simulator", "type": "method", "detail": "Receive at qty × β̂, realise raw demand, then review and order using only data ≤ t. Conservation and leakage audits are asserted across every run.", "deg": 3}, {"id": "m_hold", "label": "Sealed 12-month holdout", "type": "method", "detail": "Split in step 07, opened once in step 13, never re-opened. A failed holdout sends you back to configuration with a fresh split — it does not reopen selection.", "deg": 3}, {"id": "m_eoq", "label": "EOQ floor · MOQ · pack", "type": "method", "detail": "EOQ as a floor on a triggered order, never the order itself — it assumes constant deterministic demand, which no spare part has.", "deg": 1}, {"id": "k_pdc", "label": "PDC only (W1B4)", "type": "decision", "detail": "Seeduwa PDC holds 471,137 of 544,372 units — 86.6%. Replenishment targets it alone; branch stock is visibility and never enters inventory position.", "deg": 1}, {"id": "k_vmi", "label": "No VMI · JIT · continuous review", "type": "decision", "detail": "None can execute on a monthly order cycle against a three-month import lead. The engine considers only monthly-executable policies.", "deg": 2}, {"id": "k_api", "label": "FastAPI only", "type": "decision", "detail": "No Streamlit. The API serves published marts and computes nothing, so every figure it returns is reproducible from a tested step.", "deg": 1}, {"id": "k_lost", "label": "Lost sales measured", "type": "decision", "detail": "Orders carry Order Qty and Confirmed Qty per line, so shortfall is observed. All stockout-inference logic is deleted, not improved.", "deg": 2}, {"id": "k_infl", "label": "Supply inflation off by default", "type": "decision", "detail": "Ordering q/β̂ when β̂ is low because we over-order is a feedback loop ending in a warehouse of unwanted parts. Capped at 1.5 when enabled, and the simulator must use the same setting.", "deg": 2}, {"id": "k_py", "label": "Python modules, never notebooks", "type": "decision", "detail": "Each step exposes run(ctx) → StageResult, holds no module-level mutable state, and is idempotent.", "deg": 1}, {"id": "k_ip", "label": "IP, not on-hand", "type": "decision", "detail": "IP = on_hand + on_order − backorders. Three orders can be in flight at once; comparing against on-hand over-orders by a lead time of demand every month.", "deg": 2}, {"id": "r_fill", "label": "Fill targets unknown", "type": "risk", "detail": "Step 13 cannot size anything without target fill rates per ABC class, the annual holding rate and the cost per order. A finance conversation, not a data one.", "deg": 1}, {"id": "r_surv", "label": "Survival may be unobserved", "type": "risk", "detail": "Without de-registration records, retirement is an assumption calibrated against indirect signal. Run the policy under at least two survival curves so the sensitivity is visible.", "deg": 2}, {"id": "r_moq", "label": "MOQ and pack size absent", "type": "risk", "detail": "Not present in PN_Yamaha. A silent default of 1 on a part shipping in cartons of 24 produces orders that cannot be placed.", "deg": 1}, {"id": "r_may", "label": "May 2026 missing", "type": "risk", "detail": "Absent from sales.xlsx entirely. Any trend spanning it is wrong until this is confirmed as an export gap or a real zero.", "deg": 1}, {"id": "r_ban", "label": "Import ban 2021–24", "type": "risk", "detail": "2020: 26,701 units. 2021: 85. 2022–24: none. 2025: 22,084. Real, not missing data — the fleet is bimodal, with a 2014–20 block now aged 6–12 sitting in the high-consumption band.", "deg": 2}, {"id": "r_rej", "label": "32% of lines rejected", "type": "risk", "detail": "Very high. Genuine unavailability, or do some rejection reasons mean credit block or dealer cancellation? Only true stockouts are lost sales.", "deg": 1}, {"id": "r_oo", "label": "On-order month meaning", "type": "risk", "detail": "Expected arrival or PO-raised? This one assumption shifts the entire pipeline position by a quarter. Config flag, printed in every run report.", "deg": 1}], "links": [{"s": "f_pdf", "t": "s01", "r": "feeds"}, {"s": "f_pn", "t": "s02", "r": "feeds"}, {"s": "f_orders", "t": "s03", "r": "feeds"}, {"s": "f_dealers", "t": "s03", "r": "feeds"}, {"s": "f_sales", "t": "s04", "r": "feeds"}, {"s": "f_dealers", "t": "s04", "r": "feeds"}, {"s": "f_mcsi", "t": "s09", "r": "feeds"}, {"s": "f_summery", "t": "s10", "r": "feeds"}, {"s": "f_mcsi", "t": "s10", "r": "feeds"}, {"s": "f_summery", "t": "s11", "r": "feeds"}, {"s": "f_stock", "t": "s12", "r": "feeds"}, {"s": "f_onorders", "t": "s12", "r": "feeds"}, {"s": "f_pn", "t": "s12", "r": "feeds"}, {"s": "f_summery", "t": "s02", "r": "feeds"}, {"s": "f_pn", "t": "s06", "r": "feeds"}, {"s": "s01", "t": "d_cat", "r": "produces"}, {"s": "s01", "t": "d_chr", "r": "produces"}, {"s": "s02", "t": "d_pm", "r": "produces"}, {"s": "s02", "t": "d_enr", "r": "produces"}, {"s": "s02", "t": "d_chr", "r": "produces"}, {"s": "s03", "t": "d_dem", "r": "produces"}, {"s": "s03", "t": "d_ret", "r": "produces"}, {"s": "s04", "t": "d_sal", "r": "produces"}, {"s": "s05", "t": "d_beta", "r": "produces"}, {"s": "s05", "t": "d_lead", "r": "produces"}, {"s": "s06", "t": "d_cls", "r": "produces"}, {"s": "s07", "t": "d_reg", "r": "produces"}, {"s": "s08", "t": "d_fc", "r": "produces"}, {"s": "s09", "t": "d_unit", "r": "produces"}, {"s": "s10", "t": "d_uio", "r": "produces"}, {"s": "s11", "t": "d_uio", "r": "produces"}, {"s": "s12", "t": "d_stk", "r": "produces"}, {"s": "s13", "t": "d_pol", "r": "produces"}, {"s": "s14", "t": "d_ord", "r": "produces"}, {"s": "s14", "t": "d_mart", "r": "produces"}, {"s": "d_cat", "t": "s02", "r": "feeds"}, {"s": "d_pm", "t": "s03", "r": "feeds"}, {"s": "d_pm", "t": "s04", "r": "feeds"}, {"s": "d_pm", "t": "s12", "r": "feeds"}, {"s": "d_dem", "t": "s05", "r": "feeds"}, {"s": "d_ret", "t": "s05", "r": "feeds"}, {"s": "d_dem", "t": "s06", "r": "feeds"}, {"s": "d_dem", "t": "s07", "r": "feeds"}, {"s": "d_dem", "t": "s08", "r": "feeds"}, {"s": "d_cls", "t": "s07", "r": "feeds"}, {"s": "d_cls", "t": "s13", "r": "feeds"}, {"s": "d_reg", "t": "s08", "r": "feeds"}, {"s": "d_uio", "t": "s08", "r": "feeds"}, {"s": "d_unit", "t": "s10", "r": "feeds"}, {"s": "d_uio", "t": "s11", "r": "feeds"}, {"s": "d_fc", "t": "s13", "r": "feeds"}, {"s": "d_beta", "t": "s13", "r": "feeds"}, {"s": "d_beta", "t": "s14", "r": "feeds"}, {"s": "d_lead", "t": "s13", "r": "feeds"}, {"s": "d_stk", "t": "s13", "r": "feeds"}, {"s": "d_pol", "t": "s14", "r": "feeds"}, {"s": "d_mart", "t": "s15", "r": "feeds"}, {"s": "d_enr", "t": "s13", "r": "feeds"}, {"s": "d_chr", "t": "s15", "r": "feeds"}, {"s": "s00", "t": "m_sap", "r": "uses"}, {"s": "s01", "t": "m_col", "r": "uses"}, {"s": "s01", "t": "m_multi", "r": "uses"}, {"s": "s02", "t": "m_ss", "r": "uses"}, {"s": "s06", "t": "m_adi", "r": "uses"}, {"s": "s07", "t": "m_int", "r": "uses"}, {"s": "s07", "t": "m_hold", "r": "uses"}, {"s": "s08", "t": "m_nnls", "r": "uses"}, {"s": "s08", "t": "m_int", "r": "uses"}, {"s": "s10", "t": "m_surv", "r": "uses"}, {"s": "s13", "t": "m_z", "r": "uses"}, {"s": "s13", "t": "m_ssq", "r": "uses"}, {"s": "s13", "t": "m_pol", "r": "uses"}, {"s": "s13", "t": "m_sim", "r": "uses"}, {"s": "s13", "t": "m_hold", "r": "uses"}, {"s": "s14", "t": "m_eoq", "r": "uses"}, {"s": "s12", "t": "m_ss", "r": "uses"}, {"s": "s03", "t": "m_ss", "r": "uses"}, {"s": "s04", "t": "m_sap", "r": "uses"}, {"s": "s09", "t": "m_sap", "r": "uses"}, {"s": "k_pdc", "t": "s12", "r": "constrains"}, {"s": "k_vmi", "t": "s13", "r": "constrains"}, {"s": "k_vmi", "t": "m_pol", "r": "constrains"}, {"s": "k_api", "t": "s15", "r": "constrains"}, {"s": "k_lost", "t": "s03", "r": "constrains"}, {"s": "k_lost", "t": "s05", "r": "constrains"}, {"s": "k_infl", "t": "s14", "r": "constrains"}, {"s": "k_infl", "t": "m_sim", "r": "constrains"}, {"s": "k_py", "t": "s00", "r": "constrains"}, {"s": "k_ip", "t": "s12", "r": "constrains"}, {"s": "k_ip", "t": "m_sim", "r": "constrains"}, {"s": "r_fill", "t": "s13", "r": "blocks"}, {"s": "r_surv", "t": "m_surv", "r": "blocks"}, {"s": "r_surv", "t": "s10", "r": "blocks"}, {"s": "r_moq", "t": "s14", "r": "blocks"}, {"s": "r_may", "t": "s04", "r": "blocks"}, {"s": "r_ban", "t": "s10", "r": "blocks"}, {"s": "r_ban", "t": "m_nnls", "r": "blocks"}, {"s": "r_rej", "t": "s03", "r": "blocks"}, {"s": "r_oo", "t": "s12", "r": "blocks"}, {"s": "s00", "t": "s01", "r": "enables"}, {"s": "s13", "t": "m_hold", "r": "opens once"}]};
+const TYPES = [
+  ["source","Source files"],["step","Build steps"],["dataset","Datasets"],
+  ["method","Methods"],["decision","Locked decisions"],["risk","Open risks"]
+];
+const ANCHOR = {source:[130,345],step:[430,415],dataset:[790,340],
+                method:[590,95],decision:[300,705],risk:[930,690]};
+const col = t => getComputedStyle(document.documentElement).getPropertyValue('--t-'+t).trim();
+
+const nodes = DATA.nodes.map(d => ({...d}));
+const byId = Object.fromEntries(nodes.map(n=>[n.id,n]));
+const links = DATA.links.map(l => ({...l, S:byId[l.s], T:byId[l.t]}));
+nodes.forEach(n => { n.adj = []; });
+links.forEach(l => { l.S.adj.push({o:l.T, r:l.r, dir:'out'}); l.T.adj.push({o:l.S, r:l.r, dir:'in'}); });
+
+// deterministic seeding so the layout is identical on every load
+let cur = null;
+let seed = 20260922;
+const rnd = () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+  let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+  t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+  return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+nodes.forEach(n => { const a = ANCHOR[n.type];
+  n.x = a[0] + (rnd()-0.5)*190; n.y = a[1] + (rnd()-0.5)*190; n.vx = 0; n.vy = 0;
+  n.r = 5 + Math.min(n.deg,14)*0.52; });
+
+function tick(pinned){
+  for (let i=0;i<nodes.length;i++){
+    const a = nodes[i];
+    for (let j=i+1;j<nodes.length;j++){
+      const b = nodes[j];
+      let dx = b.x-a.x, dy = b.y-a.y, d2 = dx*dx+dy*dy;
+      if (d2 < 1) { dx = (rnd()-0.5); dy = (rnd()-0.5); d2 = 1; }
+      const d = Math.sqrt(d2);
+      const f = Math.min(3800/d2, 14) / d;
+      a.vx -= dx*f; a.vy -= dy*f; b.vx += dx*f; b.vy += dy*f;
+    }
+  }
+  for (const l of links){
+    const dx = l.T.x-l.S.x, dy = l.T.y-l.S.y;
+    const d = Math.hypot(dx,dy) || 1, f = (d-108)*0.020/d;
+    l.S.vx += dx*f; l.S.vy += dy*f; l.T.vx -= dx*f; l.T.vy -= dy*f;
+  }
+  for (let i=0;i<nodes.length;i++){
+    const a = nodes[i];
+    for (let j=i+1;j<nodes.length;j++){
+      const b = nodes[j];
+      const dx = b.x-a.x, dy = b.y-a.y, d = Math.hypot(dx,dy) || 0.01;
+      const min = a.r + b.r + 30;
+      if (d < min){ const p = (min-d)/d*0.5;
+        if (a !== pinned){ a.x -= dx*p; a.y -= dy*p; }
+        if (b !== pinned){ b.x += dx*p; b.y += dy*p; } }
+    }
+  }
+  for (const n of nodes){
+    const a = ANCHOR[n.type];
+    n.vx += (a[0]-n.x)*0.020 + (560-n.x)*0.0004;
+    n.vy += (a[1]-n.y)*0.020 + (395-n.y)*0.0004;
+    if (n === pinned) { n.vx = 0; n.vy = 0; continue; }
+    n.vx *= 0.80; n.vy *= 0.80;
+    n.x += n.vx; n.y += n.vy;
+    n.x = Math.max(60, Math.min(1060, n.x));
+    n.y = Math.max(34, Math.min(756, n.y));
+  }
+}
+for (let i=0;i<900;i++) tick(null);   // settle before first paint
+
+const svg = document.getElementById('g');
+const gE = document.getElementById('edges'), gL = document.getElementById('elabs'), gN = document.getElementById('nodes');
+const NS = 'http://www.w3.org/2000/svg';
+const mk = (t,a) => { const el = document.createElementNS(NS,t);
+  for (const k in a) el.setAttribute(k,a[k]); return el; };
+
+links.forEach(l => { l.el = mk('line',{stroke:'var(--line)','stroke-width':1.1,
+  'marker-end':'url(#mk)','stroke-opacity':0.55}); gE.appendChild(l.el); });
+
+nodes.forEach(n => {
+  const g = mk('g',{class:'node',tabindex:0,role:'button'});
+  n.c = mk('circle',{r:n.r,fill:col(n.type)});
+  n.t = mk('text',{class:'nlab','text-anchor':'middle'});
+  n.t.textContent = n.label;
+  g.appendChild(n.c); g.appendChild(n.t);
+  g.addEventListener('click', e => { e.stopPropagation(); focus(n); });
+  g.addEventListener('keydown', e => { if (e.key==='Enter'||e.key===' ') { e.preventDefault(); focus(n); } });
+  g.addEventListener('pointerdown', e => startDrag(e,n));
+  n.g = g; gN.appendChild(g);
+});
+
+function place(){
+  links.forEach(l => { l.el.setAttribute('x1',l.S.x); l.el.setAttribute('y1',l.S.y);
+    const dx=l.T.x-l.S.x, dy=l.T.y-l.S.y, d=Math.hypot(dx,dy)||1;
+    l.el.setAttribute('x2', l.T.x - dx/d*(l.T.r+3.5));
+    l.el.setAttribute('y2', l.T.y - dy/d*(l.T.r+3.5)); });
+  nodes.forEach(n => { n.c.setAttribute('cx',n.x); n.c.setAttribute('cy',n.y);
+    n.t.setAttribute('x',n.x); n.t.setAttribute('y',n.y + n.r + 10.5); });
+  if (cur) drawEdgeLabels(cur);
+}
+place();
+
+let drag = null;
+function startDrag(e,n){
+  if (e.button === 1 || e.button === 2) return;
+  const pt = svg.createSVGPoint();
+  drag = {n, moved:false};
+  const move = ev => {
+    pt.x = ev.clientX; pt.y = ev.clientY;
+    const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+    n.x = p.x; n.y = p.y; drag.moved = true;
+    for (let i=0;i<7;i++) tick(n);
+    place();
+  };
+  const up = () => { window.removeEventListener('pointermove',move);
+    window.removeEventListener('pointerup',up); drag = null; };
+  window.addEventListener('pointermove',move); window.addEventListener('pointerup',up);
+}
+
+function drawEdgeLabels(n){
+  gL.textContent = '';
+  links.filter(l => l.S===n || l.T===n).forEach(l => {
+    const t = mk('text',{class:'elab','text-anchor':'middle',
+      x:(l.S.x+l.T.x)/2, y:(l.S.y+l.T.y)/2 - 3});
+    t.textContent = l.r; gL.appendChild(t);
+  });
+}
+
+function focus(n){
+  cur = n;
+  const near = new Set([n.id, ...n.adj.map(a=>a.o.id)]);
+  nodes.forEach(m => { const on = near.has(m.id);
+    m.g.style.opacity = hidden.has(m.type) ? 0 : (on ? 1 : 0.16); });
+  links.forEach(l => { const on = (l.S===n || l.T===n);
+    l.el.setAttribute('stroke', on ? 'var(--accent)' : 'var(--line)');
+    l.el.setAttribute('stroke-width', on ? 1.9 : 1.1);
+    l.el.setAttribute('marker-end', on ? 'url(#mkh)' : 'url(#mk)');
+    l.el.setAttribute('stroke-opacity', hideL(l) ? 0 : (on ? 0.95 : 0.1)); });
+  drawEdgeLabels(n);
+  renderPanel(n);
+}
+function clearFocus(){
+  cur = null; gL.textContent = '';
+  nodes.forEach(m => m.g.style.opacity = hidden.has(m.type) ? 0 : 1);
+  links.forEach(l => { l.el.setAttribute('stroke','var(--line)');
+    l.el.setAttribute('stroke-width',1.1); l.el.setAttribute('marker-end','url(#mk)');
+    l.el.setAttribute('stroke-opacity', hideL(l) ? 0 : 0.55); });
+  document.getElementById('panel').innerHTML =
+    '<p class="hint">Click a node to inspect it. Drag to rearrange. Toggle the chips above to hide a '+
+    'whole category, or search to find one.</p>';
+}
+svg.addEventListener('click', clearFocus);
+
+const TNAME = Object.fromEntries(TYPES);
+function renderPanel(n){
+  const out = n.adj.filter(a=>a.dir==='out'), inn = n.adj.filter(a=>a.dir==='in');
+  const list = (arr,h) => !arr.length ? '' :
+    '<h4>'+h+'</h4><ul>'+arr.map(a =>
+      '<li><span class="rel">'+a.r+'</span><button class="lnk" data-id="'+a.o.id+'">'+
+      a.o.label+'</button></li>').join('')+'</ul>';
+  document.getElementById('panel').innerHTML =
+    '<span class="ptype" style="background:'+col(n.type)+'">'+TNAME[n.type]+'</span>'+
+    '<h3 class="pname">'+n.label+'</h3>'+
+    '<p class="pdesc">'+n.detail+'</p>'+
+    '<div class="prel">'+list(out,'Points to')+list(inn,'Pointed to by')+'</div>';
+  document.getElementById('panel').querySelectorAll('.lnk').forEach(b =>
+    b.addEventListener('click', () => focus(byId[b.dataset.id])));
+}
+
+const hidden = new Set();
+const hideL = l => hidden.has(l.S.type) || hidden.has(l.T.type);
+const fbox = document.getElementById('filters');
+TYPES.forEach(([t,label]) => {
+  const c = nodes.filter(n=>n.type===t).length;
+  const b = document.createElement('button');
+  b.className = 'chip'; b.setAttribute('aria-pressed','true');
+  b.innerHTML = '<span class="sw" style="background:'+col(t)+'"></span>'+label+
+                ' <span class="ct">'+c+'</span>';
+  b.addEventListener('click', () => {
+    if (hidden.has(t)) hidden.delete(t); else hidden.add(t);
+    b.setAttribute('aria-pressed', hidden.has(t) ? 'false' : 'true');
+    cur ? focus(cur) : clearFocus();
+  });
+  fbox.appendChild(b);
+});
+const q = document.createElement('input');
+q.id = 'q'; q.type = 'search'; q.placeholder = 'Search nodes…';
+q.setAttribute('aria-label','Search nodes');
+q.addEventListener('input', () => {
+  const v = q.value.trim().toLowerCase();
+  if (!v) { clearFocus(); return; }
+  const hit = nodes.find(n => n.label.toLowerCase().includes(v));
+  if (hit) focus(hit);
+});
+fbox.appendChild(q);
+const rb = document.createElement('button');
+rb.className = 'reset'; rb.textContent = 'Reset view';
+rb.addEventListener('click', () => { q.value=''; hidden.clear();
+  fbox.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed','true'));
+  clearFocus(); });
+fbox.appendChild(rb);
+</script>

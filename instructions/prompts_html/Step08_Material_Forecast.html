@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Step 08 - Order Material Forecast</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@400&display=swap">
+<style>
+:root{
+  --sans:'IBM Plex Sans',ui-sans-serif,system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,monospace;
+  --serif:'IBM Plex Serif',Georgia,serif;
+  --bg:#eceff1; --surface:#ffffff; --ink:#151a1e; --muted:#5c6a72;
+  --line:#c3ced3; --accent:#0d6068; --accent-soft:#e2eff0;
+  --gate:#8a5d00; --gate-soft:#f8eed9; --code:#f2f5f6;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12171a; --surface:#1b2226; --ink:#e8eef0; --muted:#94a5ac;
+  --line:#323f45; --accent:#63c3c8; --accent-soft:#0f2c2e;
+  --gate:#d9a441; --gate-soft:#2b2416; --code:#151b1e;}}
+:root[data-theme="dark"]{
+  --bg:#12171a; --surface:#1b2226; --ink:#e8eef0; --muted:#94a5ac;
+  --line:#323f45; --accent:#63c3c8; --accent-soft:#0f2c2e;
+  --gate:#d9a441; --gate-soft:#2b2416; --code:#151b1e;}
+html,body{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);
+     -webkit-font-smoothing:antialiased;line-height:1.6}
+.shell{max-width:1140px;margin:0 auto;padding-inline:20px;padding-block:40px 72px;
+       display:grid;grid-template-columns:216px minmax(0,1fr);gap:34px;align-items:start}
+@media (max-width:840px){.shell{grid-template-columns:minmax(0,1fr);gap:22px}}
+
+nav{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow-y:auto}
+@media (max-width:840px){nav{position:static;max-height:none}}
+.nh{font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);
+    font-weight:600;margin:0 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+nav ul{list-style:none;padding:0;margin:0}
+nav a{display:grid;grid-template-columns:24px 1fr;gap:9px;align-items:baseline;
+      padding:6px 8px;border-radius:4px;text-decoration:none;color:var(--muted);
+      font-size:13px;line-height:1.35}
+nav a:hover{background:var(--accent-soft);color:var(--accent)}
+nav a.on{background:var(--accent-soft);color:var(--accent);font-weight:500}
+.nn{font-family:var(--mono);font-size:10.5px;color:var(--accent);font-variant-numeric:tabular-nums}
+
+main{min-width:0}
+.hero{margin-bottom:38px}
+.eyebrow{font-size:11px;letter-spacing:1.6px;text-transform:uppercase;color:var(--accent);
+         font-weight:600;margin:0 0 10px}
+h1.big{font-size:clamp(28px,5.5vw,40px);line-height:1.1;margin:0 0 15px;font-weight:600;
+       letter-spacing:-.02em;text-wrap:balance}
+.lede{font-family:var(--serif);font-size:16.5px;line-height:1.6;max-width:62ch;margin:0;
+      color:var(--ink)}
+.lede em{color:var(--accent);font-style:italic}
+
+.doc{background:var(--surface);border:1px solid var(--line);border-radius:7px;
+     padding:26px 28px 30px;margin-bottom:22px;scroll-margin-top:16px}
+@media (max-width:560px){.doc{padding:20px 18px 24px}}
+.dh{display:flex;align-items:center;justify-content:space-between;gap:14px;
+    padding-bottom:12px;margin-bottom:18px;border-bottom:1px solid var(--line)}
+.dfile{font-family:var(--mono);font-size:11px;color:var(--muted);margin:0}
+.copy{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:5px;
+      padding:6px 13px;font-family:var(--sans);font-size:12px;cursor:pointer;white-space:nowrap}
+.copy:hover{border-color:var(--accent);color:var(--accent)}
+.copy:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.copy.ok{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+
+.md h1{font-size:23px;font-weight:600;letter-spacing:-.01em;margin:0 0 16px;line-height:1.2}
+.md h2{font-size:12px;letter-spacing:1.3px;text-transform:uppercase;color:var(--muted);
+       font-weight:600;margin:30px 0 13px;padding-bottom:7px;border-bottom:1px solid var(--line)}
+.md h3{font-size:15px;font-weight:600;margin:22px 0 9px}
+.md p{font-size:14.5px;margin:0 0 13px;max-width:70ch}
+.md ul,.md ol{font-size:14.5px;margin:0 0 13px;padding-left:20px;max-width:70ch}
+.md li{margin-bottom:5px}
+.md li::marker{color:var(--accent)}
+.md strong{font-weight:600}
+.md a{color:var(--accent)}
+.md hr{border:none;border-top:1px solid var(--line);margin:26px 0}
+.md code{font-family:var(--mono);font-size:12.5px;background:var(--accent-soft);
+         color:var(--accent);padding:1.5px 5px;border-radius:3px}
+.md pre{background:var(--code);border:1px solid var(--line);border-radius:6px;
+        padding:14px 16px;overflow-x:auto;margin:0 0 15px}
+.md pre code{background:none;color:var(--ink);padding:0;font-size:12.5px;line-height:1.55}
+.md blockquote{border-left:3px solid var(--gate);background:var(--gate-soft);margin:0 0 16px;
+               padding:13px 16px;border-radius:0 5px 5px 0}
+.md blockquote p{margin:0 0 8px;font-size:13.5px;color:var(--muted)}
+.md blockquote p:last-child{margin:0}
+.md blockquote strong{color:var(--ink)}
+.tw{overflow-x:auto;margin:0 0 16px}
+.md table{width:100%;border-collapse:collapse;font-size:13px;min-width:min(100%,420px)}
+.md th{text-align:left;font-size:10px;letter-spacing:1px;text-transform:uppercase;
+       color:var(--muted);font-weight:600;padding:0 12px 7px 0;border-bottom:1px solid var(--line);
+       white-space:nowrap}
+.md td{padding:8px 12px 8px 0;border-bottom:1px solid var(--line);vertical-align:top}
+.md td code{font-size:12px}
+footer{grid-column:1/-1;margin-top:14px;padding-top:16px;border-top:1px solid var(--line);
+       font-size:12px;color:var(--muted);font-family:var(--mono)}
+
+.shell{grid-template-columns:minmax(0,1fr)}
+.solo{max-width:860px;margin:0 auto;padding-inline:20px;padding-block:36px 64px}
+.back{font-family:var(--mono);font-size:11.5px;color:var(--accent);text-decoration:none}
+.back:hover{text-decoration:underline}
+</style></head>
+<body><div class="solo">
+<p style="margin:0 0 18px"><a class="back" href="index.html">&larr; all prompts</a></p>
+<article class="doc"><header class="dh"><p class="dfile">Step08_Material_Forecast.md</p></header>
+<div class="md"><h1>Step 08 - Order Material Forecast</h1>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Builds</strong></td>
+<td><code>src/forecast/parc_demand.py - src/forecast/run.py</code></td>
+</tr>
+<tr>
+<td><strong>Reads</strong></td>
+<td><code>model_registry</code>, <code>demand_history</code>, <code>part_master_enriched</code>, <code>uio_age_matrix</code></td>
+</tr>
+<tr>
+<td><strong>Writes</strong></td>
+<td><code>forecast_protection</code> -&gt; appended to <code>part_master_enriched</code></td>
+</tr>
+<tr>
+<td><strong>Format</strong></td>
+<td>Python modules under <code>src/</code>. Never a notebook. <code>run(ctx) -&gt; StageResult</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2>Objective</h2>
+<p>Forecast monthly order quantity 12 months ahead for every part - from its own history and from the vehicle parc by age - and quantify the uncertainty around it.</p>
+<h2>Two forecasts, reconciled</h2>
+<p><strong>Baseline</strong> - the champion model from Step 07 applied to each part's own history, 12 months ahead,
+monthly, weighted toward the <strong>last 24 months</strong>.</p>
+<p><strong>Parc-driven</strong> - demand implied by the vehicle fleet:</p>
+<pre><code>D(p,t) = SUM over models m in compat(p), SUM over ages a:
+             UIO(m, a, t) * lambda(p, a) * s(t) * k(p)
+</code></pre>
+<ul>
+<li><code>UIO(m,a,t)</code> - units in operation, model m, age bucket a, month t (from Step 10)</li>
+<li><code>lambda(p,a)</code> - consumption of part p per vehicle-year at age a</li>
+<li><code>s(t)</code> - seasonal factor</li>
+<li><code>k(p)</code> - a calibration scalar per part</li>
+</ul>
+<h2>Estimating lambda</h2>
+<p>Penalised <strong>non-negative least squares</strong> over observed monthly demand:</p>
+<pre><code>minimise  SUM_t ( D_obs(p,t) - SUM_a UIO(a,t) * lambda_a )^2
+          + alpha * SUM_a ( lambda_a - lambda_{a-1} )^2
+subject to lambda_a &gt;= 0
+</code></pre>
+<p>The smoothness penalty encodes the physical fact that consumption does not jump between adjacent age
+years. Choose <code>alpha</code> by cross-validation.</p>
+<p><strong>Pool by behaviour class</strong> (Step 06). A single part rarely has enough signal to fit 16 age
+coefficients; a whole class does.</p>
+<blockquote>
+<p><strong>Collinearity warning.</strong> Cohort sizes move together over time, so individual <code>lambda_a</code> values are
+weakly identified even when the fitted total is accurate. Always report <strong>confidence intervals</strong> on
+lambda, and never present a single age coefficient as a finding without them. The fitted <em>curve</em> is
+trustworthy; any one point on it is much less so.</p>
+</blockquote>
+<h2>The Sri Lankan parc is bimodal - this is the whole point</h2>
+<p>Registrations by year, from <code>Sales Summery.xlsx</code>:</p>
+<pre><code>2014  8,895     2018  55,516     2021       85
+2015 16,407     2019  53,681     2022-24  none
+2016 23,493     2020  26,701     2025   22,084
+2017 39,526                      2026   32,344
+</code></pre>
+<p>The 2021-2024 gap is the <strong>vehicle import ban</strong>, not missing data. So the fleet is two blocks: a large
+2014-2020 block now aged <strong>6-12 years</strong>, and a young 2025-2026 block.</p>
+<p>Consequences you must not average away:</p>
+<ol>
+<li>The old block sits squarely in the <strong>high-consumption age band</strong> - wear parts for those models are
+   where demand is now.</li>
+<li>The young block will demand <strong>almost nothing for several years</strong>, then step up sharply.</li>
+<li>A part fitting only 2025-2026 models has essentially <strong>no demand history</strong> and cannot be forecast
+   from its own past at all. Parc-driven is the only route for those parts.</li>
+<li>A part fitting only pre-2021 models faces a parc that is <strong>shrinking through retirement</strong> and will
+   not be replenished by new registrations.</li>
+</ol>
+<p>Any model that extrapolates recent parts demand forward without the parc will miss all four.</p>
+<h2>Reconciliation</h2>
+<p>Where both forecasts exist, blend with weights driven by data sufficiency: parts with long history
+lean baseline; parts on young models lean parc. Publish <strong>both</strong> plus the blend - a buyer who cannot
+see the disagreement cannot judge it.</p>
+<h2>Uncertainty</h2>
+<p>Produce, per part, the <strong>distribution</strong> of demand over the protection interval P = L + R = 4 months,
+not just a point:</p>
+<ul>
+<li>smooth / erratic: normal approximation, <code>sigma_P</code> from residuals</li>
+<li>intermittent / lumpy: <strong>empirical bootstrap</strong> of the 4-month sum from residuals</li>
+</ul>
+<p>Step 13 needs the distribution. A point forecast cannot size a buffer.</p>
+<h2>Supersession weighting</h2>
+<p>Weight toward the <strong>latest</strong> part number in each chain when history is split across superseded
+numbers - the old number's demand is real but will not recur under that number.</p>
+<h2>Output</h2>
+<p><code>forecast_protection</code>: <code>active_sku_id</code>, <code>month</code>, <code>mu</code>, <code>sigma</code>, quantiles (P50/P90/P95), <code>method</code>,
+<code>mu_P</code>, <code>sigma_P</code>, plus the bootstrap sample reference. Appended to <code>part_master_enriched</code>, refreshed
+monthly.</p>
+<h2>Validation</h2>
+<ol>
+<li>Holdout untouched - assert programmatically that no row with <code>month &gt; holdout_start</code> entered any
+   fit.</li>
+<li>Parc reconstruction: predicted vs actual total demand by model family, plotted.</li>
+<li><code>lambda</code> curves plotted per behaviour class <strong>with confidence bands</strong>.</li>
+<li>Parts on 2025-2026-only models are flagged <code>parc_only</code> and reported separately.</li>
+</ol>
+<h2>Protocol</h2>
+<p><strong>Clarify -&gt; Architect -&gt; Code -&gt; Validate.</strong> Ask the open questions below first. Present an
+architecture note and <strong>wait for confirmation</strong> before writing code. Finish with tests and a
+validation report reconciled against the source file.</p>
+<h2>Open questions</h2>
+<ol>
+<li>Does <code>s(t)</code> need real seasonality, or is monthly variation mostly noise at part level?</li>
+<li>For parts fitting both old and new models, should lambda be fitted jointly or per model family?</li>
+<li>How should the 2021-2024 gap be treated in survival - no registrations, or registrations recorded
+   elsewhere (grey imports, re-registrations)?</li>
+<li>Confirm the 12-month horizon and the 3-month lead time are still right.</li>
+</ol></div></article>
+</div>
+<script>
+document.querySelectorAll('.md table').forEach(t=>{const w=document.createElement('div');
+w.className='tw';t.parentNode.insertBefore(w,t);w.appendChild(t);});
+</script></body></html>

@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Step 10 - UIO, Survival and Age Cohorts</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@400&display=swap">
+<style>
+:root{
+  --sans:'IBM Plex Sans',ui-sans-serif,system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,monospace;
+  --serif:'IBM Plex Serif',Georgia,serif;
+  --bg:#eceff1; --surface:#ffffff; --ink:#151a1e; --muted:#5c6a72;
+  --line:#c3ced3; --accent:#0d6068; --accent-soft:#e2eff0;
+  --gate:#8a5d00; --gate-soft:#f8eed9; --code:#f2f5f6;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12171a; --surface:#1b2226; --ink:#e8eef0; --muted:#94a5ac;
+  --line:#323f45; --accent:#63c3c8; --accent-soft:#0f2c2e;
+  --gate:#d9a441; --gate-soft:#2b2416; --code:#151b1e;}}
+:root[data-theme="dark"]{
+  --bg:#12171a; --surface:#1b2226; --ink:#e8eef0; --muted:#94a5ac;
+  --line:#323f45; --accent:#63c3c8; --accent-soft:#0f2c2e;
+  --gate:#d9a441; --gate-soft:#2b2416; --code:#151b1e;}
+html,body{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);
+     -webkit-font-smoothing:antialiased;line-height:1.6}
+.shell{max-width:1140px;margin:0 auto;padding-inline:20px;padding-block:40px 72px;
+       display:grid;grid-template-columns:216px minmax(0,1fr);gap:34px;align-items:start}
+@media (max-width:840px){.shell{grid-template-columns:minmax(0,1fr);gap:22px}}
+
+nav{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow-y:auto}
+@media (max-width:840px){nav{position:static;max-height:none}}
+.nh{font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);
+    font-weight:600;margin:0 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+nav ul{list-style:none;padding:0;margin:0}
+nav a{display:grid;grid-template-columns:24px 1fr;gap:9px;align-items:baseline;
+      padding:6px 8px;border-radius:4px;text-decoration:none;color:var(--muted);
+      font-size:13px;line-height:1.35}
+nav a:hover{background:var(--accent-soft);color:var(--accent)}
+nav a.on{background:var(--accent-soft);color:var(--accent);font-weight:500}
+.nn{font-family:var(--mono);font-size:10.5px;color:var(--accent);font-variant-numeric:tabular-nums}
+
+main{min-width:0}
+.hero{margin-bottom:38px}
+.eyebrow{font-size:11px;letter-spacing:1.6px;text-transform:uppercase;color:var(--accent);
+         font-weight:600;margin:0 0 10px}
+h1.big{font-size:clamp(28px,5.5vw,40px);line-height:1.1;margin:0 0 15px;font-weight:600;
+       letter-spacing:-.02em;text-wrap:balance}
+.lede{font-family:var(--serif);font-size:16.5px;line-height:1.6;max-width:62ch;margin:0;
+      color:var(--ink)}
+.lede em{color:var(--accent);font-style:italic}
+
+.doc{background:var(--surface);border:1px solid var(--line);border-radius:7px;
+     padding:26px 28px 30px;margin-bottom:22px;scroll-margin-top:16px}
+@media (max-width:560px){.doc{padding:20px 18px 24px}}
+.dh{display:flex;align-items:center;justify-content:space-between;gap:14px;
+    padding-bottom:12px;margin-bottom:18px;border-bottom:1px solid var(--line)}
+.dfile{font-family:var(--mono);font-size:11px;color:var(--muted);margin:0}
+.copy{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:5px;
+      padding:6px 13px;font-family:var(--sans);font-size:12px;cursor:pointer;white-space:nowrap}
+.copy:hover{border-color:var(--accent);color:var(--accent)}
+.copy:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.copy.ok{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+
+.md h1{font-size:23px;font-weight:600;letter-spacing:-.01em;margin:0 0 16px;line-height:1.2}
+.md h2{font-size:12px;letter-spacing:1.3px;text-transform:uppercase;color:var(--muted);
+       font-weight:600;margin:30px 0 13px;padding-bottom:7px;border-bottom:1px solid var(--line)}
+.md h3{font-size:15px;font-weight:600;margin:22px 0 9px}
+.md p{font-size:14.5px;margin:0 0 13px;max-width:70ch}
+.md ul,.md ol{font-size:14.5px;margin:0 0 13px;padding-left:20px;max-width:70ch}
+.md li{margin-bottom:5px}
+.md li::marker{color:var(--accent)}
+.md strong{font-weight:600}
+.md a{color:var(--accent)}
+.md hr{border:none;border-top:1px solid var(--line);margin:26px 0}
+.md code{font-family:var(--mono);font-size:12.5px;background:var(--accent-soft);
+         color:var(--accent);padding:1.5px 5px;border-radius:3px}
+.md pre{background:var(--code);border:1px solid var(--line);border-radius:6px;
+        padding:14px 16px;overflow-x:auto;margin:0 0 15px}
+.md pre code{background:none;color:var(--ink);padding:0;font-size:12.5px;line-height:1.55}
+.md blockquote{border-left:3px solid var(--gate);background:var(--gate-soft);margin:0 0 16px;
+               padding:13px 16px;border-radius:0 5px 5px 0}
+.md blockquote p{margin:0 0 8px;font-size:13.5px;color:var(--muted)}
+.md blockquote p:last-child{margin:0}
+.md blockquote strong{color:var(--ink)}
+.tw{overflow-x:auto;margin:0 0 16px}
+.md table{width:100%;border-collapse:collapse;font-size:13px;min-width:min(100%,420px)}
+.md th{text-align:left;font-size:10px;letter-spacing:1px;text-transform:uppercase;
+       color:var(--muted);font-weight:600;padding:0 12px 7px 0;border-bottom:1px solid var(--line);
+       white-space:nowrap}
+.md td{padding:8px 12px 8px 0;border-bottom:1px solid var(--line);vertical-align:top}
+.md td code{font-size:12px}
+footer{grid-column:1/-1;margin-top:14px;padding-top:16px;border-top:1px solid var(--line);
+       font-size:12px;color:var(--muted);font-family:var(--mono)}
+
+.shell{grid-template-columns:minmax(0,1fr)}
+.solo{max-width:860px;margin:0 auto;padding-inline:20px;padding-block:36px 64px}
+.back{font-family:var(--mono);font-size:11.5px;color:var(--accent);text-decoration:none}
+.back:hover{text-decoration:underline}
+</style></head>
+<body><div class="solo">
+<p style="margin:0 0 18px"><a class="back" href="index.html">&larr; all prompts</a></p>
+<article class="doc"><header class="dh"><p class="dfile">Step10_UIO_Cohorts.md</p></header>
+<div class="md"><h1>Step 10 - UIO, Survival and Age Cohorts</h1>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Builds</strong></td>
+<td><code>src/parc/cohorts.py - src/parc/survival.py</code></td>
+</tr>
+<tr>
+<td><strong>Reads</strong></td>
+<td><code>Sales Summery.xlsx</code>, <code>unit_sales</code> (MCSI)</td>
+</tr>
+<tr>
+<td><strong>Writes</strong></td>
+<td><code>uio_age_matrix</code>, <code>survival_curves</code>, <code>registration_forecast</code></td>
+</tr>
+<tr>
+<td><strong>Format</strong></td>
+<td>Python modules under <code>src/</code>. Never a notebook. <code>run(ctx) -&gt; StageResult</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2>Objective</h2>
+<p>Build units-in-operation per model, per month, per yearly age bucket - rolled forward with age-specific survival. This matrix is what makes the demand forecast parc-driven.</p>
+<h2>What the file actually is</h2>
+<p><code>Sales Summery.xlsx</code> - <strong>20 sheets</strong>. The ones that matter:</p>
+<table>
+<thead>
+<tr>
+<th>Sheet</th>
+<th>Contents</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>All Years</code></td>
+<td>837 rows: Year x Model x Name x Colour with <code>Vehicle Units (ZVOR)</code>, Status, Family, Type, Segment, cc</td>
+</tr>
+<tr>
+<td><code>Model Classification</code></td>
+<td><strong>113 models</strong> with Status, First/Last Year Sold, Family, Type, Segment, cc</td>
+</tr>
+<tr>
+<td><code>Model Family x Year</code></td>
+<td>22 families x years</td>
+</tr>
+<tr>
+<td><code>Status x Year</code></td>
+<td>Active/Inactive split by family and year</td>
+</tr>
+<tr>
+<td><code>Color Master</code></td>
+<td>colour names, abbreviations, codes</td>
+</tr>
+<tr>
+<td>Year sheets</td>
+<td>2014-2021, 2025, 2026</td>
+</tr>
+</tbody>
+</table>
+<h2>Registrations by year - and the gap</h2>
+<pre><code>2014   8,895      2018  55,516      2021        85
+2015  16,407      2019  53,681      2022-2024  (no sheets)
+2016  23,493      2020  26,701      2025   22,084
+2017  39,526                        2026   32,344
+</code></pre>
+<p><strong>Total 2014-2026: 278,732 units.</strong></p>
+<p>The 2021-2024 collapse is Sri Lanka's <strong>vehicle import ban</strong>, not a data gap. 2021 has 85 units;
+2022-2024 have none. Model this as <strong>genuinely zero registrations</strong>, and make the code say so
+explicitly - a future maintainer will otherwise "fix" it by interpolating, and destroy the age
+structure.</p>
+<h2>Cohort assembly</h2>
+<pre><code>cohort(model, year) = units registered
+</code></pre>
+<p>Convert to monthly where MCSI supports it (2025-2026), annual before that. Age buckets are <strong>yearly</strong>:
+<code>0-1</code>, <code>1-2</code>, ... <code>14-15</code>, <code>15+</code>.</p>
+<p>Status comes from <code>Model Classification</code>: models last sold 2014-2021 are <strong>Inactive</strong>; 2025-2026
+models are <strong>Active</strong>. Both stay in the parc - an inactive model still has bikes on the road consuming
+parts. Inactive only means no new units enter.</p>
+<h2>Survival analysis</h2>
+<p>Fit vehicle retirement, <strong>age-specific</strong>:</p>
+<ul>
+<li><strong>Kaplan-Meier</strong> - non-parametric baseline</li>
+<li><strong>Weibull</strong> - parametric, extrapolates past observed ages</li>
+<li><strong>Cox</strong> - if covariates (type, segment, cc) prove informative</li>
+</ul>
+<p>Select on held-out concordance / log-likelihood. Report which won and by how much.</p>
+<blockquote>
+<p>Survival must be <strong>age-specific</strong>, not a flat annual attrition rate. A flat rate says a 1-year-old
+bike and a 14-year-old bike retire at the same pace, which is false and flattens exactly the age
+structure the demand model depends on.</p>
+</blockquote>
+<p><strong>The identification problem, stated honestly:</strong> with registrations but no de-registration records,
+retirement is not directly observed. If that is the case here, the survival curve is an <em>assumption</em>
+calibrated against whatever signal exists (service visits, parts demand decay, registry data if
+obtainable) - not a measurement. Say which it is in the report, and run the downstream policy under
+at least two survival scenarios so the sensitivity is visible.</p>
+<h2>Roll forward</h2>
+<pre><code>UIO(m, a+1, t+1) = UIO(m, a, t) * survival(m, a)
+UIO(m, 0,   t)   = new registrations in month t
+</code></pre>
+<h2>Output</h2>
+<pre><code>uio_age_matrix
+  enterprise_model_id : str
+  month               : date
+  age_bucket          : str     # &quot;0-1&quot; ... &quot;14-15&quot;, &quot;15+&quot;
+  units               : float
+  is_forecast         : bool
+  is_estimated        : bool
+  scenario            : str
+</code></pre>
+<p><code>is_estimated</code> marks cohorts inferred rather than observed. <code>scenario</code> carries the survival variant.</p>
+<h2>Forecasting new registrations</h2>
+<p>Forecast forward for <strong>active</strong> models only; inactive models contribute no new units. Try several
+models against the annual series and select on accuracy - but note the series is short and broken by
+the ban, so a simple approach that respects the structural break will likely beat a clever one.</p>
+<h2>Validation</h2>
+<ol>
+<li>Total UIO reconciles to cumulative registrations minus cumulative retirements.</li>
+<li>The age histogram is plotted and inspected - the 2021-2024 hole must be visible in it. If it is
+   not, the roll-forward is wrong.</li>
+<li>Survival curves plotted per model family with confidence bands.</li>
+<li>Model naming reconciles between MCSI, <code>All Years</code> and <code>Model Classification</code>; mismatches listed.</li>
+</ol>
+<h2>Protocol</h2>
+<p><strong>Clarify -&gt; Architect -&gt; Code -&gt; Validate.</strong> Ask the open questions below first. Present an
+architecture note and <strong>wait for confirmation</strong> before writing code. Finish with tests and a
+validation report reconciled against the source file.</p>
+<h2>Open questions</h2>
+<ol>
+<li><strong>Are de-registration or scrappage records available anywhere?</strong> This decides whether survival is
+   measured or assumed - the single biggest uncertainty in the parc model.</li>
+<li>Should 2022-2024 be modelled as exactly zero, or were there grey/used imports not in ZVOR?</li>
+<li>Do model codes mean the same thing across MCSI, <code>All Years</code> and <code>Model Classification</code>? Any renames?</li>
+<li>Confirm yearly age buckets with a <code>15+</code> tail, or do you want finer resolution for young bikes?</li>
+</ol></div></article>
+</div>
+<script>
+document.querySelectorAll('.md table').forEach(t=>{const w=document.createElement('div');
+w.className='tw';t.parentNode.insertBefore(w,t);w.appendChild(t);});
+</script></body></html>

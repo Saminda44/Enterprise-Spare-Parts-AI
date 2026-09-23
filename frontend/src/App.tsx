@@ -11,11 +11,8 @@ import { PartMaster }     from "./pages/PartMaster";
 import { Forecast }       from "./pages/Forecast";
 import { Inventory }      from "./pages/Inventory";
 import { Orders }         from "./pages/Orders";
-import { Classification } from "./pages/Classification";
-import { RL }             from "./pages/RL";
 import { Catalog }        from "./pages/Catalog";
-import { MarketBasket }        from "./pages/MarketBasket";
-import { PurchaseRecommendation } from "./pages/PurchaseRecommendation";
+import { Pipeline }               from "./pages/Pipeline";
 
 export default function App() {
   return (
@@ -32,14 +29,11 @@ export default function App() {
             <Route path="/eda"            element={<EDA />} />
             <Route path="/obm-eda"        element={<OBMEDA />} />
             <Route path="/parts"          element={<PartMaster />} />
-            <Route path="/classification" element={<Classification />} />
             <Route path="/forecast"       element={<Forecast />} />
             <Route path="/inventory"      element={<Inventory />} />
             <Route path="/orders"         element={<Orders />} />
-            <Route path="/rl"             element={<RL />} />
             <Route path="/catalog"        element={<Catalog />} />
-            <Route path="/market-basket"           element={<MarketBasket />} />
-            <Route path="/purchase-recommendation" element={<PurchaseRecommendation />} />
+            <Route path="/pipeline"               element={<Pipeline />} />
           </Routes>
         </main>
       </div>
