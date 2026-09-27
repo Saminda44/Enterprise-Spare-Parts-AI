@@ -14,6 +14,14 @@ class Page(BaseModel):
     rows: list[dict[str, Any]]
 
 
+class TableInfo(BaseModel):
+    table: str
+    layer: str
+    present: bool
+    rows: int
+    columns: list[str]
+
+
 class TableFreshness(BaseModel):
     table: str
     layer: str
@@ -62,3 +70,46 @@ class RunStatus(BaseModel):
     run_id: str
     status: str
     report: dict[str, Any] | None = None
+
+
+# --------------------------------------------------------------- catalogue browser
+# The original dashboard's Catalogues page speaks these shapes. They are carried over
+# unchanged from the previous build so the page behaves exactly as it did.
+
+
+class CatalogFile(BaseModel):
+    filename: str
+    rel_path: str
+    size_kb: float
+
+
+class CatalogModel(BaseModel):
+    model: str
+    pdf_count: int
+    files: list[CatalogFile]
+
+
+class CatalogResponse(BaseModel):
+    models: list[CatalogModel]
+    total_pdfs: int
+
+
+class CatalogCoverageRow(BaseModel):
+    model: str
+    pdf_count: int
+    distinct_parts: int
+    ocr_pages: int
+
+
+class CatalogCoverageResponse(BaseModel):
+    extracted: bool
+    total_part_references: int
+    distinct_parts: int
+    distinct_models: int
+    rows: list[CatalogCoverageRow]
+
+
+class CatalogPartRow(BaseModel):
+    part_number: str
+    source_file: str
+    ocr_used: bool

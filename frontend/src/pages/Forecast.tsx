@@ -5,7 +5,7 @@ import {
 } from "recharts";
 import {
   fetchForecast, fetchTrend, fetchFusedDemand,
-  type ForecastRow, type MonthlyPoint, type M2FusedDemandResponse,
+  type ForecastData, type MonthlyPoint, type M2FusedDemandResponse,
 } from "../api/client";
 import { KpiCard } from "../components/KpiCard";
 
@@ -22,7 +22,7 @@ type ForecastTab = "stage10" | "fused";
 
 export function Forecast() {
   const [tab,   setTab]   = useState<ForecastTab>("stage10");
-  const [data,  setData]  = useState<{ total: number; rows: ForecastRow[]; method_counts: Record<string, number> } | null>(null);
+  const [data,  setData]  = useState<ForecastData | null>(null);
   const [trend, setTrend] = useState<MonthlyPoint[]>([]);
   const [method, setMethod] = useState<string>("");
   const [search, setSearch] = useState("");
@@ -33,8 +33,8 @@ export function Forecast() {
   const [fusedMethod, setFusedMethod] = useState("");
   const [fusedDC,     setFusedDC]     = useState("");
 
-  useEffect(() => { fetchForecast({ limit: 500 }).then(setData); fetchTrend().then(setTrend); }, []);
-  useEffect(() => { fetchForecast({ method: method || undefined, limit: 500 }).then(setData); }, [method]);
+  useEffect(() => { fetchTrend().then(setTrend); }, []);
+  useEffect(() => { fetchForecast({ method: method || undefined, search: search || undefined, limit: 500 }).then(setData); }, [method, search]);
   useEffect(() => {
     fetchFusedDemand({ limit: 100, method: fusedMethod || undefined, demand_class: fusedDC || undefined })
       .then(setFusedData)
@@ -44,10 +44,9 @@ export function Forecast() {
   if (!data) return <div className="flex-1 flex items-center justify-center text-slate-400">Loading…</div>;
 
   const methodData = Object.entries(data.method_counts).map(([k, v], i) => ({ name: k, value: v, fill: METHOD_COLORS[i] }));
-  const trendData = trend.slice(-24).map(p => ({ month: p.year_month_str.slice(0, 7), qty: p.issue_qty }));
+  const trendData = trend.slice(-24).map(p => ({ month: p.year_month_str.slice(0, 7), qty: p.net_demand }));
 
-  const mlCount = (data.method_counts["LightGBM"] ?? 0) + (data.method_counts["NHITS"] ?? 0) + (data.method_counts["AutoETS"] ?? 0);
-  const zeroCount = data.method_counts["Zero"] ?? 0;
+  const zeroCount = data.zero_demand_skus;
 
   const filtered = data.rows.filter(r =>
     !search || r.material_9.toLowerCase().includes(search.toLowerCase()) || r.description.toLowerCase().includes(search.toLowerCase())
@@ -71,26 +70,26 @@ export function Forecast() {
             onClick={() => setTab("stage10")}
             className={`px-4 py-1.5 font-medium transition-colors ${tab === "stage10" ? "bg-brand-blue text-white" : "text-slate-600 hover:bg-slate-50"}`}
           >
-            Stage 10 Pipeline
+            Material Forecast ? Step 08
           </button>
           <button
             onClick={() => setTab("fused")}
             className={`px-4 py-1.5 font-medium transition-colors border-l border-slate-200 ${tab === "fused" ? "bg-brand-blue text-white" : "text-slate-600 hover:bg-slate-50"}`}
           >
-            Module 2 Fused Demand
+            History + Fleet Blend
           </button>
         </div>
       </div>
 
       {/* ════════════════════════════════════════════════════
-          TAB: Stage 10 Pipeline
+          TAB: Material Forecast ? Step 08
       ════════════════════════════════════════════════════ */}
       {tab === "stage10" && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <KpiCard label="Total SKUs"    value={fmt(data.total)}   color="blue"/>
-            <KpiCard label="ML/DL Models"  value={fmt(mlCount)}      sub="LightGBM + NHITS + AutoETS" color="purple"/>
-            <KpiCard label="Zero Demand"   value={fmt(zeroCount)}    sub="Non-movers" color="amber"/>
+            <KpiCard label="Fleet Estimates" value={fmt(data.parc_skus)} sub="SKUs with a parc component" color="purple"/>
+            <KpiCard label="Zero Demand"   value={fmt(zeroCount)}    sub="Published monthly forecast is zero" color="amber"/>
             <KpiCard label="Methods Used"  value={`${Object.keys(data.method_counts).length}`} color="teal"/>
           </div>
 
@@ -193,22 +192,22 @@ export function Forecast() {
       )}
 
       {/* ════════════════════════════════════════════════════
-          TAB: Module 2 Fused Demand
+          TAB: History + Fleet Blend
       ════════════════════════════════════════════════════ */}
       {tab === "fused" && (
         <>
           {!fusedData ? (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
-              <p className="text-sm font-semibold text-amber-700 mb-1">Module 2 output not found</p>
+              <p className="text-sm font-semibold text-amber-700 mb-1">Published blended forecast unavailable</p>
               <code className="text-xs text-amber-600 bg-amber-100 px-2 py-1 rounded">
-                python -m scripts.run_module 2 --save
+                Refresh after the forecast pipeline has completed.
               </code>
             </div>
           ) : (
             <>
               {/* KPIs */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <KpiCard label="Fused Demand Rows" value={fusedData.total.toLocaleString()} color="blue"/>
+                <KpiCard label="Forecast SKUs" value={fusedData.total.toLocaleString()} color="blue"/>
                 <KpiCard label="Methods"            value={`${Object.keys(fusedData.method_counts).length}`} color="teal"/>
                 <KpiCard label="Demand Classes"     value={`${fusedData.demand_class_counts ? Object.keys(fusedData.demand_class_counts).length : "—"}`} color="purple"/>
                 <KpiCard label="Showing"            value={`${Math.min(fusedFiltered.length, 100)} rows`} sub="use filters to narrow" color="amber"/>

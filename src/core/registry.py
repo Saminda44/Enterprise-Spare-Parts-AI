@@ -112,6 +112,25 @@ class Registry:
             pending.extend(self.stages[name].depends_on)
         return wanted
 
+    def downstream(self, names: Iterable[str]) -> set[str]:
+        """``names`` plus every stage that transitively depends on any of them.
+
+        The stages whose outputs go stale when an input to ``names`` changes.
+        """
+        dependents: dict[str, list[str]] = {n: [] for n in self.stages}
+        for name, stage in self.stages.items():
+            for dep in stage.depends_on:
+                dependents.setdefault(dep, []).append(name)
+        found: set[str] = set()
+        pending = [self.get(n).name for n in names]
+        while pending:
+            name = pending.pop()
+            if name in found:
+                continue
+            found.add(name)
+            pending.extend(dependents.get(name, []))
+        return found
+
     # ── execution ───────────────────────────────────────────────────────────────
     def run(
         self,
@@ -121,12 +140,15 @@ class Registry:
         skip: Iterable[str] | None = None,
         settings_summary: dict[str, object] | None = None,
         report_path: Path | None = None,
+        on_stage: Callable[[str, int, int], None] | None = None,
     ) -> RunReport:
         """Execute in dependency order, fail-closed, and return the run report.
 
         ``skip`` treats a stage as already satisfied — for re-running the tail of the
         pipeline without repeating an expensive upstream stage whose artifacts are
         unchanged on disk. Skipped stages count as OK so their dependents still run.
+        ``on_stage(name, position, total)`` is told before each executed stage starts,
+        for progress reporting; skipped stages are not counted.
         """
         order = self.order(targets)
         skipped = set(skip or ())
@@ -138,6 +160,7 @@ class Registry:
         )
         outcomes: dict[str, StageStatus] = {}
         run_started = time.perf_counter()
+        to_execute = [n for n in order if n not in skipped]
 
         for name in order:
             stage = self.stages[name]
@@ -155,6 +178,8 @@ class Registry:
                 report.add(result)
                 continue
 
+            if on_stage is not None:
+                on_stage(name, to_execute.index(name) + 1, len(to_execute))
             started = time.perf_counter()
             try:
                 result = stage.fn(ctx)

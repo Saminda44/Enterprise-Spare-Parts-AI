@@ -18,10 +18,42 @@ from src.core.context import PlanningContext
 from src.core.registry import REGISTRY
 from src.core.result import StageResult
 from src.core.settings import get_settings
-from src.io.parquet import read_table, write_table
+from src.io.parquet import read_table, table_exists, write_table
 
 Z_BOUNDS = (0.0, 4.5)
 HYSTERESIS_COST_MARGIN = 0.05
+
+
+def _parameters(
+    series: dict[str, object], targets: dict[str, float], protection: int, sigma_lead: float
+) -> dict[str, object]:
+    """Safety stock, s, S and ROL for one SKU from its forecast row."""
+    beta = targets.get(str(series.get("abc", "C")), targets["C"])
+    ss = safety_stock(pd.Series(series), beta, protection, sigma_lead)
+    mu_p = float(series.get("mu_p") or 0.0)
+    d_bar = mu_p / protection if protection else 0.0
+    order_up_to = mu_p + ss.selected
+    reorder_point = ss.selected + d_bar * (protection - 1)
+    return {
+        "active_sku_id": series["active_sku_id"],
+        "abc": series.get("abc"),
+        "quadrant": series.get("quadrant"),
+        "fill_target": beta,
+        "z": ss.z,
+        "ss_bracketing": ss.bracketing,
+        "ss_normal": ss.normal,
+        "ss_empirical": ss.empirical,
+        "safety_stock": ss.selected,
+        "ss_strategy": ss.strategy,
+        "mu_p": mu_p,
+        "d_bar": d_bar,
+        "S": order_up_to,
+        "s": reorder_point,
+        "rol": d_bar * (protection - 1) + ss.selected,
+        "months_of_cover": order_up_to / d_bar if d_bar > 0 else np.nan,
+        "unit_value": series.get("unit_value", 0.0),
+        "beta_hat": series.get("beta_hat", 0.75),
+    }
 
 
 def unit_normal_loss(z: float) -> float:
@@ -109,18 +141,34 @@ def policy_quantity(policy: str, ip: float, order_up_to: float, reorder_point: f
     return 0.0  # NO_STOCK
 
 
+#: A non-moving part is still stocked when its fleet implies at least this much demand a
+#: month — a part for a model launched this year moves little yet, but its fleet is real.
+PARC_SUPPORTED_MONTHLY = 1.0
+
+
 def candidate_policies(row: pd.Series) -> list[str]:
-    """Config-driven assignment. criticality = high always includes RS and never
-    ON_DEMAND or NO_STOCK — but no criticality source exists, so that branch is inert."""
+    """Config-driven assignment (Step 13 policy matrix).
+
+    Business meaning: FSN = N and C-class zero-movers get ON_DEMAND or NO_STOCK — no cycle
+    stock for parts that do not move — unless the fleet supports at least
+    ``PARC_SUPPORTED_MONTHLY`` a month. This is checked *before* the short-history rule:
+    almost every non-mover has a short history, and letting that rule win first put every
+    one of them on a cycle-stock policy. criticality = high always includes RS, but no
+    criticality source exists, so that branch is inert.
+    """
     quadrant = str(row.get("quadrant", "no demand"))
     abc = str(row.get("abc", "C"))
     fsn = str(row.get("fsn", "N"))
+    parc = row.get("mu_month_parc")
+    parc_supported = parc is not None and pd.notna(parc) and float(parc) >= PARC_SUPPORTED_MONTHLY
     if str(row.get("criticality") or "").lower() == "high":
         return ["RS", "RsS"]
+    if not parc_supported and (
+        fsn == "N" or (abc == "C" and float(row.get("mu_month", 0) or 0) <= 0)
+    ):
+        return ["ON_DEMAND", "NO_STOCK"]
     if bool(row.get("insufficient_history", False)):
         return ["RS"]
-    if fsn == "N" or (abc == "C" and float(row.get("mu_month", 0) or 0) <= 0):
-        return ["ON_DEMAND", "NO_STOCK"]
     if quadrant == "smooth":
         return ["RS"]
     if quadrant == "lumpy":
@@ -216,7 +264,12 @@ def run(ctx: PlanningContext) -> StageResult:
     result = StageResult(stage="13_policy")
     settings = get_settings()
 
+    # Selection and the holdout use the validation forecast (fitted before the holdout);
+    # the published parameters — what the order runs on — use the live forecast.
     forecast = read_table("facts", "forecast_protection")
+    live_forecast = (
+        read_table("facts", "forecast_live") if table_exists("facts", "forecast_live") else forecast
+    )
     classification = read_table("facts", "sku_classification")
     stock = read_table("facts", "stock_position")
     reliability = read_table("facts", "supply_reliability")
@@ -243,19 +296,26 @@ def run(ctx: PlanningContext) -> StageResult:
             "variability, and is therefore an understatement"
         )
 
-    frame = (
-        forecast.merge(classification, on="active_sku_id", how="left", suffixes=("", "_cls"))
-        .merge(
-            stock[["active_sku_id", "on_hand", "on_order", "ip"]], on="active_sku_id", how="left"
+    def assemble(source: pd.DataFrame) -> pd.DataFrame:
+        out = (
+            source.merge(classification, on="active_sku_id", how="left", suffixes=("", "_cls"))
+            .merge(
+                stock[["active_sku_id", "on_hand", "on_order", "ip"]],
+                on="active_sku_id",
+                how="left",
+            )
+            .merge(
+                reliability[["active_sku_id", "beta_hat"]].drop_duplicates("active_sku_id"),
+                on="active_sku_id",
+                how="left",
+            )
         )
-        .merge(
-            reliability[["active_sku_id", "beta_hat"]].drop_duplicates("active_sku_id"),
-            on="active_sku_id",
-            how="left",
-        )
-    )
-    frame[["on_hand", "on_order", "ip"]] = frame[["on_hand", "on_order", "ip"]].fillna(0.0)
-    frame["beta_hat"] = frame["beta_hat"].fillna(0.75).clip(0.05, 1.0)
+        out[["on_hand", "on_order", "ip"]] = out[["on_hand", "on_order", "ip"]].fillna(0.0)
+        out["beta_hat"] = out["beta_hat"].fillna(0.75).clip(0.05, 1.0)
+        return out
+
+    frame = assemble(forecast)
+    live_frame = assemble(live_forecast)
 
     unit_value = (
         read_table("facts", "orders_clean")
@@ -264,6 +324,7 @@ def run(ctx: PlanningContext) -> StageResult:
         .median()
     )
     frame["unit_value"] = frame["active_sku_id"].map(unit_value).fillna(0.0)
+    live_frame["unit_value"] = live_frame["active_sku_id"].map(unit_value).fillna(0.0)
 
     months = sorted(history["month"].dropna().unique())
     holdout_start = str(split.at[0, "holdout_start"])
@@ -289,36 +350,11 @@ def run(ctx: PlanningContext) -> StageResult:
 
     for row in frame.itertuples(index=False):
         series = row._asdict()
-        beta = targets.get(str(series.get("abc", "C")), targets["C"])
-        ss = safety_stock(pd.Series(series), beta, protection, sigma_lead_months)
-
-        mu_p = float(series.get("mu_p") or 0.0)
-        d_bar = mu_p / protection if protection else 0.0
-        order_up_to = mu_p + ss.selected
-        reorder_point = ss.selected + d_bar * (protection - 1)
-
-        params.append(
-            {
-                "active_sku_id": series["active_sku_id"],
-                "abc": series.get("abc"),
-                "quadrant": series.get("quadrant"),
-                "fill_target": beta,
-                "z": ss.z,
-                "ss_bracketing": ss.bracketing,
-                "ss_normal": ss.normal,
-                "ss_empirical": ss.empirical,
-                "safety_stock": ss.selected,
-                "ss_strategy": ss.strategy,
-                "mu_p": mu_p,
-                "d_bar": d_bar,
-                "S": order_up_to,
-                "s": reorder_point,
-                "rol": d_bar * (protection - 1) + ss.selected,
-                "months_of_cover": order_up_to / d_bar if d_bar > 0 else np.nan,
-                "unit_value": series.get("unit_value", 0.0),
-                "beta_hat": series.get("beta_hat", 0.75),
-            }
-        )
+        entry = _parameters(series, targets, protection, sigma_lead_months)
+        params.append(entry)
+        beta = float(entry["fill_target"])
+        order_up_to = float(entry["S"])
+        reorder_point = float(entry["s"])
 
         sku_selection = (
             panel.loc[series["active_sku_id"], selection_cols].to_numpy(dtype=float)
@@ -367,7 +403,13 @@ def run(ctx: PlanningContext) -> StageResult:
             }
         )
 
-    policy_params = pd.DataFrame(params)
+    validation_params = pd.DataFrame(params)
+    policy_params = pd.DataFrame(
+        [
+            _parameters(r._asdict(), targets, protection, sigma_lead_months)
+            for r in live_frame.itertuples(index=False)
+        ]
+    ).assign(basis="live")
     policy_selection = pd.DataFrame(selections)
     simulation_results = pd.DataFrame(scores)
 
@@ -380,13 +422,23 @@ def run(ctx: PlanningContext) -> StageResult:
         result.warn("conservation holds: received - served - delta on_hand = 0 across all runs")
 
     result.artifact("policy_params", write_table(policy_params, "facts", "policy_params"))
+    result.artifact(
+        "policy_params_validation",
+        write_table(
+            validation_params.assign(basis="validation"), "facts", "policy_params_validation"
+        ),
+    )
+    result.warn(
+        "published s / S / safety stock use the LIVE forecast (all history); selection and the "
+        "holdout used the validation forecast, so the holdout stays sealed"
+    )
     result.artifact("policy_selection", write_table(policy_selection, "facts", "policy_selection"))
     result.artifact(
         "simulation_results", write_table(simulation_results, "facts", "simulation_results")
     )
 
     holdout = _holdout(
-        frame, policy_params, policy_selection, panel, holdout_cols, ctx, settings, result
+        frame, validation_params, policy_selection, panel, holdout_cols, ctx, settings, result
     )
     result.artifact("holdout_validation", write_table(holdout, "facts", "holdout_validation"))
 

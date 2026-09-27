@@ -96,7 +96,7 @@ export function Overview() {
       </div>
 
       {/* ══ 1. MC Analysis ══════════════════════════════════════════════════ */}
-      <SectionCard color="blue" title="MC Analysis" subtitle="Stage 1 · MCSI motorcycle sales — VIN-level sold/returned · monthly trend · model & dealer breakdown" to="/mcsi-eda" onNav={navigate}>
+      <SectionCard color="blue" title="MC Analysis" subtitle="Step 09 - Motorcycle net sales, monthly trend, model and dealer breakdown" to="/mcsi-eda" onNav={navigate}>
         {!mcsi ? (
           <p className="text-xs text-slate-400 italic py-4 text-center">Loading…</p>
         ) : (
@@ -161,7 +161,7 @@ export function Overview() {
       </SectionCard>
 
       {/* ══ 2. Inventory Analysis ═══════════════════════════════════════════ */}
-      <SectionCard color="amber" title="Inventory Analysis" subtitle="Stages 9–12 · Stock status, ABC classification, ROL / ROQ policy, order urgency" to="/inventory" onNav={navigate}>
+      <SectionCard color="amber" title="Inventory Analysis" subtitle="Steps 06, 12-14 - PDC stock, classification, selected policy and monthly order" to="/inventory" onNav={navigate}>
         {!inv ? (
           <p className="text-xs text-slate-400 italic py-4 text-center">Loading…</p>
         ) : (
@@ -172,23 +172,23 @@ export function Overview() {
               { label: "Excess SKUs",   value: fmt(inv.kpis.excess_skus),      sub: `LKR ${fmt(inv.kpis.excess_stock_value_lkr)} tied up`, badge: "warn" },
               { label: "Avg Coverage",  value: `${inv.kpis.avg_coverage_months.toFixed(1)} mo`, sub: "active SKUs" },
               { label: "Immediate Orders", value: fmt(inv.kpis.immediate_orders), sub: `${fmt(inv.kpis.soon_orders)} soon · ${fmt(inv.kpis.planned_orders)} planned`, badge: "danger" },
-              { label: "Total Order Value", value: `LKR ${fmt(inv.kpis.total_order_value_lkr)}`, sub: "imm + soon + planned" },
+              { label: "Total Order Value", value: `LKR ${fmt(inv.kpis.total_order_value_lkr)}`, sub: `${inv.planning.cycle_month ?? "Published cycle"} ? recommendation` },
             ]}/>
 
             {/* Module 6 + Module 3 row — only shown when those modules have run */}
             {((inv.kpis.m6_total_skus_to_order ?? 0) > 0 || (inv.kpis.m3_total_stock_qty ?? 0) > 0) && (
               <>
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 pt-1">
-                  Intelligence Modules
-                  <span className="ml-2 font-normal text-slate-300 normal-case">Module 3 + Module 6 outputs</span>
+                  Planning Results
+                  <span className="ml-2 font-normal text-slate-300 normal-case">PDC inventory position and selected monthly policies</span>
                 </p>
                 <KpiRow items={[
-                  { label: "M6 SKUs to Order",      value: fmt(inv.kpis.m6_total_skus_to_order ?? 0),      sub: `${inv.kpis.m6_critical_count ?? 0} critical · ${inv.kpis.m6_high_count ?? 0} high`, badge: (inv.kpis.m6_critical_count ?? 0) > 0 ? "danger" : "ok" },
-                  { label: "M6 Stockout Risk",       value: fmt(inv.kpis.m6_stockout_risk_count ?? 0),      sub: "net position below ROL" },
-                  { label: "M6 Overstock",           value: fmt(inv.kpis.m6_overstock_count ?? 0),          sub: "excess inventory" },
-                  { label: "M6 Fill Rate (Wtd)",     value: `${(inv.kpis.m6_weighted_fill_rate_pct ?? 0).toFixed(1)}%`, sub: "weighted by demand", badge: (inv.kpis.m6_weighted_fill_rate_pct ?? 0) < 70 ? "warn" : "ok" },
-                  { label: "M3 Stock on Hand",       value: fmt(inv.kpis.m3_total_stock_qty ?? 0),          sub: "units (all SKUs)" },
-                  { label: "M3 Net Position",        value: fmt(inv.kpis.m3_total_net_position ?? 0),       sub: "stock + pipeline − backorder", badge: (inv.kpis.m3_total_net_position ?? 0) < 0 ? "danger" : "ok" },
+                  { label: "SKUs to Order",      value: fmt(inv.kpis.m6_total_skus_to_order ?? 0),      sub: `${inv.kpis.m6_critical_count ?? 0} critical · ${inv.kpis.m6_high_count ?? 0} high`, badge: (inv.kpis.m6_critical_count ?? 0) > 0 ? "danger" : "ok" },
+                  { label: "IP at / below ROL",       value: fmt(inv.kpis.m6_stockout_risk_count ?? 0),      sub: "net position below ROL" },
+                  { label: "Excess SKUs",           value: fmt(inv.kpis.m6_overstock_count ?? 0),          sub: "excess inventory" },
+                  { label: "Simulated Fill Rate",     value: `${(inv.kpis.m6_weighted_fill_rate_pct ?? 0).toFixed(1)}%`, sub: `${inv.planning.policy_verdict} ? holdout result`, badge: inv.planning.policy_verdict === "PASS" ? "ok" : "warn" },
+                  { label: "PDC Stock on Hand",       value: fmt(inv.kpis.m3_total_stock_qty ?? 0),          sub: "units in planning scope" },
+                  { label: "PDC Position (Assumed)",        value: fmt(inv.kpis.m3_total_net_position ?? 0),       sub: inv.planning.inventory_position_note, badge: (inv.kpis.m3_total_net_position ?? 0) < 0 ? "danger" : "ok" },
                 ]}/>
               </>
             )}
@@ -248,7 +248,7 @@ export function Overview() {
       </SectionCard>
 
       {/* ══ 3. Spare Parts Analysis ═════════════════════════════════════════ */}
-      <SectionCard color="violet" title="Spare Parts Analysis" subtitle="Stages 4 &amp; 5 · MC dealer purchase orders &amp; actual sales — fill rates, return rates, category mix" to="/eda" onNav={navigate}>
+      <SectionCard color="violet" title="Spare Parts Analysis" subtitle="Steps 03-05 - MC dealer demand orders and billed sales" to="/eda" onNav={navigate}>
         {!orders || !sales ? (
           <p className="text-xs text-slate-400 italic py-4 text-center">Loading…</p>
         ) : (

@@ -53,6 +53,8 @@ Thumbs.db
 # Background task log files
 api_err.txt
 api_out.txt
+api_new_err.txt
+api_new_out.txt
 fe_err.txt
 fe_out.txt
 frontend/api_err.txt
@@ -88,3 +90,7 @@ static/
 
 # Playwright ad-hoc test scripts
 frontend/pw_test.js
+
+# Planning dashboard build output and its SSR smoke-test bundle
+frontend/dist-planning/
+frontend/.scratch-ssr/

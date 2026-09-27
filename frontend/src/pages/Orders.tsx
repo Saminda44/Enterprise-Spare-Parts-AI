@@ -4,12 +4,11 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from "recharts";
 import { Download } from "lucide-react";
-import { fetchPolicy, fetchSanity, fetchUIOServicePlan, type PolicyRow, type SanityRow, type UIOServicePlanRow, type UIOServicePlanResponse } from "../api/client";
+import { fetchPolicy, fetchSanity, fetchUIOServicePlan, fetchOrderReview, type PolicyData, type SanityRow, type UIOServicePlanRow, type UIOServicePlanResponse, type ReviewData } from "../api/client";
+import { POLICY_COLORS as TIER_COLOR, SS_COLORS as SS_COLOR, policyLabel } from "../api/planning";
 import { KpiCard } from "../components/KpiCard";
 
 const URGENCY_COLOR: Record<string, string> = { immediate: "#EF4444", soon: "#FFC107", planned: "#4361EE", none: "#94A3B8" };
-const TIER_COLOR: Record<string, string>    = { critical: "#EF4444", managed: "#FFC107", watch: "#4361EE", rationalise: "#94A3B8" };
-const SS_COLOR: Record<string, string>      = { "ML-Quantile": "#7C3AED", "Classical": "#94A3B8" };
 
 function fmt(n: number) {
   if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`;
@@ -18,11 +17,11 @@ function fmt(n: number) {
   return n.toLocaleString();
 }
 
-type Tab = "orders" | "sanity" | "uio";
+type Tab = "orders" | "review" | "sanity" | "uio";
 
 export function Orders() {
   const [searchParams] = useSearchParams();
-  const [data, setData]       = useState<{ total: number; rows: PolicyRow[]; urgency_counts: Record<string, number>; tier_counts: Record<string, number>; ss_method_counts: Record<string, number> } | null>(null);
+  const [data, setData] = useState<PolicyData | null>(null);
   const [sanity, setSanity]     = useState<SanityRow[]>([]);
   const [uioPlan, setUioPlan]   = useState<UIOServicePlanResponse | null>(null);
   const [urgency, setUrgency]   = useState(searchParams.get("urgency") ?? "");
@@ -35,25 +34,26 @@ export function Orders() {
   const [uioCatalogOnly, setUioCatalogOnly] = useState(false);
   const [tab, setTab]           = useState<Tab>(searchParams.get("flagged") === "true" ? "sanity" : "orders");
 
+  const [review, setReview] = useState<ReviewData | null>(null);
   useEffect(() => {
-    fetchPolicy({ limit: 500 }).then(setData);
+    fetchOrderReview(500).then(setReview);
     fetchSanity(200).then(setSanity);
-    fetchUIOServicePlan(5, 500).then(setUioPlan);
+    fetchUIOServicePlan(undefined, 500).then(setUioPlan);
   }, []);
   useEffect(() => {
-    fetchPolicy({ urgency: urgency || undefined, tier: tier || undefined, ss_method: ssMethod || undefined, limit: 500 }).then(setData);
-  }, [urgency, tier, ssMethod]);
+    fetchPolicy({ urgency: urgency || undefined, tier: tier || undefined, ss_method: ssMethod || undefined, search: search || undefined, limit: 500 }).then(setData);
+  }, [urgency, tier, ssMethod, search]);
 
   if (!data) return <div className="flex-1 flex items-center justify-center text-slate-400">Loading…</div>;
 
   const urgBar  = Object.entries(data.urgency_counts).filter(([k]) => k !== "none").map(([k, v]) => ({ name: k, value: v }));
-  const tierBar = Object.entries(data.tier_counts).map(([k, v]) => ({ name: k, value: v }));
+  const tierBar = Object.entries(data.tier_counts).map(([k, v]) => ({ name: policyLabel(k), value: v }));
   const ssBar   = Object.entries(data.ss_method_counts).map(([k, v]) => ({ name: k, value: v }));
 
   const filtered = data.rows.filter(r =>
     !search || r.material_9.toLowerCase().includes(search.toLowerCase()) || r.description.toLowerCase().includes(search.toLowerCase())
   );
-  const totalOrderVal = filtered.reduce((s, r) => s + r.net_requirement * r.unit_value_lkr, 0);
+  const totalOrderVal = data.total_order_value_lkr;
 
   // UIO service plan filtered rows
   const uioRows: UIOServicePlanRow[] = (uioPlan?.rows ?? []).filter(r => {
@@ -67,7 +67,8 @@ export function Orders() {
 
   const TABS = [
     { key: "orders" as Tab, label: `Order Plan (${data.total.toLocaleString()})` },
-    { key: "uio"    as Tab, label: `UIO-Based Plan` },
+    { key: "review" as Tab, label: `Held for Review (${(review?.total ?? 0).toLocaleString()})` },
+    { key: "uio"    as Tab, label: `Fleet Demand & Policy` },
     { key: "sanity" as Tab, label: `Sanity Review (${sanity.length})` },
   ];
 
@@ -75,11 +76,13 @@ export function Orders() {
     <div className="flex-1 p-6 space-y-6 overflow-y-auto">
       <h2 className="text-xl font-bold text-slate-800">Order Recommendation Plan</h2>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KpiCard label="Filtered SKUs"  value={fmt(filtered.length)}                       color="blue"/>
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <KpiCard label="Filtered SKUs"  value={fmt(data.total)}                       color="blue"/>
         <KpiCard label="Immediate"      value={fmt(data.urgency_counts.immediate ?? 0)}    color="red"/>
         <KpiCard label="Soon"           value={fmt(data.urgency_counts.soon ?? 0)}         color="amber"/>
         <KpiCard label="Order Value"    value={`LKR ${fmt(totalOrderVal)}`}                color="purple"/>
+        <KpiCard label="Held for Review" value={review ? `LKR ${fmt(review.total_value_lkr)}` : "…"}
+          sub={review ? `${review.total.toLocaleString()} lines · order > 3x recent demand · not auto-ordered` : ""} color="amber"/>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -99,7 +102,7 @@ export function Orders() {
         </div>
 
         <div className="bg-white rounded-xl shadow-sm p-5">
-          <h3 className="text-sm font-semibold text-slate-700 mb-3">Policy Tier</h3>
+          <h3 className="text-sm font-semibold text-slate-700 mb-3">Selected Policy</h3>
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={tierBar} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9"/>
@@ -143,7 +146,7 @@ export function Orders() {
           ))}
           <div className="flex-1"/>
           <a
-            href={`/api/v1/policy/export.xlsx${urgency ? `?urgency=${urgency}` : ""}`}
+            href={`/api/v1/policy/export.xlsx?${new URLSearchParams({ urgency, tier, ss_method: ssMethod, search })}`}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors font-medium"
             download
           >
@@ -163,8 +166,8 @@ export function Orders() {
                 {Object.keys(data.urgency_counts).map(u => <option key={u} value={u}>{u}</option>)}
               </select>
               <select className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none" value={tier} onChange={e => setTier(e.target.value)}>
-                <option value="">All tiers</option>
-                {Object.keys(data.tier_counts).map(t => <option key={t} value={t}>{t}</option>)}
+                <option value="">All policies</option>
+                {Object.keys(data.tier_counts).map(t => <option key={t} value={t}>{policyLabel(t)}</option>)}
               </select>
               <select className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none" value={ssMethod} onChange={e => setSsMethod(e.target.value)}>
                 <option value="">All SS methods</option>
@@ -177,14 +180,14 @@ export function Orders() {
                   <tr className="border-b border-slate-100 text-left text-xs text-slate-500 uppercase">
                     <th className="py-2 pr-2">SKU</th>
                     <th className="py-2 pr-2">Description</th>
-                    <th className="py-2 pr-2">Tier</th>
+                    <th className="py-2 pr-2">Policy</th>
                     <th className="py-2 pr-2">SS Method</th>
-                    <th className="py-2 pr-2 text-right">SL%</th>
+                    <th className="py-2 pr-2 text-right">Fill Target %</th>
                     <th className="py-2 pr-2 text-right">z</th>
                     <th className="py-2 pr-2 text-right">SS</th>
                     <th className="py-2 pr-2 text-right">ROL</th>
                     <th className="py-2 pr-2 text-right">ROQ</th>
-                    <th className="py-2 pr-2 text-right">Net Req</th>
+                    <th className="py-2 pr-2 text-right">Final Qty</th>
                     <th className="py-2 pr-2 text-right">CV</th>
                     <th className="py-2">Urgency</th>
                   </tr>
@@ -198,7 +201,7 @@ export function Orders() {
                       </td>
                       <td className="py-2 pr-2 text-slate-600 max-w-[140px] truncate" title={r.description}>{r.description}</td>
                       <td className="py-2 pr-2">
-                        <span className="text-xs px-1.5 py-0.5 rounded font-medium text-white" style={{ background: TIER_COLOR[r.policy_tier] ?? "#94A3B8" }}>{r.policy_tier}</span>
+                        <span className="text-xs px-1.5 py-0.5 rounded font-medium text-white" style={{ background: TIER_COLOR[r.policy_tier] ?? "#94A3B8" }}>{policyLabel(r.policy_tier)}</span>
                       </td>
                       <td className="py-2 pr-2">
                         <span className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ background: (SS_COLOR[r.ss_method] ?? "#94A3B8") + "22", color: SS_COLOR[r.ss_method] ?? "#64748B" }}>{r.ss_method}</span>
@@ -223,14 +226,62 @@ export function Orders() {
         )}
 
         {/* ── UIO-Based Service Plan ── */}
+        {tab === "review" && (
+          <div className="space-y-3">
+            <p className="text-xs text-slate-500">
+              These lines were proposed but <b>not ordered automatically</b>: each asks for more than 3× what the part
+              actually sold over the last six months (scaled to the 4-month protection interval)
+              {review ? <> — {review.no_demand.toLocaleString()} of them sold nothing at all in that time</> : null}.
+              Confirm, trim or drop each before it goes to the supplier.
+            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left text-slate-500 uppercase">
+                    <th className="py-2 pr-3">Part</th>
+                    <th className="py-2 pr-3">Description</th>
+                    <th className="py-2 pr-3">ABC / FSN</th>
+                    <th className="py-2 pr-3">Policy</th>
+                    <th className="py-2 pr-3 text-right">Held qty</th>
+                    <th className="py-2 pr-3 text-right">Held value</th>
+                    <th className="py-2 pr-3 text-right">Sold, last 6 mo</th>
+                    <th className="py-2 pr-3 text-right">Forecast / mo</th>
+                    <th className="py-2 pr-3 text-right">On hand</th>
+                    <th className="py-2 pr-3 text-right">On order</th>
+                    <th className="py-2">Why held</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(review?.rows ?? []).map(r => (
+                    <tr key={r.material_9} className="border-b border-slate-50 hover:bg-amber-50/40">
+                      <td className="py-1.5 pr-3 font-mono text-slate-700 whitespace-nowrap">{r.material_9}</td>
+                      <td className="py-1.5 pr-3 text-slate-700">{r.description}</td>
+                      <td className="py-1.5 pr-3 text-slate-500">{r.abc} / {r.fsn}</td>
+                      <td className="py-1.5 pr-3 text-slate-500">{policyLabel(r.policy_tier)}</td>
+                      <td className="py-1.5 pr-3 text-right font-semibold text-amber-700 tabular-nums">{Math.round(r.q_review).toLocaleString()}</td>
+                      <td className="py-1.5 pr-3 text-right tabular-nums">LKR {fmt(r.value_review_lkr)}</td>
+                      <td className={`py-1.5 pr-3 text-right tabular-nums ${r.recent_demand_6m <= 0 ? "text-red-500 font-semibold" : "text-slate-600"}`}>{Math.round(r.recent_demand_6m).toLocaleString()}</td>
+                      <td className="py-1.5 pr-3 text-right tabular-nums text-slate-600">{r.forecast_month.toFixed(1)}</td>
+                      <td className="py-1.5 pr-3 text-right tabular-nums text-slate-600">{Math.round(r.stock_on_hand).toLocaleString()}</td>
+                      <td className="py-1.5 pr-3 text-right tabular-nums text-slate-600">{Math.round(r.on_order).toLocaleString()}</td>
+                      <td className="py-1.5 text-slate-500">{r.review_flags}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
         {tab === "uio" && (
           <div className="space-y-5">
             {/* Explanation banner */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-xs text-blue-800">
-              <strong>How this works:</strong> Demand rate is derived from actual MC dealer order history (confirmed quantities).
-              Service plan qty = avg monthly demand × {uioPlan?.horizon_months ?? 5} months
-              ({uioPlan?.horizon_months ? uioPlan.horizon_months - 2 : 3}-month lead time + 2-month buffer).
-              Recommended order = max(service plan qty, current net requirement).
+              <strong>How this works:</strong> Fleet demand comes from the published parc estimate.
+              Protection demand covers {uioPlan?.planning.lead_time_months ?? data.planning.lead_time_months} months of lead time
+              plus {data.planning.review_period_months} month of review ({data.planning.protection_interval_months} months total).
+              Recommended quantity is the selected policy's final order, including MOQ and pack rounding.
+              Policy validation: {data.planning.policy_verdict}. {data.planning.inventory_position_note}.
+
             </div>
 
             {/* KPIs */}
@@ -239,20 +290,20 @@ export function Orders() {
                 <div className="bg-white rounded-xl shadow-sm p-4 border-l-4 border-blue-500">
                   <p className="text-xs text-slate-500 uppercase font-semibold tracking-wide">SKUs with History</p>
                   <p className="text-2xl font-bold text-slate-800 mt-1">{uioPlan.skus_with_history.toLocaleString()}</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">of {uioPlan.total_skus.toLocaleString()} total policy SKUs</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">of {uioPlan.total_skus.toLocaleString()} SKUs with a parc estimate</p>
                 </div>
                 <div className="bg-white rounded-xl shadow-sm p-4 border-l-4 border-purple-500">
                   <p className="text-xs text-slate-500 uppercase font-semibold tracking-wide">Planning Horizon</p>
                   <p className="text-2xl font-bold text-slate-800 mt-1">{uioPlan.horizon_months} months</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">3-mo lead time + 2-mo buffer</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">{data.planning.lead_time_months}-mo lead + {data.planning.review_period_months}-mo review</p>
                 </div>
                 <div className="bg-white rounded-xl shadow-sm p-4 border-l-4 border-teal-500">
-                  <p className="text-xs text-slate-500 uppercase font-semibold tracking-wide">Service Plan Value</p>
+                  <p className="text-xs text-slate-500 uppercase font-semibold tracking-wide">Published Order Value</p>
                   <p className="text-2xl font-bold text-teal-700 mt-1">LKR {fmt(uioPlan.total_service_plan_value)}</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">service_plan_qty × unit value</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">final order quantity times published unit cost</p>
                 </div>
                 <div className={`bg-white rounded-xl shadow-sm p-4 border-l-4 ${uioPlan.value_delta >= 0 ? "border-amber-500" : "border-green-500"}`}>
-                  <p className="text-xs text-slate-500 uppercase font-semibold tracking-wide">vs Rule-Based ROQ</p>
+                  <p className="text-xs text-slate-500 uppercase font-semibold tracking-wide">vs Selected Policy Qty</p>
                   <p className={`text-2xl font-bold mt-1 ${uioPlan.value_delta >= 0 ? "text-amber-600" : "text-green-600"}`}>
                     {uioPlan.value_delta >= 0 ? "+" : ""}LKR {fmt(uioPlan.value_delta)}
                   </p>
@@ -271,8 +322,8 @@ export function Orders() {
               ];
               return (
                 <div className="bg-white rounded-xl shadow-sm p-4">
-                  <p className="text-sm font-semibold text-slate-700 mb-1">Service Plan vs Rule-Based ROQ</p>
-                  <p className="text-xs text-slate-400 mb-3">How many SKUs need more / less / equal order qty compared to the statistical ROQ</p>
+                  <p className="text-sm font-semibold text-slate-700 mb-1">Service Plan vs Selected Policy Qty</p>
+                  <p className="text-xs text-slate-400 mb-3">Fleet demand versus the selected purchase quantity for the displayed rows</p>
                   <div className="flex items-end gap-6 h-24">
                     {chartData.map(d => (
                       <div key={d.label} className="flex flex-col items-center gap-1 flex-1">
@@ -320,12 +371,12 @@ export function Orders() {
                     <th className="py-2 px-3 text-slate-500 uppercase text-right">Hist Months</th>
                     <th className="py-2 px-3 text-slate-500 uppercase text-right">Avg / Month</th>
                     <th className="py-2 px-3 text-center" style={{ background: "#EFF6FF" }}>
-                      <span className="text-blue-700 font-bold uppercase">Service Plan ({uioPlan?.horizon_months ?? 5}mo)</span>
+                      <span className="text-blue-700 font-bold uppercase">Service Plan ({uioPlan?.horizon_months ?? data.planning.protection_interval_months}mo)</span>
                     </th>
                     <th className="py-2 px-3 text-center" style={{ background: "#F8FAFC" }}>
-                      <span className="text-slate-500 font-bold uppercase">Rule-Based ROQ</span>
+                      <span className="text-slate-500 font-bold uppercase">Selected Policy Qty</span>
                     </th>
-                    <th className="py-2 px-3 text-slate-500 uppercase text-right">Net Req</th>
+                    <th className="py-2 px-3 text-slate-500 uppercase text-right">Final Qty</th>
                     <th className="py-2 px-3 text-center" style={{ background: "#F0FDF4" }}>
                       <span className="text-green-700 font-bold uppercase">Recommended</span>
                     </th>
@@ -412,11 +463,11 @@ export function Orders() {
                   <th className="py-2 pr-3">SKU</th>
                   <th className="py-2 pr-3">Description</th>
                   <th className="py-2 pr-3">ABC</th>
-                  <th className="py-2 pr-3">Tier</th>
+                  <th className="py-2 pr-3">Policy</th>
                   <th className="py-2 pr-3 text-right">Avg Demand</th>
                   <th className="py-2 pr-3 text-right">ROL</th>
                   <th className="py-2 pr-3 text-right">ROQ</th>
-                  <th className="py-2 pr-3 text-right">Net Req</th>
+                  <th className="py-2 pr-3 text-right">Final Qty</th>
                   <th className="py-2 pr-3">Urgency</th>
                   <th className="py-2">Sanity Note</th>
                 </tr>
@@ -430,7 +481,7 @@ export function Orders() {
                       <span className="text-xs px-2 py-0.5 rounded-full font-bold text-white" style={{ background: r.abc === "A" ? "#EF4444" : r.abc === "B" ? "#FFC107" : "#2CC56F" }}>{r.abc}</span>
                     </td>
                     <td className="py-2 pr-3">
-                      <span className="text-xs px-1.5 py-0.5 rounded font-medium text-white" style={{ background: { critical:"#EF4444", managed:"#FFC107", watch:"#4361EE", rationalise:"#94A3B8" }[r.policy_tier] ?? "#94A3B8" }}>{r.policy_tier}</span>
+                      <span className="text-xs px-1.5 py-0.5 rounded font-medium text-white" style={{ background: TIER_COLOR[r.policy_tier] ?? "#94A3B8" }}>{policyLabel(r.policy_tier)}</span>
                     </td>
                     <td className="py-2 pr-3 text-right">{r.avg_monthly_demand.toFixed(1)}</td>
                     <td className="py-2 pr-3 text-right">{r.rol.toFixed(0)}</td>

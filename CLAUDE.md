@@ -27,25 +27,30 @@ executes the DAG; `--skip` reuses an expensive upstream stage's artifacts unchan
 | Step | State |
 |---|---|
 | 00 Foundation | ✅ `src/core`, `src/io`, CLI |
-| 01 Catalogue | ⚠️ 219,898 rows from 105/107 PDFs, but **94% of rows resolve to "shared"** — only 47 PDFs had a parseable colour table, so colour-variant assignment is weak |
+| 01 Catalogue | ⚠️ 219,898 rows from 105/107 PDFs, but **94% of rows resolve to "shared"** — only 47 PDFs had a parseable colour table, so colour-variant assignment is weak. The **Catalogues page does not use this**: it runs the previous build's live reader in `src/catalogue/browser/`, which finds colours and sections this stage misses. Model colours there come from the `(*)` marker in the applicable-colour table, and where a PDF carries none they are resolved from the document — 41 marked / 62 parts / 1 listed / 3 none across the 107 catalogues (see `docs/old-ui-backend.md`). Extractions are stored in PostgreSQL (`src/catalogue/store.py`, `POSTGRES_*` in `.env`) and the page reads the stored copy |
 | 02 Part Master | ✅ 30,218 parts, 0 cycles; **12.4%** carry model compatibility |
 | 03 Orders | ✅ 94,920 order lines, fill **0.739**, 13,247 rejected to exceptions |
-| 04 Sales | ⚠️ 112,743 lines; this vintage has **no part numbers**, so sales is description-keyed |
+| 04 Sales | ⚠️ 112,743 lines; this vintage has **no part numbers**, so sales is description-keyed. Revenue 9.10B LKR, margin 30.8% — the export ships **two columns headed "Net Sales"** and the column is now chosen by testing `Net Sales = Sales Pric + Discount` (resolves to `Net Sales_1` at 100%; the other is net of `Surcharge` and made revenue negative) |
 | 05 Order Analysis | ✅ β̂ per part with shrinkage; lead time flagged as the wrong clock (see below) |
 | 06 Classification | ⚠️ quadrants/ABC/XYZ/FSN done; **behaviour class is rules-only**, criticality unset |
 | 07 Model Selection | ✅ rolling-origin backtest, 66 combinations, 6-month sealed holdout |
-| 08 Forecast | ✅ 6,218 SKUs; 2,199 with a parc-driven λ estimate and confidence intervals |
+| 08 Forecast | ✅ 7,242 SKUs. Two fits: `forecast_protection` (to the holdout start, Step 13 validation only) and `forecast_live` (all history — what the order uses). Parc term uses each part's own compatible models' fleet via the catalogue store (4,351 SKUs linked); it carries ~14% of forecast demand |
 | 09 Unit Sales | ✅ 22,087 VINs; geography unusable on 3.5% (office leak) |
 | 10 UIO Cohorts | ✅ import-ban hole survives into the age histogram |
 | 11 Targets | ✅ lag test passes: +10% units → **+1.24%** parts demand in year one |
-| 12 Stock | ⚠️ PDC position built, but **on_order = 0** (see blockers) |
-| 13 Policy | ⚠️ runs; acceptance gate returns **FRONTIER**, not a pass |
-| 14 Monthly Order | ✅ 4,827 lines, ~560M LKR, every line carries a reason |
-| 15 FastAPI | ✅ all endpoints serve marts; `uvicorn src.api.main:app --port 8090` |
+| 12 Stock | ✅ PDC position; On_Orders months read as the month the PO was **raised** (owner, 2026-09-28): 95,603 units in transit, 31.5% of IP. Year still assumed |
+| 13 Policy | ⚠️ gate **FRONTIER** (fill 0.607 vs 0.376 baseline; inventory 379M vs 184M LKR). FSN=N parts now ON_DEMAND/NO_STOCK unless the fleet supports ≥1/month; published s/S use the live forecast |
+| 14 Monthly Order | ✅ 915 placeable lines, ~287M LKR; lines above 3x recent demand are **held for buyer review** (1,169 lines, ~104M LKR, `mart_order_review`) |
+| 15 FastAPI | ✅ all endpoints serve marts; `uvicorn src.api.main:app --port 8090`. Serves the original dashboard at `/` from `frontend/dist`, using `/api/v1` compatibility routes over the new pipeline |
 
 **Blocking unknowns — none of these can be resolved from the supplied files:**
-1. `On_Orders` months carry no year and no arrival/raised flag, so **on_order resolves to
-   zero and IP collapses to on_hand**. Every order quantity is overstated until fixed.
+0. `orders.xlsx` and `sales.xlsx` cover **different populations** — 2025 orders is 44,180
+   lines / 644k units / 278 dealers from one sales office (`W1B1`); billed sales is 79,408
+   lines / 2.76M units / 427 payers (`Seeduwa - PDC`). Billed value is ~9x ordered value, so
+   the two cannot be divided into a fulfilment rate. What `orders.xlsx` is scoped to is unknown.
+1. `On_Orders` months carry no year. The owner decided (2026-09-28) they are the month the PO
+   was **raised**, so the last `lead_time_months` of POs count as in transit; the **year** (2026) is
+   still assumed — confirm with procurement.
 2. Fill-rate targets, holding rate, order cost, MOQ and pack size are **assumed** defaults
    in `Settings`. Step 13's numbers move with them.
 3. No de-registration records, so survival is assumed; three Weibull scenarios are run.
@@ -61,8 +66,18 @@ Its FastAPI app still serves the existing React dashboard so nothing goes dark m
 uvicorn --app-dir legacy src.api.main:app --host 0.0.0.0 --port 8080
 ```
 
-The frontend is rebuilt page by page as new marts land. The old dashboard keeps running until
-the page it serves has a replacement.
+The owner has selected the original UI (`frontend/src`). The new planning API now
+serves its build from `frontend/dist` at `/` and connects its `/api/v1` output
+contracts to the new pipeline. Build it with `cd frontend && npm run build`;
+`npm run dev` proxies to port 8090. See `docs/old-ui-backend.md` for mappings and
+remaining unsupported legacy actions. `frontend/planning/` is preserved as an
+alternative implementation; it is not the default served UI.
+
+```bash
+cd frontend && npm run build:planning   # tsc + vite -> frontend/dist-planning/
+cd frontend && npm run dev:planning     # :5174, proxies /api -> :8090
+cd frontend && npm run smoke:planning   # server-renders all 13 pages; catches blank-page errors
+```
 
 ---
 
@@ -118,7 +133,9 @@ models, never silently swallow a data-quality issue.
 
 ## 6. The data, as verified on disk
 
-Checked 2026-09-22 against `data/raw/`. **These differ from the figures quoted in
+Checked 2026-09-22 against `data/raw/`. **Refreshed 2026-09-27:** the owner replaced `orders.xlsx`
+(now 155,424 lines, 2024-01 → 2026-08) and `MCSI.xlsx` (56,211 rows, registrations 2025-04 → 2026-08);
+the published cycle moved to as_of **2026-09-01**, so On_Orders months are now assumed to be 2026. **These differ from the figures quoted in
 `instructions/`**, which describe a Jan–Aug 2026 extract that is not the file present.
 
 | File | Rows | Coverage | Notes |
@@ -178,6 +195,9 @@ data/
   raw/         source workbooks + parquet mirrors + *.meta.json vintages
   staging/  facts/  marts/  reports/
 tests/         mirrors src/
+frontend/
+  planning/    the new dashboard (React + Vite entry #2) -> dist-planning/, served by the API
+  src/         the legacy dashboard, served by legacy/src/api
 legacy/        the previous build — reference only
 instructions/  the 16 step prompts and design docs
 ```
@@ -193,12 +213,19 @@ uv run python -m src.cli ingest            # workbooks -> parquet (hash-skipped)
 uv run python -m src.cli stages            # list the registered DAG
 uv run python -m src.cli run --as-of 2025-12-01
 uv run python -m src.cli run --only 03_orders
+uv run python -m src.cli catalogue-load     # PDF catalogues -> PostgreSQL (manual; --file for one)
+uv run python -m src.cli pn-yamaha-load     # PN_Yamaha Brand YM -> PostgreSQL (after ingest)
+
+# The API watches data/raw: an edited workbook is re-ingested and the stages downstream of it
+# re-run automatically (src/refresh.py); the cycle as_of follows the order history. Manual:
+# POST /api/v1/pipeline/refresh  (Pipeline page: "Refresh from source files"). Pin with SPI_REFRESH_AS_OF.
 
 uv run pytest -q
 uv run ruff check src tests --fix && uv run ruff format src tests
 uv run mypy src                            # strict on src/core and src/io
 
-uvicorn --app-dir legacy src.api.main:app --port 8080   # old dashboard
+uvicorn src.api.main:app --port 8090                    # API + planning dashboard at /
+uvicorn --app-dir legacy src.api.main:app --port 8080   # old dashboard (being retired)
 ```
 
 ---

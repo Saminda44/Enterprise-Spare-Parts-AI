@@ -7,6 +7,8 @@ import {
   fetchCatalog, fetchPdfTables, catalogFileUrl,
   fetchCatalogFolders, uploadCatalogPdf,
   fetchAgentBuilds, clearAllAgentCache,
+  fetchCatalogueDbStatus, fetchCatalogueDbLoadStatus, loadAllCataloguesToDb,
+  type CatalogueDbStatus, type CatalogueDbLoadStatus,
   type CatalogData, type CatalogModel, type PdfTableResult, type ColourCode,
   type AgentResult, type VariantColourEntry,
 } from "../api/client";
@@ -46,18 +48,23 @@ function variantQty(qty: string, varIdx: number, numVariants: number): string {
   return raw ?? qty;
 }
 
-function CatalogueTable({ data, relPath, pdfUrl, meta, variants, colourCodes, manufactureYear, modelNo, columnLayout, descColourHints }: {
+function CatalogueTable({ data, relPath, pdfUrl, meta, variants, colourCodes, modelColourSource, manufactureYear, modelNo, columnLayout, descColourHints }: {
   data: CatalogueData;
   relPath: string;
   pdfUrl?: string;
-  meta?: { pages: number; sections: number; ocr: number; warnings: string[] };
+  meta?: { pages: number; sections: number; ocr: number; warnings: string[]; source?: "database" | "pdf" };
   variants?: string[];
   colourCodes?: ColourCode[];
+  modelColourSource?: PdfTableResult["model_colour_source"];
   manufactureYear?: string;
   modelNo?: string;
   columnLayout?: string[];
   descColourHints?: Record<string, string>;
 }) {
+  // A filled star claims the catalogue itself marked the colour with (*). Where it did
+  // not, the colour was resolved from the document and the star is hollow.
+  const markedByPdf = modelColourSource === "marked";
+
   const [section,    setSection]    = useState("");
   const [search,     setSearch]     = useState("");
   const [debSearch,  setDebSearch]  = useState("");
@@ -316,6 +323,17 @@ function CatalogueTable({ data, relPath, pdfUrl, meta, variants, colourCodes, ma
         <div className="space-y-1.5 mb-3">
           <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
             <span className="font-medium text-slate-700">{data.total.toLocaleString()} parts extracted</span>
+            {meta.source && (
+              <span
+                title={meta.source === "database"
+                  ? "Served from the catalogue database"
+                  : "Read live from the PDF — not yet saved to the database, changed since it was saved, or the database is unreachable"}
+                className={`rounded px-1.5 py-0.5 text-[10px] font-medium border ${meta.source === "database"
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                  : "bg-amber-50 text-amber-700 border-amber-200"}`}>
+                {meta.source === "database" ? "from database" : "read from PDF"}
+              </span>
+            )}
             <span>·</span><span>{meta.sections} sections</span>
             <span>·</span><span>{meta.pages} pages scanned</span>
             {modelNo && (
@@ -398,14 +416,23 @@ function CatalogueTable({ data, relPath, pdfUrl, meta, variants, colourCodes, ma
               {variantColours.map(c => (
                 <button key={c.abbreviation}
                   onClick={() => { setSelColour(selColour === c.abbreviation ? "" : c.abbreviation); setSection(""); }}
-                  title={`${c.abbreviation} · paint code ${c.code}`}
+                  title={
+                    `${c.abbreviation} · paint code ${c.code}` +
+                    (c.is_model_colour
+                      ? markedByPdf
+                        ? " · model colour, marked (*) in the catalogue"
+                        : " · model colour, resolved from the catalogue (no (*) marker)"
+                      : "")
+                  }
                   className={`px-4 py-1 rounded-full text-xs font-bold shrink-0 transition-colors whitespace-nowrap border flex items-center gap-1 ${
                     selColour === c.abbreviation
                       ? "bg-amber-500 text-white border-amber-500"
                       : "bg-white text-amber-600 border-amber-300 hover:border-amber-500 hover:bg-amber-50"
                   }`}>
                   {c.name}
-                  {c.is_model_colour && <span className="opacity-70">★</span>}
+                  {c.is_model_colour && (
+                    <span className="opacity-70">{markedByPdf ? "★" : "☆"}</span>
+                  )}
                 </button>
               ))}
             </div>
@@ -657,6 +684,7 @@ function PdfCatalogueViewer({ relPath, filename, pdfUrl, onBack }: {
     sections: result.sections_found,
     ocr: result.ocr_flagged,
     warnings: result.warnings,
+    source: result.source,
   } : undefined;
 
   return (
@@ -667,6 +695,7 @@ function PdfCatalogueViewer({ relPath, filename, pdfUrl, onBack }: {
        <CatalogueTable
          data={result} relPath={relPath} pdfUrl={pdfUrl} meta={meta}
          variants={result.variants} colourCodes={result.colour_codes}
+         modelColourSource={result.model_colour_source}
          manufactureYear={result.manufacture_year}
          modelNo={result.model_no}
          columnLayout={result.column_layout}
@@ -696,6 +725,7 @@ function ExtractionModal({ relPath, filename, pdfUrl, onClose }: {
     sections: result.sections_found,
     ocr: result.ocr_flagged,
     warnings: result.warnings,
+    source: result.source,
   } : undefined;
 
   return (
@@ -724,7 +754,7 @@ function ExtractionModal({ relPath, filename, pdfUrl, onClose }: {
         <div className="flex-1 overflow-y-auto p-5">
           {loading ? <LoadingState label="Extracting parts from PDF…" /> :
            !result || result.headers.length === 0 ? <EmptyState /> :
-           <CatalogueTable data={result} relPath={relPath} meta={meta} variants={result.variants} colourCodes={result.colour_codes} manufactureYear={result.manufacture_year} modelNo={result.model_no} columnLayout={result.column_layout} descColourHints={result.desc_colour_hints} />}
+           <CatalogueTable data={result} relPath={relPath} meta={meta} variants={result.variants} colourCodes={result.colour_codes} modelColourSource={result.model_colour_source} manufactureYear={result.manufacture_year} modelNo={result.model_no} columnLayout={result.column_layout} descColourHints={result.desc_colour_hints} />}
         </div>
       </div>
     </div>
@@ -1041,6 +1071,133 @@ function ModelTable({ models, search, onSearch, onSelect }: {
   );
 }
 
+// ── Catalogue database panel ───────────────────────────────────────────────────
+// The manual step for a new installation (or after PDFs are copied in): extract the
+// PDF catalogues and save them to the database the page then reads from.
+
+function DatabasePanel({ refreshKey }: { refreshKey: number }) {
+  const [status, setStatus] = useState<CatalogueDbStatus | null>(null);
+  const [job,    setJob]    = useState<CatalogueDbLoadStatus | null>(null);
+  const [force,  setForce]  = useState(false);
+  const [starting, setStarting] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const poll = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const refresh = useCallback(() => {
+    fetchCatalogueDbStatus().then(setStatus).catch(() => setStatus(null));
+  }, []);
+
+  const stopPolling = () => { if (poll.current) { clearInterval(poll.current); poll.current = null; } };
+
+  const startPolling = useCallback(() => {
+    stopPolling();
+    poll.current = setInterval(async () => {
+      try {
+        const s = await fetchCatalogueDbLoadStatus();
+        setJob(s);
+        if (!s.running) {
+          stopPolling();
+          refresh();
+          setMessage(s.error
+            ? `Load failed: ${s.error}`
+            : `Done — ${s.loaded ?? 0} saved, ${s.skipped ?? 0} already current, ${s.excluded ?? 0} excluded, ${s.failed?.length ?? 0} failed`
+              + (s.pn_yamaha ? ` · PN_Yamaha ${s.pn_yamaha.loaded.toLocaleString()} materials loaded` : ""));
+        }
+      } catch { /* transient; next tick retries */ }
+    }, 3000);
+  }, [refresh]);
+
+  // Pick up a load already running (e.g. started from another tab) and the stored counts.
+  useEffect(() => {
+    refresh();
+    fetchCatalogueDbLoadStatus().then(s => {
+      setJob(s);
+      if (s.running) startPolling();
+    }).catch(() => {});
+    return stopPolling;
+  }, [refresh, startPolling, refreshKey]);
+
+  const handleLoad = async () => {
+    setStarting(true);
+    setMessage(null);
+    try {
+      const res = await loadAllCataloguesToDb(force);
+      if (!res.queued) setMessage(res.message ?? "A load is already running");
+      startPolling();
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Could not start the load");
+    } finally {
+      setStarting(false);
+    }
+  };
+
+  const running = !!job?.running;
+  const pct = running && job?.total ? Math.round(((job.done ?? 0) / job.total) * 100) : 0;
+  const notLoaded = status?.not_loaded?.length ?? 0;
+  const excludedCount = status?.excluded ? Object.keys(status.excluded).length : 0;
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 space-y-2">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-xs font-semibold text-slate-700">Catalogue database</span>
+        {status === null ? (
+          <span className="text-xs text-slate-400">checking…</span>
+        ) : !status.reachable ? (
+          <span className="flex items-center gap-1 text-xs text-red-600" title={status.error}>
+            <AlertTriangle size={12} /> not reachable — pages read PDFs directly
+          </span>
+        ) : (
+          <span className="flex items-center gap-1 text-xs text-slate-600">
+            {notLoaded === 0
+              ? <CheckCircle2 size={12} className="text-emerald-600" />
+              : <AlertTriangle size={12} className="text-amber-600" />}
+            {status.loaded ?? 0} of {status.on_disk} PDFs saved
+            {excludedCount > 0 && <> · {excludedCount} excluded</>}
+            {notLoaded > 0 && <> · <span className="text-amber-700 font-medium">{notLoaded} not saved yet</span></>}
+            {" · "}
+            {status.pn_yamaha && status.pn_yamaha.rows > 0
+              ? <>PN_Yamaha {status.pn_yamaha.rows.toLocaleString()} materials ({status.pn_yamaha.matched.toLocaleString()} in catalogues)</>
+              : <span className="text-amber-700 font-medium">PN_Yamaha not loaded</span>}
+          </span>
+        )}
+        <div className="ml-auto flex items-center gap-3">
+          <label className="flex items-center gap-1.5 text-xs text-slate-600" title="Also re-extract PDFs that are already saved and unchanged">
+            <input type="checkbox" checked={force} disabled={running}
+              onChange={e => setForce(e.target.checked)} />
+            Re-extract all
+          </label>
+          <button
+            onClick={handleLoad}
+            disabled={running || starting || (status !== null && !status.reachable)}
+            title="Extract the PDF catalogues and save them to the database, then load PN_Yamaha (Brand YM)"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-brand-blue text-white hover:opacity-90 transition-opacity disabled:opacity-50">
+            {running || starting ? <Loader2 size={12} className="animate-spin" /> : null}
+            {running ? "Extracting…" : "Extract & save to database"}
+          </button>
+        </div>
+      </div>
+      {running && (
+        <div className="space-y-1">
+          <div className="h-1.5 w-full rounded bg-slate-200 overflow-hidden">
+            <div className="h-full bg-brand-blue transition-all" style={{ width: `${pct}%` }} />
+          </div>
+          <div className="text-[11px] text-slate-500">
+            {job?.done ?? 0} / {job?.total ?? 0} · {job?.loaded ?? 0} saved
+            {job?.current ? <> · last: <span className="font-mono">{job.current}</span></> : null}
+            {" "}— about 10 s per PDF; you can leave this page open or come back later.
+          </div>
+        </div>
+      )}
+      {message && <div className="text-[11px] text-slate-600">{message}</div>}
+      {!running && job?.failed && job.failed.length > 0 && (
+        <ul className="text-[11px] text-red-600 list-disc pl-4">
+          {job.failed.map(f => <li key={f.source_file}><span className="font-mono">{f.source_file}</span>: {f.error}</li>)}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 type MainTab = "pdf" | "upload";
@@ -1053,8 +1210,11 @@ export function Catalog() {
   const [clearingCache, setClearingCache] = useState(false);
   const [clearMsg,      setClearMsg]      = useState<string | null>(null);
 
+  const [dbRefresh,     setDbRefresh]     = useState(0);
+
   const loadCatalog = useCallback(() => {
     fetchCatalog().then(setPdfData);
+    setDbRefresh(k => k + 1);  // a new upload changes what is saved
   }, []);
 
   const handleClearAllCache = async () => {
@@ -1116,6 +1276,8 @@ export function Catalog() {
               )}
             </div>
           </div>
+
+          <DatabasePanel refreshKey={dbRefresh} />
 
           {mainTab === "pdf" && pdfData && (
             <ModelTable

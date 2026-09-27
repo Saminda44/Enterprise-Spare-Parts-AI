@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
   ComposedChart, Line, Legend, PieChart, Pie,
@@ -16,18 +16,83 @@ const PROV_COLORS   = ["#4361EE","#7C3AED","#2CC56F","#F97316","#EF4444","#06B6D
 
 // Map the actual SAP color name to a visual hex for charts.
 // Priority order matters: "REDDISH YELLOW" must be checked before "RED".
+// A colour family is chosen from the MCSI colour name; within a family each name gets
+// its own shade (stable, from the name), so "BLACK METALLIC X", "MAT BLACK 2" and
+// "LOW GLOSS BLACK" stay distinguishable when stacked.
+const COLOR_FAMILIES: Record<string, string[]> = {
+  yellow: ["#FFC107", "#FACC15", "#EAB308"],
+  orange: ["#F97316", "#FB923C", "#EA580C"],
+  green:  ["#2CC56F", "#16A34A", "#4ADE80", "#15803D"],
+  cyan:   ["#06B6D4", "#22D3EE", "#0891B2"],
+  blue:   ["#4361EE", "#1D4ED8", "#6366F1", "#3B82F6", "#7C3AED"],
+  red:    ["#EF4444", "#DC2626", "#F87171"],
+  gray:   ["#94A3B8", "#64748B", "#CBD5E1", "#475569", "#A1A1AA"],
+  black:  ["#0F172A", "#1E293B", "#334155", "#3F3F46"],
+  white:  ["#E2E8F0", "#F1F5F9"],
+  other:  ["#CBD5E1", "#A8A29E"],
+};
+
+function colorFamily(u: string): string {
+  if (u.includes("YELLOW")) return "yellow";
+  if (u.includes("ORANGE")) return "orange";
+  if (u.includes("GREEN"))  return "green";
+  if (u.includes("CYAN"))   return "cyan";
+  if (u.includes("PURPLISH RED") || u.includes("DUL RED") || /\bRED\b/.test(u)) return "red";
+  if (u.includes("BLUE") || u.includes("PURPLISH")) return "blue";
+  if (u.includes("GRAY") || u.includes("GREY") || u.includes("SILVER")) return "gray";
+  if (u.includes("BLACK"))  return "black";
+  if (u.includes("WHITE"))  return "white";
+  return "other";
+}
+
+// Step `rank` of a shade ramp built from a family swatch: rank 0 is the swatch itself, each
+// later rank mixes further toward white (toward slate for light swatches such as White).
+function familyShade(hex: string, rank: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const rgb = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  const target = isLightHex(hex) ? [100, 116, 139] : [255, 255, 255];
+  const t = Math.min(0.78, rank * 0.16);
+  const mixed = rgb.map((c, i) => Math.round(c + (target[i] - c) * t));
+  return "#" + mixed.map(c => c.toString(16).padStart(2, "0")).join("");
+}
+
+// One label and one representative swatch per family, for the family analysis.
+const FAMILY_META: Record<string, { label: string; swatch: string }> = {
+  black:  { label: "Black",         swatch: "#0F172A" },
+  gray:   { label: "Gray / Silver", swatch: "#94A3B8" },
+  blue:   { label: "Blue",          swatch: "#4361EE" },
+  cyan:   { label: "Cyan",          swatch: "#06B6D4" },
+  green:  { label: "Green",         swatch: "#2CC56F" },
+  red:    { label: "Red",           swatch: "#EF4444" },
+  orange: { label: "Orange",        swatch: "#F97316" },
+  yellow: { label: "Yellow",        swatch: "#FFC107" },
+  white:  { label: "White",         swatch: "#E2E8F0" },
+  other:  { label: "Other",         swatch: "#A8A29E" },
+};
+
 function getColorHex(name: string): string {
   const u = name.toUpperCase();
-  if (u.includes("REDDISH YELLOW") || u.includes("YELLOW COCKTAIL")) return "#FFC107";
-  if (u.includes("YELLOW"))   return "#FFC107";
-  if (u.includes("ORANGE"))   return "#F97316";
-  if (u.includes("GREEN"))    return "#2CC56F";
-  if (u.includes("CYAN"))     return "#06B6D4";
-  if (u.includes("BLUE") || u.includes("PURPLISH")) return "#4361EE";
-  if (u.includes("GRAY") || u.includes("GREY"))     return "#94A3B8";
-  if (u.includes("RED"))      return "#EF4444";
-  if (u.includes("BLACK"))    return "#1E293B";
-  return "#CBD5E1";
+  const shades = COLOR_FAMILIES[colorFamily(u)];
+  let hash = 0;
+  for (let i = 0; i < u.length; i++) hash = (hash * 31 + u.charCodeAt(i)) >>> 0;
+  return shades[hash % shades.length];
+}
+
+// Light fills (whites, pale greys, yellows) need dark text and an outline to stay readable.
+function isLightHex(hex: string): boolean {
+  const n = parseInt(hex.slice(1), 16);
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  return 0.299 * r + 0.587 * g + 0.114 * b > 170;
+}
+
+function pillStyle(name: string): CSSProperties {
+  const bg = getColorHex(name);
+  const light = isLightHex(bg);
+  return {
+    background: bg,
+    color: light ? "#1E293B" : "#FFFFFF",
+    boxShadow: light ? "inset 0 0 0 1px #94A3B8" : undefined,
+  };
 }
 
 function fmt(n: number) {
@@ -51,6 +116,11 @@ export function McsiEDA() {
   const [geoModel,      setGeoModel]      = useState<GeoModelData | null>(null);
   const [geoModelColor, setGeoModelColor] = useState<GeoModelData | null>(null);
   const [hoveredModel,  setHoveredModel]  = useState<string | null>(null);
+  const [hoveredColor,  setHoveredColor]  = useState<string | null>(null);
+  const [colorView,     setColorView]     = useState<"colour" | "family">("colour");
+  const [hoveredFamily, setHoveredFamily] = useState<string | null>(null);
+  const [hoveredFamModel, setHoveredFamModel] = useState<string | null>(null);
+  const [collapsedFams, setCollapsedFams] = useState<Set<string>>(new Set());
 
   useEffect(() => { fetchMcsiEda().then(setData); }, []);
   useEffect(() => { fetchDealerModelMatrix().then(setDealerMatrix); }, []);
@@ -92,8 +162,14 @@ export function McsiEDA() {
   })();
 
   // ── Color tab data prep ─────────────────────────────────────────────────────
-  // Collect all canonical color names present in the data
-  const colorKeys = [...new Set(by_color.map(r => r.color))].sort();
+  // Colour totals across all models; colours are ordered biggest first, so the legend
+  // reads as a ranking and the stack starts with the dominant colour.
+  const colorTotals = by_color.reduce<Record<string, number>>((acc, r) => {
+    acc[r.color] = (acc[r.color] ?? 0) + r.units_sold;
+    return acc;
+  }, {});
+  const colorGrandTotal = Object.values(colorTotals).reduce((s, v) => s + v, 0);
+  const colorKeys = Object.keys(colorTotals).sort((a, b) => colorTotals[b] - colorTotals[a]);
   // Pivot: one row per model with a key per color (values are number | string)
   type ColorBarRow = Record<string, number | string>;
   const colorBarData: ColorBarRow[] = Object.values(
@@ -108,9 +184,48 @@ export function McsiEDA() {
     return totalB - totalA;
   });
 
+  // ── Colour family prep: each MCSI colour rolls up to its family (same rule as the chart shades)
+  type FamilyStat = { family: string; units: number; colours: Set<string>; models: Map<string, number> };
+  const familyStats: Record<string, FamilyStat> = {};
+  const modelFamily: Record<string, Record<string, number>> = {};
+  for (const r of by_color) {
+    const fam = colorFamily(r.color.toUpperCase());
+    const st = (familyStats[fam] ??= { family: fam, units: 0, colours: new Set(), models: new Map() });
+    st.units += r.units_sold;
+    st.colours.add(r.color);
+    st.models.set(r.model, (st.models.get(r.model) ?? 0) + r.units_sold);
+    const mf = (modelFamily[r.model] ??= {});
+    mf[fam] = (mf[fam] ?? 0) + r.units_sold;
+  }
+  const familyKeys = Object.keys(familyStats).sort((a, b) => familyStats[b].units - familyStats[a].units);
+  const familyTotal = familyKeys.reduce((s, f) => s + familyStats[f].units, 0);
+  const familyModels = Object.keys(modelFamily)
+    .map(model => ({ model, total: Object.values(modelFamily[model]).reduce((s, v) => s + v, 0) }))
+    .sort((a, b) => b.total - a.total);
+  // One row per family with a key per model (units); the chart expands each bar to 100%.
+  const familyModelData = familyKeys.map(f => {
+    const st = familyStats[f];
+    const row: Record<string, number | string> = {
+      label: FAMILY_META[f].label, _key: f, _total: st.units, unitsLabel: st.units.toLocaleString(),
+    };
+    for (const [model, units] of st.models) row[model] = units;
+    return row;
+  });
+  // Each family bar is drawn in shades of that family's own colour: the model with the most
+  // units gets the family swatch, the next ones step lighter (darker for White).
+  const familyModelRank = new Map(familyKeys.map(f => [
+    f,
+    new Map([...familyStats[f].models.entries()].sort((a, b) => b[1] - a[1]).map(([m], i) => [m, i])),
+  ]));
+  const shadeFor = (fam: string, model: string) =>
+    familyShade(FAMILY_META[fam].swatch, familyModelRank.get(fam)?.get(model) ?? 0);
+  const pctOf = (v: number, t: number) => (t ? (v / t) * 100 : 0).toFixed(1);
+
   // Pie data for model share
-  const modelPie = by_model.slice(0, 8).map((r, i) => ({
-    name: r.model, value: r.units_sold, share_pct: r.share_pct, fill: MODEL_COLORS[i % MODEL_COLORS.length],
+  // "FZ FI V2 (B1N2)": the model name with its code, as the chart, pie and table show it.
+  const modelRows = by_model.map(r => ({ ...r, label: r.model_label || r.model }));
+  const modelPie = modelRows.slice(0, 8).map((r, i) => ({
+    name: r.label, value: r.units_sold, share_pct: r.share_pct, fill: MODEL_COLORS[i % MODEL_COLORS.length],
   }));
 
   return (
@@ -119,7 +234,7 @@ export function McsiEDA() {
       <div>
         <h2 className="text-xl font-bold text-slate-800">MCSI Motorcycle Sales EDA</h2>
         <p className="text-xs text-slate-500 mt-0.5">
-          Stage 1 · VIN-level sold/returned classification · {kpis.date_from} → {kpis.date_to}
+          Step 09 · VIN-level sold/returned classification · {kpis.date_from} → {kpis.date_to}
         </p>
       </div>
 
@@ -128,7 +243,7 @@ export function McsiEDA() {
         <KpiCard label="Total VINs Processed" value={fmt(kpis.total_vins)}
           sub={`${kpis.date_from} → ${kpis.date_to}`} color="blue"/>
         <KpiCard label="Bikes Sold" value={fmt(kpis.sold)}
-          sub={`avg ${kpis.avg_monthly_units} / month`} color="green" icon={<TrendingUp size={18}/>}/>
+          sub={`avg ${Math.round(kpis.avg_monthly_units).toLocaleString()} / month`} color="green" icon={<TrendingUp size={18}/>}/>
         <KpiCard label="Returns" value={fmt(kpis.returned)}
           sub={`${kpis.return_rate_pct.toFixed(2)}% return rate`}
           color={kpis.return_rate_pct > 5 ? "red" : "amber"} icon={<RotateCcw size={18}/>}/>
@@ -180,12 +295,18 @@ export function McsiEDA() {
                   {kpis.return_rate_pct.toFixed(2)}%
                 </span>
                 <span className="ml-3 font-normal text-slate-500 text-xs">
-                  ({kpis.returned.toLocaleString()} returned out of {kpis.total_vins.toLocaleString()} total VINs)
+                  ({kpis.returned.toLocaleString()} returned out of {(kpis.sold + kpis.returned).toLocaleString()} VINs)
                 </span>
               </p>
               <p className="text-xs text-slate-500 mt-0.5">
-                Business rule: VIN with SlsVolQty sum = 0 is classified as returned; sum = 1 as sold.
+                Business rule: a VIN whose SlsVolQty sums to 1 is sold; one whose SlsVolQty sums to 0 is returned.
               </p>
+              {(kpis.billing_reversals ?? 0) > 0 && (
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Not counted as returns: {kpis.billing_reversals!.toLocaleString()} billing reversal row(s) (SlsVolQty −1);
+                  {" "}{(kpis.rebilled_vins ?? 0).toLocaleString()} of those VINs were re-invoiced and are counted once, as sold.
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -197,11 +318,11 @@ export function McsiEDA() {
               {/* Horizontal bar */}
               <div>
                 <h3 className="text-sm font-semibold text-slate-700 mb-3">Units Sold by Model</h3>
-                <ResponsiveContainer width="100%" height={Math.max(200, by_model.length * 30)}>
-                  <BarChart data={by_model} layout="vertical" margin={{ top: 0, right: 60, left: 10, bottom: 0 }}>
+                <ResponsiveContainer width="100%" height={Math.max(200, modelRows.length * 30)}>
+                  <BarChart data={modelRows} layout="vertical" margin={{ top: 0, right: 60, left: 10, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" horizontal={false}/>
                     <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={fmt}/>
-                    <YAxis type="category" dataKey="model" tick={{ fontSize: 9 }} width={140}/>
+                    <YAxis type="category" dataKey="label" tick={{ fontSize: 9 }} width={190}/>
                     <Tooltip formatter={(v: unknown) => Number(v).toLocaleString()}/>
                     <Bar dataKey="units_sold" radius={[0, 3, 3, 0]} label={{ position: "right", fontSize: 10 }}>
                       {by_model.map((_, i) => <Cell key={i} fill={MODEL_COLORS[i % MODEL_COLORS.length]}/>)}
@@ -216,7 +337,7 @@ export function McsiEDA() {
                 <ResponsiveContainer width="100%" height={220}>
                   <PieChart>
                     <Pie data={modelPie} cx="50%" cy="50%" outerRadius={85} dataKey="value" nameKey="name"
-                      label={(props: any) => `${props.name}: ${props.share_pct}%`}
+                      label={(props: any) => `${props.name}: ${Number(props.share_pct).toFixed(2)}%`}
                       labelLine={false}>
                       {modelPie.map((d, i) => <Cell key={i} fill={d.fill}/>)}
                     </Pie>
@@ -239,15 +360,18 @@ export function McsiEDA() {
                   </tr>
                 </thead>
                 <tbody>
-                  {by_model.map((r, i) => (
+                  {modelRows.map((r, i) => (
                     <tr key={r.model} className="border-b border-slate-50 hover:bg-slate-50/50">
                       <td className="py-2 pr-3 flex items-center gap-2">
                         <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
                           style={{ background: MODEL_COLORS[i % MODEL_COLORS.length] }}/>
-                        <span className="font-medium text-slate-800">{r.model}</span>
+                        <span className="font-medium text-slate-800">{r.model_description || r.model}</span>
+                        {r.model_description && (
+                          <span className="font-mono text-xs text-slate-400">{r.model}</span>
+                        )}
                       </td>
                       <td className="py-2 pr-3 text-right font-semibold text-brand-blue">{r.units_sold.toLocaleString()}</td>
-                      <td className="py-2 pr-3 text-right text-slate-500">{r.share_pct.toFixed(1)}%</td>
+                      <td className="py-2 pr-3 text-right text-slate-500">{r.share_pct.toFixed(2)}%</td>
                       <td className="py-2 pr-3 text-right">{fmt(r.revenue_lkr)}</td>
                       <td className="py-2 text-right text-slate-500">{fmt(r.avg_revenue_per_unit)}</td>
                     </tr>
@@ -260,35 +384,380 @@ export function McsiEDA() {
 
         {/* ── By Color ── */}
         {tab === "color" && (
-          <div className="space-y-5">
+          <div className="flex gap-1 border-b border-slate-100 pb-2 mb-5">
+            {(["colour", "family"] as const).map(v => (
+              <button key={v} onClick={() => setColorView(v)}
+                className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${
+                  colorView === v ? "bg-brand-blue text-white" : "text-slate-500 hover:bg-slate-50"
+                }`}>
+                {v === "colour" ? "By Colour" : "By Colour Family"}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {tab === "color" && colorView === "family" && (
+          <div className="space-y-6">
             <div>
-              <h3 className="text-sm font-semibold text-slate-700 mb-1">Model Sales by Color — Stacked Units</h3>
+              <h3 className="text-sm font-semibold text-slate-700 mb-1">Colour Family Mix</h3>
               <p className="text-xs text-slate-400 mb-3">
-                Sold bikes only · Colors extracted from Material description · SKUs with no identifiable color are excluded
+                Each MCSI colour grouped into its family by name (e.g. MAT BLACK 2 and LOW GLOSS BLACK → Black;
+                GRAYISH GREEN → Green) · sold VINs only · {familyTotal.toLocaleString()} units
               </p>
-              <ResponsiveContainer width="100%" height={Math.max(260, colorBarData.length * 42)}>
-                <BarChart data={colorBarData} layout="vertical" margin={{ top: 5, right: 60, left: 10, bottom: 0 }}>
+
+              {/* Overall mix as one 100% bar */}
+              <div className="flex h-7 w-full rounded-md overflow-hidden ring-1 ring-slate-200">
+                {familyKeys.map(f => {
+                  const share = familyTotal ? familyStats[f].units / familyTotal : 0;
+                  const sw = FAMILY_META[f].swatch;
+                  return (
+                    <div key={f} title={`${FAMILY_META[f].label}: ${pctOf(familyStats[f].units, familyTotal)}%`}
+                      onMouseEnter={() => setHoveredFamily(f)} onMouseLeave={() => setHoveredFamily(null)}
+                      className="h-full flex items-center justify-center text-[10px] font-semibold transition-opacity"
+                      style={{ width: `${share * 100}%`, background: sw,
+                        color: isLightHex(sw) ? "#1E293B" : "#FFFFFF",
+                        opacity: hoveredFamily && hoveredFamily !== f ? 0.25 : 1 }}>
+                      {share >= 0.06 ? `${FAMILY_META[f].label} ${pctOf(familyStats[f].units, familyTotal)}%` : ""}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Family cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              {familyKeys.map(f => {
+                const st = familyStats[f];
+                const sw = FAMILY_META[f].swatch;
+                const [topModel, topUnits] = [...st.models.entries()].sort((a, b) => b[1] - a[1])[0];
+                const dim = hoveredFamily !== null && hoveredFamily !== f;
+                return (
+                  <div key={f}
+                    onMouseEnter={() => setHoveredFamily(f)} onMouseLeave={() => setHoveredFamily(null)}
+                    className={`rounded-lg border border-slate-200 p-3 transition-opacity ${dim ? "opacity-40" : ""}`}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="w-3.5 h-3.5 rounded-sm shrink-0"
+                        style={{ background: sw, boxShadow: isLightHex(sw) ? "inset 0 0 0 1px #94A3B8" : undefined }}/>
+                      <span className="text-sm font-semibold text-slate-800 flex-1">{FAMILY_META[f].label}</span>
+                      <span className="text-xs font-semibold text-slate-500 tabular-nums">{pctOf(st.units, familyTotal)}%</span>
+                    </div>
+                    <div className="text-xl font-bold text-slate-800 tabular-nums">{st.units.toLocaleString()}
+                      <span className="text-xs font-normal text-slate-400 ml-1">units</span>
+                    </div>
+                    <div className="text-[11px] text-slate-500 mt-1">
+                      {st.colours.size} colour{st.colours.size === 1 ? "" : "s"} · offered on {st.models.size} model{st.models.size === 1 ? "" : "s"}
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      Top model: <span className="text-slate-700 font-medium">{topModel}</span> ({pctOf(topUnits, st.units)}%)
+                    </div>
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {[...st.colours].sort().map(c => (
+                        <span key={c} className="text-[10px] px-1.5 py-0.5 rounded font-medium" style={pillStyle(c)}>{c}</span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Each colour family, split by the models that sell it */}
+            <div>
+              <h3 className="text-sm font-semibold text-slate-700 mb-1">Colour Family by Model</h3>
+              <p className="text-xs text-slate-400 mb-3">
+                Each bar is 100% of one colour family's sold units, split by the models that carry it ·
+                drawn in that family's colour, darkest = model with the most units · units on the right ·
+                hover a model below to pick it out
+              </p>
+
+              {/* Model legend: biggest model first, with its total units */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-1 mb-4">
+                {familyModels.map(({ model, total }) => {
+                  const dim = hoveredFamModel !== null && hoveredFamModel !== model;
+                  return (
+                    <div key={model}
+                      onMouseEnter={() => setHoveredFamModel(model)}
+                      onMouseLeave={() => setHoveredFamModel(null)}
+                      className={`flex items-center gap-2 px-2 py-1 rounded-md cursor-default transition-opacity ${
+                        hoveredFamModel === model ? "bg-slate-100" : "hover:bg-slate-50"} ${dim ? "opacity-40" : ""}`}>
+                      <span className="text-xs text-slate-700 truncate flex-1" title={model}>{model}</span>
+                      <span className="text-xs font-semibold text-slate-800 tabular-nums">{total.toLocaleString()}</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <ResponsiveContainer width="100%" height={Math.max(220, familyModelData.length * 46)}>
+                <BarChart data={familyModelData} layout="vertical" stackOffset="expand"
+                  margin={{ top: 5, right: 70, left: 10, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" horizontal={false}/>
-                  <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={v => Number(v).toLocaleString()}/>
-                  <YAxis type="category" dataKey="model" tick={{ fontSize: 9 }} width={165}/>
-                  <Tooltip formatter={(v: unknown, name: unknown) => [Number(v).toLocaleString() + " units", String(name)]}/>
-                  <Legend wrapperStyle={{ fontSize: 11 }} iconType="square"/>
-                  {colorKeys.map(color => (
-                    <Bar key={color} dataKey={color} stackId="a" name={color}
-                      fill={getColorHex(color)} radius={[0, 0, 0, 0]}/>
+                  <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={v => `${Math.round(Number(v) * 100)}%`}/>
+                  <YAxis type="category" dataKey="label" tick={{ fontSize: 11 }} width={110}/>
+                  <YAxis yAxisId="units" orientation="right" type="category" dataKey="unitsLabel"
+                    tick={{ fontSize: 10, fill: "#64748B" }} axisLine={false} tickLine={false} width={60}/>
+                  <Tooltip cursor={{ fill: "#F8FAFC" }} content={({ active, payload }) => {
+                    if (!active || !payload?.length) return null;
+                    const row = payload[0].payload as Record<string, number | string>;
+                    const fam = String(row._key);
+                    const total = Number(row._total);
+                    const items = [...familyStats[fam].models.entries()].sort((a, b) => b[1] - a[1]);
+                    return (
+                      <div className="bg-white border border-slate-200 rounded-lg shadow-lg px-3 py-2 text-xs">
+                        <div className="flex items-center gap-2 font-semibold text-slate-800 mb-1">
+                          <span className="w-2.5 h-2.5 rounded-sm"
+                            style={{ background: FAMILY_META[fam].swatch,
+                              boxShadow: isLightHex(FAMILY_META[fam].swatch) ? "inset 0 0 0 1px #94A3B8" : undefined }}/>
+                          {FAMILY_META[fam].label} — shared by {items.length} model{items.length === 1 ? "" : "s"}
+                        </div>
+                        {items.map(([model, units]) => (
+                          <div key={model} className="flex items-center gap-2 py-0.5">
+                            <span className="w-2.5 h-2.5 rounded-sm shrink-0"
+                              style={{ background: shadeFor(fam, model),
+                                boxShadow: isLightHex(shadeFor(fam, model)) ? "inset 0 0 0 1px #94A3B8" : undefined }}/>
+                            <span className="text-slate-600 flex-1">{model}</span>
+                            <span className="font-semibold text-slate-800 tabular-nums ml-4">{units.toLocaleString()}</span>
+                            <span className="text-slate-400 tabular-nums w-12 text-right">{pctOf(units, total)}%</span>
+                          </div>
+                        ))}
+                        <div className="flex justify-between border-t border-slate-100 mt-1 pt-1 text-slate-500">
+                          <span>Total</span><span className="tabular-nums">{total.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    );
+                  }}/>
+                  {familyModels.map(({ model }) => (
+                    <Bar key={model} dataKey={model} stackId="fm" name={model}
+                      stroke="#FFFFFF" strokeWidth={1.5}
+                      fillOpacity={hoveredFamModel !== null && hoveredFamModel !== model ? 0.15 : 1}
+                      label={(props: { x?: number | string; y?: number | string; width?: number | string;
+                                       height?: number | string; index?: number }) => {
+                        const x = Number(props.x), y = Number(props.y);
+                        const w = Number(props.width), h = Number(props.height);
+                        const row = familyModelData[props.index ?? 0];
+                        if (!row || !(Number(row[model]) > 0) || w < 60) return <g/>;
+                        const fill = shadeFor(String(row._key), model);
+                        const maxChars = Math.floor((w - 8) / 5.6);
+                        const text = model.length > maxChars ? model.slice(0, Math.max(0, maxChars - 1)) + "…" : model;
+                        return (
+                          <text x={x + w / 2} y={y + h / 2} dy={3.5} textAnchor="middle" fontSize={10}
+                            fontWeight={600} pointerEvents="none"
+                            fill={isLightHex(fill) ? "#1E293B" : "#FFFFFF"}
+                            opacity={hoveredFamModel !== null && hoveredFamModel !== model ? 0.2 : 1}>
+                            {text}
+                          </text>
+                        );
+                      }}>
+                      {familyModelData.map(row => (
+                        <Cell key={String(row._key)} fill={shadeFor(String(row._key), model)}/>
+                      ))}
+                    </Bar>
                   ))}
                 </BarChart>
               </ResponsiveContainer>
             </div>
 
-            {/* Color legend pills */}
-            <div className="flex flex-wrap gap-2">
-              {colorKeys.map(color => (
-                <span key={color} className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium text-white"
-                  style={{ background: getColorHex(color) }}>
-                  {color}
-                </span>
-              ))}
+            {/* Family → model table, same shape and shading as the chart above */}
+            <div className="overflow-x-auto">
+              <div className="flex items-center mb-2">
+                <h3 className="text-sm font-semibold text-slate-700">Colour Family by Model — Detail</h3>
+                <div className="ml-auto flex gap-1">
+                  <button onClick={() => setCollapsedFams(new Set())}
+                    className="px-2.5 py-1 text-xs rounded-md font-medium border text-slate-500 border-slate-200 hover:bg-slate-50">
+                    Expand all
+                  </button>
+                  <button onClick={() => setCollapsedFams(new Set(familyKeys))}
+                    className="px-2.5 py-1 text-xs rounded-md font-medium border text-slate-500 border-slate-200 hover:bg-slate-50">
+                    Collapse all
+                  </button>
+                </div>
+              </div>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 text-xs text-slate-500 uppercase">
+                    <th className="py-2 pr-3 text-left">Family / Model</th>
+                    <th className="py-2 px-2 text-right">Units</th>
+                    <th className="py-2 px-2 text-left w-[32%]">Share of family</th>
+                    <th className="py-2 px-2 text-right" title="How much of the model's own sales this family is">Share of model</th>
+                    <th className="py-2 pl-2 text-right">Share of all units</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {familyKeys.map(f => {
+                    const st = familyStats[f];
+                    const sw = FAMILY_META[f].swatch;
+                    const open = !collapsedFams.has(f);
+                    const models = [...st.models.entries()].sort((a, b) => b[1] - a[1]);
+                    return [
+                      <tr key={f} className="border-t border-slate-200 bg-slate-50 cursor-pointer select-none hover:bg-slate-100"
+                        onClick={() => setCollapsedFams(prev => {
+                          const next = new Set(prev);
+                          if (next.has(f)) next.delete(f); else next.add(f);
+                          return next;
+                        })}>
+                        <td className="py-2 pr-3">
+                          <span className="inline-flex items-center gap-2">
+                            <span className="text-slate-400 text-xs w-3">{open ? "▾" : "▸"}</span>
+                            <span className="w-3.5 h-3.5 rounded-sm shrink-0"
+                              style={{ background: sw, boxShadow: isLightHex(sw) ? "inset 0 0 0 1px #94A3B8" : undefined }}/>
+                            <span className="font-semibold text-slate-800">{FAMILY_META[f].label}</span>
+                            <span className="text-xs text-slate-400">
+                              {models.length} model{models.length === 1 ? "" : "s"} · {st.colours.size} colour{st.colours.size === 1 ? "" : "s"}
+                            </span>
+                          </span>
+                        </td>
+                        <td className="py-2 px-2 text-right font-bold text-slate-800 tabular-nums">{st.units.toLocaleString()}</td>
+                        <td className="py-2 px-2">
+                          {/* the family's model split, as a mini version of its chart bar */}
+                          <div className="flex h-3 w-full rounded-sm overflow-hidden">
+                            {models.map(([m, u]) => (
+                              <div key={m} title={`${m}: ${pctOf(u, st.units)}%`}
+                                style={{ width: `${(u / st.units) * 100}%`, background: shadeFor(f, m),
+                                  borderRight: "1px solid #FFFFFF" }}/>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="py-2 px-2 text-right text-slate-400">—</td>
+                        <td className="py-2 pl-2 text-right font-semibold text-slate-700 tabular-nums">
+                          {pctOf(st.units, familyTotal)}%
+                        </td>
+                      </tr>,
+                      ...(open ? models.map(([m, u]) => {
+                        const shade = shadeFor(f, m);
+                        const modelTotal = familyModels.find(x => x.model === m)?.total ?? 0;
+                        const shareFam = st.units ? u / st.units : 0;
+                        return (
+                          <tr key={`${f}–${m}`}
+                            onMouseEnter={() => setHoveredFamModel(m)} onMouseLeave={() => setHoveredFamModel(null)}
+                            className={`border-b border-slate-50 ${hoveredFamModel === m ? "bg-blue-50/50" : "hover:bg-slate-50/50"}`}>
+                            <td className="py-1.5 pr-3 pl-10">
+                              <span className="inline-flex items-center gap-2">
+                                <span className="w-2.5 h-2.5 rounded-sm shrink-0"
+                                  style={{ background: shade, boxShadow: isLightHex(shade) ? "inset 0 0 0 1px #94A3B8" : undefined }}/>
+                                <span className="text-slate-700">{m}</span>
+                              </span>
+                            </td>
+                            <td className="py-1.5 px-2 text-right font-semibold text-brand-blue tabular-nums">{u.toLocaleString()}</td>
+                            <td className="py-1.5 px-2">
+                              <div className="flex items-center gap-2">
+                                <div className="flex-1 h-2.5 bg-slate-100 rounded-sm overflow-hidden">
+                                  <div className="h-full rounded-sm"
+                                    style={{ width: `${shareFam * 100}%`, background: shade,
+                                      boxShadow: isLightHex(shade) ? "inset 0 0 0 1px #94A3B8" : undefined }}/>
+                                </div>
+                                <span className="text-xs font-semibold text-slate-700 tabular-nums w-12 text-right">
+                                  {pctOf(u, st.units)}%
+                                </span>
+                              </div>
+                            </td>
+                            <td className="py-1.5 px-2 text-right text-slate-600 tabular-nums">{pctOf(u, modelTotal)}%</td>
+                            <td className="py-1.5 pl-2 text-right text-slate-400 tabular-nums">{pctOf(u, familyTotal)}%</td>
+                          </tr>
+                        );
+                      }) : []),
+                    ];
+                  })}
+                  <tr className="border-t-2 border-slate-300 font-semibold">
+                    <td className="py-2 pr-3 text-slate-700">All families</td>
+                    <td className="py-2 px-2 text-right text-slate-800 tabular-nums">{familyTotal.toLocaleString()}</td>
+                    <td className="py-2 px-2">
+                      <div className="flex h-3 w-full rounded-sm overflow-hidden">
+                        {familyKeys.map(f => (
+                          <div key={f} title={`${FAMILY_META[f].label}: ${pctOf(familyStats[f].units, familyTotal)}%`}
+                            style={{ width: `${(familyStats[f].units / familyTotal) * 100}%`,
+                              background: FAMILY_META[f].swatch, borderRight: "1px solid #FFFFFF" }}/>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="py-2 px-2 text-right text-slate-400">—</td>
+                    <td className="py-2 pl-2 text-right text-slate-700 tabular-nums">100.0%</td>
+                  </tr>
+                </tbody>
+              </table>
+              <p className="text-[11px] text-slate-400 mt-2">
+                Click a family row to expand or collapse it. <b>Share of family</b>: the model's part of that
+                family's units (the chart bar). <b>Share of model</b>: how much of that model's own sales are in
+                this family. <b>Share of all units</b>: against every sold unit.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {tab === "color" && colorView === "colour" && (
+          <div className="space-y-5">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-700 mb-1">Model Sales by Color — Stacked Units</h3>
+              <p className="text-xs text-slate-400 mb-3">
+                Sold VINs only (SlsVolQty sums to 1) · colour from the MCSI Color column ·
+                hover a colour below to pick it out in the chart
+              </p>
+
+              {/* Legend: one tidy grid, biggest colour first, with units and share */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-1 mb-4">
+                {colorKeys.map(color => {
+                  const hex = getColorHex(color);
+                  const dim = hoveredColor !== null && hoveredColor !== color;
+                  return (
+                    <div key={color}
+                      onMouseEnter={() => setHoveredColor(color)}
+                      onMouseLeave={() => setHoveredColor(null)}
+                      className={`flex items-center gap-2 px-2 py-1 rounded-md cursor-default transition-opacity ${
+                        hoveredColor === color ? "bg-slate-100" : "hover:bg-slate-50"} ${dim ? "opacity-40" : ""}`}>
+                      <span className="w-3.5 h-3.5 rounded-sm shrink-0"
+                        style={{ background: hex, boxShadow: isLightHex(hex) ? "inset 0 0 0 1px #94A3B8" : undefined }}/>
+                      <span className="text-xs text-slate-700 truncate flex-1" title={color}>{color}</span>
+                      <span className="text-xs font-semibold text-slate-800 tabular-nums">
+                        {colorTotals[color].toLocaleString()}
+                      </span>
+                      <span className="text-[10px] text-slate-400 tabular-nums w-10 text-right">
+                        {colorGrandTotal ? (colorTotals[color] / colorGrandTotal * 100).toFixed(1) : "0.0"}%
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <ResponsiveContainer width="100%" height={Math.max(260, colorBarData.length * 42)}>
+                <BarChart data={colorBarData} layout="vertical" margin={{ top: 5, right: 60, left: 10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" horizontal={false}/>
+                  <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={v => Number(v).toLocaleString()}/>
+                  <YAxis type="category" dataKey="model" tick={{ fontSize: 9 }} width={210}/>
+                  <Tooltip cursor={{ fill: "#F8FAFC" }} content={({ active, payload, label }) => {
+                    if (!active || !payload) return null;
+                    const items = payload
+                      .filter(p => Number(p.value) > 0)
+                      .sort((a, b) => Number(b.value) - Number(a.value));
+                    const total = items.reduce((s, p) => s + Number(p.value), 0);
+                    return (
+                      <div className="bg-white border border-slate-200 rounded-lg shadow-lg px-3 py-2 text-xs">
+                        <div className="font-semibold text-slate-800 mb-1">{label}</div>
+                        {items.map(p => {
+                          const hex = getColorHex(String(p.name));
+                          return (
+                            <div key={String(p.name)} className="flex items-center gap-2 py-0.5">
+                              <span className="w-2.5 h-2.5 rounded-sm shrink-0"
+                                style={{ background: hex, boxShadow: isLightHex(hex) ? "inset 0 0 0 1px #94A3B8" : undefined }}/>
+                              <span className="text-slate-600 flex-1">{String(p.name)}</span>
+                              <span className="font-semibold text-slate-800 tabular-nums ml-4">
+                                {Number(p.value).toLocaleString()}
+                              </span>
+                            </div>
+                          );
+                        })}
+                        <div className="flex justify-between border-t border-slate-100 mt-1 pt-1 text-slate-500">
+                          <span>Total</span><span className="tabular-nums">{total.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    );
+                  }}/>
+                  {colorKeys.map(color => {
+                    const hex = getColorHex(color);
+                    return (
+                      <Bar key={color} dataKey={color} stackId="a" name={color} fill={hex}
+                        stroke={isLightHex(hex) ? "#94A3B8" : undefined} strokeWidth={isLightHex(hex) ? 1 : 0}
+                        fillOpacity={hoveredColor !== null && hoveredColor !== color ? 0.15 : 1}/>
+                    );
+                  })}
+                </BarChart>
+              </ResponsiveContainer>
             </div>
 
             {/* Breakdown table */}
@@ -310,8 +779,8 @@ export function McsiEDA() {
                       <tr key={i} className="border-b border-slate-50 hover:bg-slate-50/50">
                         <td className="py-2 pr-3 font-medium text-slate-800">{r.model}</td>
                         <td className="py-2 pr-3">
-                          <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-0.5 rounded-full font-medium text-white"
-                            style={{ background: getColorHex(r.color) }}>
+                          <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-0.5 rounded-full font-medium"
+                            style={pillStyle(r.color)}>
                             {r.color}
                           </span>
                         </td>
@@ -869,7 +1338,8 @@ export function McsiEDA() {
                                   className={`py-1.5 px-2 text-right font-medium min-w-[80px] ${ci === 0 ? "border-l-2 border-slate-300" : "border-l border-slate-100"}`}>
                                   <span className="inline-flex items-center justify-end gap-1">
                                     <span className="w-2 h-2 rounded-full inline-block shrink-0"
-                                      style={{ background: getColorHex(color) }}/>
+                                      style={{ background: getColorHex(color),
+                                        boxShadow: isLightHex(getColorHex(color)) ? "inset 0 0 0 1px #94A3B8" : undefined }}/>
                                     <span className="text-[9px] uppercase">{color}</span>
                                   </span>
                                 </th>
@@ -896,7 +1366,7 @@ export function McsiEDA() {
                                       className={`py-1.5 px-2 text-right ${ci === 0 ? "border-l-2 border-slate-200" : "border-l border-slate-100"}`}
                                       style={{
                                         background: bg,
-                                        color: opacity > 0.55 ? "#fff" : v > 0 ? "#1E293B" : "#CBD5E1",
+                                        color: opacity > 0.55 && !isLightHex(hex) ? "#fff" : v > 0 ? "#1E293B" : "#CBD5E1",
                                         fontWeight: v > 0 ? 600 : 400,
                                       }}>
                                       {v > 0 ? v.toLocaleString() : "—"}

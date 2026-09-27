@@ -3,6 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from "recharts";
 import { fetchClassification, type ClassificationRow } from "../api/client";
+import { POLICY_COLORS as TIER_COLOR, policyLabel } from "../api/planning";
 import { KpiCard } from "./KpiCard";
 
 const PART_TYPE_COLOR: Record<string, string> = {
@@ -17,7 +18,6 @@ const PART_TYPE_COLOR: Record<string, string> = {
 };
 const ABC_COLOR:  Record<string, string> = { A: "#EF4444", B: "#FFC107", C: "#2CC56F" };
 const XYZ_COLOR:  Record<string, string> = { X: "#4361EE", Y: "#06B6D4", Z: "#94A3B8" };
-const TIER_COLOR: Record<string, string> = { critical: "#EF4444", managed: "#FFC107", watch: "#4361EE", rationalise: "#94A3B8" };
 const SEG_COLORS = ["#EF4444","#F97316","#FFC107","#4361EE","#2CC56F","#7C3AED","#94A3B8"];
 
 function fmt(n: number) {
@@ -193,7 +193,7 @@ export function SkuClassificationTab() {
       {/* Charts row 2 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white rounded-xl shadow-sm p-5">
-          <h3 className="text-sm font-semibold text-slate-700 mb-3">ML Demand Segments (K-Means)</h3>
+          <h3 className="text-sm font-semibold text-slate-700 mb-3">Behaviour Classes (Rules)</h3>
           <ResponsiveContainer width="100%" height={190}>
             <BarChart data={Object.entries(clsData.segment_counts).map(([k,v],i) => ({ name: k, value: v, fill: SEG_COLORS[i % SEG_COLORS.length] }))} layout="vertical" margin={{ top:0, right:40, left:5, bottom:0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" horizontal={false}/>
@@ -207,7 +207,7 @@ export function SkuClassificationTab() {
           </ResponsiveContainer>
         </div>
         <div className="bg-white rounded-xl shadow-sm p-5">
-          <h3 className="text-sm font-semibold text-slate-700 mb-3">Policy Tier</h3>
+          <h3 className="text-sm font-semibold text-slate-700 mb-3">Selected Policy</h3>
           <ResponsiveContainer width="100%" height={190}>
             <BarChart data={Object.entries(clsData.tier_counts).map(([k,v]) => ({ name: k, value: v }))} margin={{ top:5, right:10, left:0, bottom:0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9"/>
@@ -242,12 +242,12 @@ export function SkuClassificationTab() {
             <option value="Z">Z — Irregular</option>
           </select>
           <select className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none" value={tier} onChange={e => setTier(e.target.value)}>
-            <option value="">All Tiers</option>
-            {Object.keys(clsData.tier_counts).map(t => <option key={t} value={t}>{t}</option>)}
+            <option value="">All Policies</option>
+            {Object.keys(clsData.tier_counts).map(t => <option key={t} value={t}>{policyLabel(t)}</option>)}
           </select>
           <select className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none" value={partType} onChange={e => setPartType(e.target.value)}>
             <option value="">All Part Types</option>
-            {["Engine","Electrical","Wear","Service","Crash","Cosmetic","Fasteners","Unclassified"].map(pt => (
+            {Object.keys(clsData.part_type_counts).map(pt => (
               <option key={pt} value={pt}>{pt} {clsData.part_type_counts?.[pt] ? `(${clsData.part_type_counts[pt].toLocaleString()})` : ""}</option>
             ))}
           </select>
@@ -262,7 +262,7 @@ export function SkuClassificationTab() {
                 <th className="py-2 pr-3">ABC</th>
                 <th className="py-2 pr-3">XYZ</th>
                 <th className="py-2 pr-3">FSN</th>
-                <th className="py-2 pr-3">Tier</th>
+                <th className="py-2 pr-3">Policy</th>
                 <th className="py-2 pr-3">Category</th>
                 <th className="py-2 pr-3">Segment</th>
                 <th className="py-2 pr-3 text-right">Avg Demand</th>
@@ -292,7 +292,7 @@ export function SkuClassificationTab() {
                   </td>
                   <td className="py-2 pr-3 text-slate-500 text-xs">{r.fsn}</td>
                   <td className="py-2 pr-3">
-                    <span className="text-xs px-1.5 py-0.5 rounded font-medium text-white" style={{ background: TIER_COLOR[r.policy_tier] ?? "#94A3B8" }}>{r.policy_tier}</span>
+                    <span className="text-xs px-1.5 py-0.5 rounded font-medium text-white" style={{ background: TIER_COLOR[r.policy_tier] ?? "#94A3B8" }}>{policyLabel(r.policy_tier)}</span>
                   </td>
                   <td className="py-2 pr-3 text-slate-500 text-xs">{r.demand_category ?? "—"}</td>
                   <td className="py-2 pr-3 text-slate-500 text-xs max-w-[120px] truncate" title={r.demand_segment ?? ""}>{r.demand_segment ?? "—"}</td>

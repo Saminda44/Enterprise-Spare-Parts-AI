@@ -49,7 +49,7 @@ export function BikeEDA() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h2 className="text-xl font-bold text-slate-800">Motorcycle EDA — Dealer Performance</h2>
-          <p className="text-xs text-slate-500 mt-0.5">Stage 1 · Province → RM → ASE → Dealer hierarchy · Units sold &amp; revenue</p>
+          <p className="text-xs text-slate-500 mt-0.5">Step 09 · Province → RM → ASE → Dealer hierarchy · Units sold &amp; revenue</p>
         </div>
         {dealers && dealers.available_years.length > 0 && (
           <select

@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Sidebar } from "./components/Sidebar";
+import { RefreshBanner } from "./components/RefreshBanner";
 import { Overview }       from "./pages/Overview";
 import { BikeSales }      from "./pages/BikeSales";
 import { McsiEDA }        from "./pages/McsiEDA";
@@ -20,6 +21,7 @@ export default function App() {
       <div className="flex h-screen w-full font-sans bg-surface overflow-hidden">
         <Sidebar />
         <main className="flex-1 flex flex-col overflow-hidden">
+          <RefreshBanner />
           <Routes>
             <Route path="/"               element={<Overview />} />
             <Route path="/bikes"          element={<BikeSales />} />

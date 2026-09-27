@@ -44,7 +44,7 @@ export function UIOForecast() {
   return (
     <div className="flex-1 p-6 space-y-6 overflow-y-auto">
       <h2 className="text-xl font-bold text-slate-800">UIO Forecast &amp; Demand</h2>
-      <p className="text-xs text-slate-500 -mt-4">Stage 3 &amp; 6.4 · Fleet growth model + UIO-driven spare-parts demand estimation</p>
+      <p className="text-xs text-slate-500 -mt-4">Step 10 &amp; 6.4 · Fleet growth model + UIO-driven spare-parts demand estimation</p>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <KpiCard label="Current UIO"        value={fmt(latestUIO?.uio_total ?? 0)}         sub={latestUIO?.period ?? ""}    color="purple"/>
@@ -58,7 +58,7 @@ export function UIOForecast() {
           {(["forecast", "demand"] as Tab[]).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-4 py-1.5 text-sm rounded-lg font-medium transition-colors ${tab === t ? "bg-brand-blue text-white" : "text-slate-500 hover:bg-slate-50"}`}>
-              {t === "forecast" ? "UIO Forecast (Stage 3)" : "UIO-Based Demand (Stage 6.4)"}
+              {t === "forecast" ? "UIO Forecast (Step 10)" : "Fleet Demand (Step 08)"}
             </button>
           ))}
         </div>
@@ -184,7 +184,7 @@ export function UIOForecast() {
                 )}
               </div>
             </div>
-          ) : <p className="text-slate-400 text-sm py-10 text-center">Stage 6.4 not yet run — execute <code>python -m scripts.run_stage 6.4</code> to generate UIO demand estimates.</p>
+          ) : <p className="text-slate-400 text-sm py-10 text-center">Published fleet-demand estimates are unavailable.</p>
         )}
       </div>
     </div>

@@ -50,7 +50,39 @@ export interface KpiData {
   m3_total_net_position?: number;
 }
 
+export interface PlanningInfo {
+  lead_time_months: number;
+  review_period_months: number;
+  protection_interval_months: number;
+  plant: string;
+  currency: string;
+  cycle_month: string | null;
+  policy_verdict: string;
+  excess_cover_months: number;
+  inventory_position_note: string;
+}
+
+export interface PolicyData {
+  total: number;
+  rows: PolicyRow[];
+  urgency_counts: Record<string, number>;
+  tier_counts: Record<string, number>;
+  ss_method_counts: Record<string, number>;
+  total_order_value_lkr: number;
+  planning: PlanningInfo;
+}
+
+export interface ForecastData {
+  total: number;
+  rows: ForecastRow[];
+  method_counts: Record<string, number>;
+  parc_skus: number;
+  zero_demand_skus: number;
+  planning: PlanningInfo;
+}
+
 export interface OverviewData {
+  planning: PlanningInfo;
   kpis: KpiData;
   stock_status: Record<string, number>;
   abc_counts: Record<string, number>;
@@ -135,8 +167,8 @@ export interface InventoryRow {
 export interface LocationRow {
   description: string;
   qty: number;
-  value_lkr: number;
-  sku_count: number;
+  value_lkr: number | null;
+  sku_count: number | null;
   is_excluded: boolean;
 }
 
@@ -165,6 +197,7 @@ export interface ExcessRow {
 }
 
 export interface PolicyRow {
+  order_value_lkr: number;
   material_9: string;
   description: string;
   abc: string;
@@ -252,13 +285,13 @@ export const fetchClassification = (params?: Record<string, unknown>) =>
   }>("/classification", { params }).then(r => r.data);
 
 export const fetchForecast = (params?: Record<string, unknown>) =>
-  api.get<{ total: number; rows: ForecastRow[]; method_counts: Record<string, number> }>("/forecast", { params }).then(r => r.data);
+  api.get<ForecastData>("/forecast", { params }).then(r => r.data);
 
 export const fetchTrend = (sku?: string) =>
   api.get<MonthlyPoint[]>("/forecast/trend", { params: sku ? { sku } : {} }).then(r => r.data);
 
 export const fetchInventory = (params?: Record<string, unknown>) =>
-  api.get<{ total: number; rows: InventoryRow[]; status_counts: Record<string, number>; total_value_lkr: number; excess_value_lkr: number }>("/inventory", { params }).then(r => r.data);
+  api.get<{ total: number; rows: InventoryRow[]; status_counts: Record<string, number>; total_value_lkr: number; excess_value_lkr: number; stockout_regular?: number }>("/inventory", { params }).then(r => r.data);
 
 export const fetchCoverageHistogram = () =>
   api.get<{ bin_start: number; bin_end: number; count: number }[]>("/inventory/coverage-histogram").then(r => r.data);
@@ -273,7 +306,17 @@ export const fetchStockByLocation = () =>
   api.get<LocationRow[]>("/inventory/stock-by-location").then(r => r.data);
 
 export const fetchPolicy = (params?: Record<string, unknown>) =>
-  api.get<{ total: number; rows: PolicyRow[]; urgency_counts: Record<string, number>; tier_counts: Record<string, number>; ss_method_counts: Record<string, number> }>("/policy", { params }).then(r => r.data);
+  api.get<PolicyData>("/policy", { params }).then(r => r.data);
+
+export interface ReviewRow {
+  material_9: string; description: string; abc: string; fsn: string; policy_tier: string;
+  q_review: number; value_review_lkr: number; recent_demand_6m: number; forecast_month: number;
+  stock_on_hand: number; on_order: number; review_flags: string;
+}
+export interface ReviewData { total: number; total_value_lkr: number; no_demand: number; rows: ReviewRow[]; }
+/** Lines held for buyer review (order above 3x recent demand) instead of auto-ordered. */
+export const fetchOrderReview = (limit = 500) =>
+  api.get<ReviewData>("/policy/review", { params: { limit } }).then(r => r.data);
 
 export const fetchSanity = (limit = 200) =>
   api.get<SanityRow[]>("/policy/sanity", { params: { limit } }).then(r => r.data);
@@ -329,6 +372,7 @@ export interface UIOServicePlanRow {
 }
 
 export interface UIOServicePlanResponse {
+  planning: PlanningInfo;
   total_skus: number;
   skus_with_history: number;
   horizon_months: number;
@@ -339,7 +383,7 @@ export interface UIOServicePlanResponse {
   rows: UIOServicePlanRow[];
 }
 
-export const fetchUIOServicePlan = (horizon_months = 5, limit = 500) =>
+export const fetchUIOServicePlan = (horizon_months?: number, limit = 500) =>
   api.get<UIOServicePlanResponse>("/policy/uio-service-plan", { params: { horizon_months, limit } }).then(r => r.data);
 
 export const fetchRL = (params?: Record<string, unknown>) =>
@@ -370,6 +414,7 @@ export interface BikesData {
   mcsi: McsiSummary;
   sales_forecast: SalesForecastRow[];
   uio_forecast: UIOForecastRow[];
+  forecast_method?: string;   // the published method's label
 }
 
 export const fetchBikes = () =>
@@ -391,9 +436,16 @@ export interface McsiEdaKpis {
   total_revenue_lkr: number; avg_monthly_units: number; avg_revenue_per_unit: number;
   active_provinces: number; active_dealers: number; models_sold: number;
   date_from: string; date_to: string; months_of_data: number;
+  /** SlsVolQty -1 rows, and the VINs re-invoiced after one: not returns. */
+  billing_reversals?: number; rebilled_vins?: number;
 }
 export interface McsiEdaYearRow  { year: number; units_sold: number; revenue_lkr: number; avg_monthly: number; }
-export interface McsiEdaModelRow { model: string; units_sold: number; revenue_lkr: number; share_pct: number; avg_revenue_per_unit: number; }
+export interface McsiEdaModelRow {
+  model: string;
+  /** MCSI model name ("FZ FI V2") and the "Name (Code)" label built from it. */
+  model_description?: string; model_label?: string;
+  units_sold: number; revenue_lkr: number; share_pct: number; avg_revenue_per_unit: number;
+}
 export interface McsiEdaProvinceRow { province: string; units_sold: number; revenue_lkr: number; share_pct: number; dealer_count: number; }
 export interface McsiColorRow    { model: string; color: string; units_sold: number; }
 export interface McsiRmRow       { rm: string; units_sold: number; revenue_lkr: number; dealer_count: number; ase_count: number; share_pct: number; avg_revenue_per_unit: number; }
@@ -416,7 +468,41 @@ export interface ModelForecastRow {
   period: string; model: string;
   actual: number | null; forecast: number; is_forecast: boolean;
 }
-export interface ModelForecastData { models: string[]; rows: ModelForecastRow[]; }
+export interface ModelForecastInfo {
+  model: string;            // "Name (Code)"
+  code: string;
+  is_active: boolean;       // Active in Sales Summery's Model Classification
+  history_months: number;   // months with a registration
+}
+export interface ModelForecastData {
+  models: string[];
+  active_models?: string[];
+  model_info?: ModelForecastInfo[];
+  rows: ModelForecastRow[];
+}
+export interface BacktestStats {
+  forecast: number; actual: number;
+  error_pct: number | null;   // (forecast − actual) ÷ actual over scored months
+  wape_pct: number | null;    // Σ|forecast − actual| ÷ Σ actual, month by month
+}
+export interface ForecastBacktest {
+  train_start: string; train_end: string; horizon: number;
+  scored_periods: string[];
+  methods: { key: string; label: string }[];
+  recommended?: string;
+  published?: string;         // key of the method the forward forecast is published with
+  summary: ({ key: string } & BacktestStats)[];
+  history: { period: string; train_actual: number }[];
+  monthly: ({ period: string; actual: number | null; actual_new_models: number | null } & Record<string, number | string | null>)[];
+  models: ({ model: string; train_months: number } & Record<string, BacktestStats | string | number>)[];
+  new_models: { model: string; actual: number }[];
+  /** One row per model and forecast month; method keys hold that method's forecast. */
+  model_monthly?: ({ model: string; period: string; is_new: boolean; actual: number | null } & Record<string, number | string | boolean | null>)[];
+}
+export const fetchForecastBacktest = (train_start: string, train_end: string, horizon = 12) =>
+  api.get<ForecastBacktest>("/bikes/forecast/backtest", { params: { train_start, train_end, horizon } })
+    .then(r => r.data);
+
 export const fetchModelForecast = () =>
   api.get<ModelForecastData>("/bikes/forecast/by-model").then(r => r.data);
 
@@ -426,6 +512,28 @@ export interface UIOComparisonData {
   external: UIOExternalRow[];  // UIO.xlsx — full historical fleet (all model generations)
   mcsi: UIOSummaryRow[];       // MCSI.xlsx — recent VIN-verified bikes
 }
+export interface UioGroupRow { name: string; registered: number; uio: number; uio_low: number; uio_high: number; share_pct: number; }
+export interface UioSnapshot {
+  as_of_year: number | null;
+  first_year?: number;
+  kpis: {
+    registered: number; uio: number; uio_low: number; uio_high: number; surviving_pct: number;
+    active_uio_pct: number; avg_age: number; models_total: number; models_active: number; models_in_parc: number;
+  };
+  series: { year: number; new_sales: number; uio: number; uio_low: number; uio_high: number; attrition: number }[];
+  registrations: { year: number; type: string; units: number }[];
+  by_family: UioGroupRow[]; by_segment: UioGroupRow[]; by_type: UioGroupRow[]; by_status: UioGroupRow[];
+  age: { bucket: string; age_start: number; type: string; units: number }[];
+  colour: { name: string; units: number }[];
+  models: {
+    model: string; family: string; type: string; segment: string; cc: number | null; status: string;
+    first_year: number | null; last_year: number | null; registered: number;
+    uio: number; uio_low: number; uio_high: number; surviving_pct: number | null; avg_age: number | null;
+  }[];
+}
+/** The fleet from Sales Summery: registrations and the estimated units in operation. */
+export const fetchUioSnapshot = () => api.get<UioSnapshot>("/bikes/uio-snapshot").then(r => r.data);
+
 export const fetchUIOComparison = () =>
   api.get<UIOComparisonData>("/bikes/uio").then(r => r.data);
 
@@ -484,10 +592,22 @@ export const fetchGeoModelColor = () =>
 
 export interface TargetBreakdownRow {
   model: string; color: string;
-  historical_units: number; share_pct: number; allocated_units: number;
+  historical_units: number; share_pct: number;
+  allocated_units: number;          // whole units; colours sum to the model, models to the target
+  window_start?: string; window_end?: string;   // the sales-mix window
 }
 export const fetchTargetBreakdown = (monthKey: string, target: number) =>
   api.get<TargetBreakdownRow[]>("/bikes/target-breakdown", { params: { month_key: monthKey, target } }).then(r => r.data);
+
+export interface MonthlyAllocationRow extends TargetBreakdownRow { period: string; }
+/** Each month's target split to models and colours, whole units; each month sums to its target. */
+export const fetchMonthlyAllocation = (targets: Record<string, number>) =>
+  api.post<MonthlyAllocationRow[]>("/bikes/target-breakdown/monthly", { targets }).then(r => r.data);
+
+export interface ActualModelColourRow { period: string; model: string; color: string; units: number; }
+/** Sold units per active model, colour and month for one year. */
+export const fetchActualModelColour = (year: number) =>
+  api.get<ActualModelColourRow[]>("/bikes/actual-model-colour", { params: { year } }).then(r => r.data);
 
 export interface UpliftFactorsRow {
   month_key: string;
@@ -531,12 +651,36 @@ export interface CatalogDerivedPartRow {
   description: string;
   section: string;
   compatible_models: string;
-  variant_count: number;
-  source_count: number;
-  kind: "shared" | "colour_specific";
+  variant_count: number | null;
+  source_count: number | null;
+  kind: string;
+  /** PN_Yamaha database rows only. */
+  latest_ss?: string;
+  /** The catalogue's part name, when the material is found in a catalogue. */
+  catalogue_description?: string;
+  /** Which PN_Yamaha number matched: material, latest_ss, supersede_1 ... supersede_10. */
+  matched_on?: string;
+  catalogue_part_nos?: string;
+  in_catalogue?: boolean;
+  /** PN_Yamaha 1st..10th Supersede, in order; "" where the chain is shorter. */
+  supersedes?: string[];
+}
+export interface PartCompatibilitySummary {
+  /** "catalogue_database", or "step_02" when the database could not be reached. */
+  source: "catalogue_database" | "step_02";
+  error?: string;
+  catalogue_part_numbers?: number;
+  /** Catalogue part numbers with no PN_Yamaha identity (not shown on this page). */
+  catalogue_part_numbers_not_in_master?: number;
+  parts_with_models?: number;
+  brand?: string;
+  materials?: number;
 }
 export interface CatalogDerivedPartsData {
   indexed: boolean;
+  /** "pn_yamaha_db" = PN_Yamaha Brand YM from the database; "PN_Yamaha" = Step 02. */
+  source?: string;
+  compatibility?: PartCompatibilitySummary;
   /** True when data comes from the agent-derived part master (richer). */
   agent_master?: boolean;
   total: number;
@@ -545,7 +689,7 @@ export interface CatalogDerivedPartsData {
   models: string[];
 }
 export const fetchPartsFromCatalog = (params?: Record<string, unknown>) =>
-  api.get<CatalogDerivedPartsData>("/parts/from-catalog", { params, timeout: 60_000 }).then(r => r.data);
+  api.get<CatalogDerivedPartsData>("/parts/master-view", { params, timeout: 60_000 }).then(r => r.data);
 
 export interface PartMasterRebuildStatus {
   running: boolean;
@@ -593,6 +737,7 @@ export interface YoYGrowthRow {
   yoy_pct: number;
   lines_year_prev: number;
   lines_year_curr: number;
+  period?: string;   // months compared in both years, e.g. "Jan–Aug"
 }
 export interface ProvincePerformanceRow {
   province: string; order_value_lkr: number;
@@ -680,6 +825,9 @@ export interface OrdersEdaData {
   data_year: number;          // the year KPIs are computed for (0 = unknown)
   available_years: number[];  // years available for the year picker
   total_po: number; total_returns: number; avg_fill_rate: number;
+  period_label?: string;            // e.g. "2026 Jan–Aug" for a part year
+  lost_quantity?: number;
+  prior_period?: { year: number; label: string; order_lines: number; ordered_value: number; ordered_quantity: number; lost_quantity: number; fill_rate: number } | null;
   avg_lead_time_days: number; fill_rate_lt1_count: number;
   total_order_value_lkr: number;    // Order Received value (all PO lines incl. rejected)
   total_confirmed_value_lkr: number; // Total Sales value (confirmed qty × unit price)
@@ -854,14 +1002,21 @@ export interface ColourCode {
   abbreviation: string;  // e.g. "CM6"
   name: string;          // e.g. "CYAN METALLIC 6"
   code: string;          // e.g. "1344"
-  is_model_colour: boolean;  // true when PDF marks it with (*)
+  // A model colour for this PDF. Set from a (*) in the applicable-colour table's
+  // abbreviation column where the PDF carries one; otherwise resolved from the
+  // document — see model_colour_source on PdfTableResult.
+  is_model_colour: boolean;
 }
 
 export interface PdfTableResult {
   headers: string[]; rows: string[][]; total: number; sections: string[];
+  /** "database" = the stored copy; "pdf" = read live (not loaded, changed, or DB unreachable). */
+  source?: "database" | "pdf";
   variants: string[];
   colour_codes: ColourCode[];
   available_colours?: string[];
+  /** How is_model_colour was decided: "marked" (a (*) row), "parts", "listed", "none". */
+  model_colour_source?: "marked" | "single" | "parts" | "listed" | "none";
   manufacture_year?: string;
   model_no?: string;
   pages_scanned: number; sections_found: number; ocr_flagged: number; warnings: string[];
@@ -974,6 +1129,64 @@ export const fetchExtractionStatus = () =>
   api.get<ExtractionStatus>("/catalog/extraction-status").then(r => r.data);
 export const runBatchExtraction = () =>
   api.post<{ queued: boolean; message: string }>("/catalog/run-extraction").then(r => r.data);
+
+// ── Source refresh (src/refresh.py) ────────────────────────────────────────────
+export interface RefreshStatus {
+  state: "idle" | "checking" | "running" | "done" | "failed";
+  reason?: string;
+  changed?: string[];
+  stages?: string[];
+  stage?: string | null;
+  position?: number;
+  total?: number;
+  as_of?: string;
+  started_at?: string;
+  finished_at?: string;
+  error?: string | null;
+  failed_stages?: string[];
+  waiting_for?: string[];
+  notes?: string[];
+  report?: string;
+}
+export const fetchRefreshStatus = () =>
+  api.get<RefreshStatus>("/pipeline/refresh-status").then(r => r.data);
+export const startRefresh = (rerunAll = false) =>
+  api.post<RefreshStatus & { started: boolean }>(`/pipeline/refresh?rerun_all=${rerunAll}`).then(r => r.data);
+
+// ── Catalogue database (PostgreSQL) ────────────────────────────────────────────
+export interface CatalogueDbStatus {
+  reachable: boolean;
+  error?: string;
+  on_disk: number;
+  loaded?: number;
+  excluded?: Record<string, string>;
+  not_loaded?: string[];
+  /** PN_Yamaha (Brand YM) materials loaded, and how many matched a catalogue part. */
+  pn_yamaha?: { rows: number; matched: number; loaded_at: string | null };
+}
+export interface CatalogueDbLoadStatus {
+  running: boolean;
+  force?: boolean;
+  total: number;
+  done?: number;
+  loaded?: number;
+  skipped?: number;
+  excluded?: number;
+  failed?: { source_file: string; error: string }[];
+  current?: string | null;
+  error?: string | null;
+  started_at?: string;
+  finished_at?: string | null;
+  pn_yamaha?: { loaded: number; brand_rows: number; source_rows: number };
+}
+export const fetchCatalogueDbStatus = () =>
+  api.get<CatalogueDbStatus>("/catalog/db/status").then(r => r.data);
+export const fetchCatalogueDbLoadStatus = () =>
+  api.get<CatalogueDbLoadStatus>("/catalog/db/load-status").then(r => r.data);
+export const loadAllCataloguesToDb = (force = false) =>
+  api.post<{ queued: boolean; message?: string; total?: number }>(
+    `/catalog/db/load-all?force=${force}`,
+  ).then(r => r.data);
 
 export const fetchCatalogFolders = () =>
   api.get<string[]>("/catalog/folders").then(r => r.data);

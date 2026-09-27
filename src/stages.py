@@ -23,6 +23,7 @@ STEP_MODULES = (
     "src.inventory.stock",  # 12
     "src.inventory.policy",  # 13
     "src.inventory.ordering",  # 14
+    "src.dashboard.stage",  # 15b — dashboard marts
 )
 
 

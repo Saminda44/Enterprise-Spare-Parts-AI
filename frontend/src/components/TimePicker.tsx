@@ -89,11 +89,11 @@ export function filterByRange<T extends { period: string }>(
     const todayStr  = `${thisYear}-${String(today.getMonth() + 1).padStart(2, "0")}`;
     const ytdStart  = `${thisYear}-01`;
 
-    // If the dataset has records in the current calendar year, show Jan→today.
-    // Otherwise fall back to the most recent year present in the data (full year).
-    if (data.some(d => d.period >= ytdStart)) {
-      return data.filter(d => d.period >= ytdStart && d.period <= todayStr);
-    }
+    // If the dataset has records between Jan and today, show Jan→today.
+    // Otherwise (a past year, or a future forecast-only year) fall back to the most
+    // recent year present in the data, in full — never an empty chart.
+    const ytd = data.filter(d => d.period >= ytdStart && d.period <= todayStr);
+    if (ytd.length > 0) return ytd;
     const maxYear = Math.max(...data.map(d => parseInt(d.period.slice(0, 4), 10)));
     return data.filter(d => d.period.startsWith(`${maxYear}`));
   }

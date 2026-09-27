@@ -7,13 +7,13 @@ import {
   fetchInventory, fetchCoverageHistogram, fetchAtRisk, fetchExcess, fetchStockByLocation,
   type InventoryRow, type AtRiskRow, type ExcessRow, type LocationRow,
 } from "../api/client";
+import { POLICY_COLORS as TIER_COLOR, policyLabel } from "../api/planning";
 import { KpiCard } from "../components/KpiCard";
 
 const STATUS_COLOR: Record<string, string> = {
   stockout: "#EF4444", critical: "#F97316", low: "#FFC107", ok: "#2CC56F", excess: "#4361EE",
 };
 const URGENCY_COLOR: Record<string, string> = { immediate: "#EF4444", soon: "#FFC107", planned: "#4361EE", none: "#94A3B8" };
-const TIER_COLOR: Record<string, string> = { critical: "#EF4444", managed: "#FFC107", watch: "#4361EE", rationalise: "#94A3B8" };
 
 function fmt(n: number) {
   if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`;
@@ -62,25 +62,25 @@ export function Inventory() {
 
   return (
     <div className="flex-1 p-6 space-y-6 overflow-y-auto">
-      <h2 className="text-xl font-bold text-slate-800">Inventory Status</h2>
+      <h2 className="text-xl font-bold text-slate-800">PDC Inventory Status</h2>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <KpiCard label="Total SKUs"     value={fmt(data.total)}                         color="blue"/>
         <KpiCard label="Stock Value"    value={`LKR ${fmt(data.total_value_lkr)}`}      color="green"/>
         <KpiCard label="Stockout"       value={fmt(data.status_counts.stockout ?? 0)}   sub="Need immediate order" color="red"/>
-        <KpiCard label="Excess Value"   value={`LKR ${fmt(data.excess_value_lkr)}`}     sub=">6 months coverage"   color="amber"/>
+        <KpiCard label="Excess Value"   value={`LKR ${fmt(data.excess_value_lkr)}`}     sub=">12 months coverage"   color="amber"/>
       </div>
 
       {locations.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm p-5">
-          <h3 className="text-sm font-semibold text-slate-700 mb-1">Stock by Storage Location</h3>
+          <h3 className="text-sm font-semibold text-slate-700 mb-1">Stock by Plant</h3>
           <p className="text-xs text-slate-400 mb-4">
-            All SAP locations — <span className="text-amber-500 font-medium">amber</span> rows are excluded from active inventory (Damage, GR-unavailable, etc.)
+            Only PDC plant W1B4 contributes to planning stock. Other plants are shown for visibility.
           </p>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {/* Horizontal bar chart — qty */}
             <div>
-              <p className="text-xs text-slate-500 mb-2 font-medium">Unrestricted Qty by Location</p>
+              <p className="text-xs text-slate-500 mb-2 font-medium">Unrestricted Qty by Plant</p>
               <ResponsiveContainer width="100%" height={Math.max(160, locations.length * 28)}>
                 <BarChart
                   data={locations}
@@ -109,7 +109,7 @@ export function Inventory() {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-slate-100 text-left text-slate-500 uppercase">
-                    <th className="py-1.5 pr-3">Location</th>
+                    <th className="py-1.5 pr-3">Plant</th>
                     <th className="py-1.5 pr-3 text-right">Qty</th>
                     <th className="py-1.5 pr-3 text-right">Value (LKR)</th>
                     <th className="py-1.5 pr-3 text-right">SKUs</th>
@@ -126,8 +126,8 @@ export function Inventory() {
                         {loc.description}
                       </td>
                       <td className="py-1.5 pr-3 text-right">{loc.qty.toLocaleString()}</td>
-                      <td className="py-1.5 pr-3 text-right">{fmt(loc.value_lkr)}</td>
-                      <td className="py-1.5 pr-3 text-right">{loc.sku_count.toLocaleString()}</td>
+                      <td className="py-1.5 pr-3 text-right">{loc.value_lkr == null ? "Unavailable" : fmt(loc.value_lkr)}</td>
+                      <td className="py-1.5 pr-3 text-right">{loc.sku_count == null ? "Unavailable" : loc.sku_count.toLocaleString()}</td>
                       <td className="py-1.5">
                         {loc.is_excluded
                           ? <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">excluded</span>
@@ -209,7 +209,7 @@ export function Inventory() {
                   <tr className="border-b border-slate-100 text-left text-xs text-slate-500 uppercase">
                     <th className="py-2 pr-3">SKU</th>
                     <th className="py-2 pr-3">Description</th>
-                    <th className="py-2 pr-3">Tier</th>
+                    <th className="py-2 pr-3">Policy</th>
                     <th className="py-2 pr-3">Method</th>
                     <th className="py-2 pr-3 text-right">Stock</th>
                     <th className="py-2 pr-3 text-right">Value (LKR)</th>
@@ -226,7 +226,7 @@ export function Inventory() {
                       <td className="py-2 pr-3 font-mono text-xs text-slate-700">{r.material_9}</td>
                       <td className="py-2 pr-3 text-slate-600 max-w-[160px] truncate" title={r.description}>{r.description}</td>
                       <td className="py-2 pr-3">
-                        <span className="text-xs px-1.5 py-0.5 rounded font-medium text-white" style={{ background: TIER_COLOR[r.policy_tier] ?? "#94A3B8" }}>{r.policy_tier}</span>
+                        <span className="text-xs px-1.5 py-0.5 rounded font-medium text-white" style={{ background: TIER_COLOR[r.policy_tier] ?? "#94A3B8" }}>{policyLabel(r.policy_tier)}</span>
                       </td>
                       <td className="py-2 pr-3 text-xs text-slate-400">{r.method}</td>
                       <td className="py-2 pr-3 text-right">{r.stock_on_hand.toFixed(0)}</td>
@@ -265,11 +265,11 @@ export function Inventory() {
                   <th className="py-2 pr-3">SKU</th>
                   <th className="py-2 pr-3">Description</th>
                   <th className="py-2 pr-3">ABC</th>
-                  <th className="py-2 pr-3">Tier</th>
+                  <th className="py-2 pr-3">Policy</th>
                   <th className="py-2 pr-3 text-right">Stock</th>
                   <th className="py-2 pr-3">Status</th>
                   <th className="py-2 pr-3 text-right">Coverage (mo)</th>
-                  <th className="py-2 pr-3 text-right">Net Req</th>
+                  <th className="py-2 pr-3 text-right">Final Qty</th>
                   <th className="py-2 pr-3 text-right">Unit Value (LKR)</th>
                   <th className="py-2">Urgency</th>
                 </tr>
@@ -283,7 +283,7 @@ export function Inventory() {
                       <span className="text-xs px-2 py-0.5 rounded-full font-bold text-white" style={{ background: r.abc === "A" ? "#EF4444" : r.abc === "B" ? "#FFC107" : "#2CC56F" }}>{r.abc}</span>
                     </td>
                     <td className="py-2 pr-3">
-                      <span className="text-xs px-1.5 py-0.5 rounded font-medium text-white" style={{ background: TIER_COLOR[r.policy_tier] ?? "#94A3B8" }}>{r.policy_tier}</span>
+                      <span className="text-xs px-1.5 py-0.5 rounded font-medium text-white" style={{ background: TIER_COLOR[r.policy_tier] ?? "#94A3B8" }}>{policyLabel(r.policy_tier)}</span>
                     </td>
                     <td className="py-2 pr-3 text-right">{r.stock_on_hand.toFixed(0)}</td>
                     <td className="py-2 pr-3">
@@ -304,14 +304,14 @@ export function Inventory() {
 
         {tab === "excess" && (
           <div className="overflow-x-auto">
-            <p className="text-xs text-slate-500 mb-3">Top {excess.length} SKUs with excess stock (&gt;6 months coverage), sorted by stock value descending.</p>
+            <p className="text-xs text-slate-500 mb-3">Top {excess.length} SKUs with excess stock (&gt;12 months coverage), sorted by stock value descending.</p>
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100 text-left text-xs text-slate-500 uppercase">
                   <th className="py-2 pr-3">SKU</th>
                   <th className="py-2 pr-3">Description</th>
                   <th className="py-2 pr-3">ABC</th>
-                  <th className="py-2 pr-3">Tier</th>
+                  <th className="py-2 pr-3">Policy</th>
                   <th className="py-2 pr-3 text-right">Stock QTY</th>
                   <th className="py-2 pr-3 text-right">Value (LKR)</th>
                   <th className="py-2 pr-3 text-right">Coverage (mo)</th>
@@ -327,7 +327,7 @@ export function Inventory() {
                       <span className="text-xs px-2 py-0.5 rounded-full font-bold text-white" style={{ background: r.abc === "A" ? "#EF4444" : r.abc === "B" ? "#FFC107" : "#2CC56F" }}>{r.abc}</span>
                     </td>
                     <td className="py-2 pr-3">
-                      <span className="text-xs px-1.5 py-0.5 rounded font-medium text-white" style={{ background: TIER_COLOR[r.policy_tier] ?? "#94A3B8" }}>{r.policy_tier}</span>
+                      <span className="text-xs px-1.5 py-0.5 rounded font-medium text-white" style={{ background: TIER_COLOR[r.policy_tier] ?? "#94A3B8" }}>{policyLabel(r.policy_tier)}</span>
                     </td>
                     <td className="py-2 pr-3 text-right">{r.stock_on_hand.toFixed(0)}</td>
                     <td className="py-2 pr-3 text-right font-semibold text-brand-amber">{fmt(r.stock_value_lkr)}</td>

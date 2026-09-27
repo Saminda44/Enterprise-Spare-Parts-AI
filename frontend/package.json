@@ -7,7 +7,11 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "dev:planning": "vite -c vite.planning.config.ts",
+    "build:planning": "tsc -p tsconfig.planning.json && vite build -c vite.planning.config.ts",
+    "preview:planning": "vite preview -c vite.planning.config.ts",
+    "smoke:planning": "vite build -c vite.planning.config.ts --ssr ssr-smoke.tsx --outDir ../.scratch-ssr --emptyOutDir --logLevel error && node .scratch-ssr/ssr-smoke.js"
   },
   "dependencies": {
     "@types/react-router-dom": "^5.3.3",

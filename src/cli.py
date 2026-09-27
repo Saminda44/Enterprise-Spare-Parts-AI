@@ -10,24 +10,12 @@ import typer
 from src.core.context import PlanningContext
 from src.core.registry import REGISTRY
 from src.core.settings import get_settings
+from src.refresh import SOURCE_WORKBOOKS
 from src.stages import load_stages
 
 load_stages()
 
 app = typer.Typer(add_completion=False, help="Yamaha spare-parts planning pipeline.")
-
-#: filename -> sheets to convert. None means the first sheet; "*" means every sheet
-#: (Sales_Summery carries one per year plus the classification tables).
-SOURCE_WORKBOOKS: dict[str, str | None] = {
-    "orders.xlsx": None,
-    "sales.xlsx": None,
-    "MCSI.xlsx": None,
-    "current_stock.xlsx": None,
-    "On_Orders.xlsx": None,
-    "PN_Yamaha.xlsx": None,
-    "dealers.xlsx": None,
-    "Sales_Summery.xlsx": "*",
-}
 
 
 def _context(as_of: str | None) -> PlanningContext:
@@ -118,6 +106,79 @@ def run(
     typer.echo(run_report.render())
     typer.echo(f"report: {report_path}")
     raise typer.Exit(0 if run_report.ok else 1)
+
+
+@app.command("catalogue-load")
+def catalogue_load(
+    file: list[str] = typer.Option(
+        None, "--file", help="Load only these, as <folder>/<file>.pdf. Default: every PDF."
+    ),
+    force: bool = typer.Option(False, help="Reload even when the stored copy is current."),
+    workers: int = typer.Option(4, help="PDFs read in parallel."),
+) -> None:
+    """Extract PDF catalogues and save them to PostgreSQL for the Catalogues page.
+
+    Run once for the existing PDFs; run again (``--file``) when a catalogue is added.
+    A stored copy whose PDF hash and reader version are unchanged is skipped.
+    """
+    from src.catalogue.store import load_catalogues, source_key
+    from src.core.errors import CatalogueStoreError
+
+    settings = get_settings()
+    root = settings.raw_dir / "pdf_catalogues"
+    pdfs = sorted(p for p in root.rglob("*") if p.is_file() and p.suffix.lower() == ".pdf")
+    if file:
+        wanted = {f.replace("\\", "/") for f in file}
+        pdfs = [p for p in pdfs if source_key(p) in wanted]
+        missing = wanted - {source_key(p) for p in pdfs}
+        if missing:
+            typer.echo(f"not found under {root}: {sorted(missing)}")
+            raise typer.Exit(1)
+
+    def report(event: dict[str, object]) -> None:
+        kind, key = event["event"], event["source_file"]
+        if kind == "loaded":
+            typer.echo(f"  loaded    {key}: {event['rows']} rows")
+        elif kind == "excluded":
+            typer.echo(f"  excluded  {key}: {event['reason']}")
+        elif kind == "failed":
+            typer.echo(f"  FAILED    {key}: {event['error']}")
+
+    try:
+        summary = load_catalogues(
+            pdfs, force=force, workers=workers, on_event=report, settings=settings
+        )
+    except CatalogueStoreError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1) from exc
+    typer.echo(
+        f"{summary['loaded']} loaded, {summary['skipped']} already current, "
+        f"{summary['excluded']} excluded, {len(summary['failed'])} failed"
+    )
+    raise typer.Exit(1 if summary["failed"] else 0)
+
+
+@app.command("pn-yamaha-load")
+def pn_yamaha_load() -> None:
+    """Load PN_Yamaha's Yamaha-brand ("YM") materials into PostgreSQL.
+
+    Material, Latest SS, Material description and the ten Supersede columns. Run
+    ``ingest`` first so the workbook is converted; re-run whenever PN_Yamaha changes.
+    """
+    from src.catalogue.store import connect, ensure_schema, load_pn_yamaha
+    from src.core.errors import CatalogueStoreError, SourceDataError
+
+    try:
+        with connect(get_settings()) as conn:
+            ensure_schema(conn)
+            summary = load_pn_yamaha(conn)
+    except (CatalogueStoreError, SourceDataError) as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1) from exc
+    typer.echo(
+        f"{summary['loaded']} of {summary['brand_rows']} Brand {summary['brand']} rows loaded "
+        f"({summary['source_rows']} in PN_Yamaha); rejected: {summary['rejected']}"
+    )
 
 
 if __name__ == "__main__":

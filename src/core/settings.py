@@ -6,7 +6,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import Field
+from pydantic import AliasChoices, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -35,7 +35,9 @@ class Settings(BaseSettings):
     # Step 12: are On_Orders month columns the expected arrival month, or when the PO
     # was raised? This single assumption shifts the pipeline by a quarter, so it is
     # printed in every run report.
-    on_order_interpretation: Literal["arrival", "raised"] = "arrival"
+    # On_Orders month columns are the month the PO was RAISED (owner decision 2026-09-28):
+    # arrival = month + lead time, so the last `lead_time_months` of POs are still in transit.
+    on_order_interpretation: Literal["arrival", "raised"] = "raised"
 
     plant: str = "W1B4"
     lead_time_months: int = 3
@@ -59,6 +61,42 @@ class Settings(BaseSettings):
     # inflating lowers it further. Off by default; the simulator must match.
     use_supply_inflation: bool = False
     supply_inflation_cap: float = 1.5
+
+    # ── Source refresh ──────────────────────────────────────────────────────────
+    # The API watches the source workbooks; when one changes (and has stopped
+    # changing for source_settle_seconds, i.e. Excel finished saving) it re-ingests it
+    # and re-runs only the stages downstream of it. refresh_as_of pins the cycle date a
+    # refresh runs with; unset, it reuses the as_of of the last pipeline run.
+    auto_refresh_sources: bool = True
+    source_poll_seconds: int = 20
+    source_settle_seconds: int = 10
+    refresh_as_of: str | None = None
+
+    # ── Catalogue store (PostgreSQL) ────────────────────────────────────────────
+    # Extracted PDF catalogues are saved here and the Catalogues page reads them back
+    # instead of re-reading each PDF. Read from the unprefixed POSTGRES_* keys that
+    # .env already carries; the password is only ever held as a secret.
+    postgres_host: str = Field(default="localhost", validation_alias=AliasChoices("POSTGRES_HOST"))
+    postgres_port: int = Field(default=5432, validation_alias=AliasChoices("POSTGRES_PORT"))
+    postgres_db: str = Field(default="YamahaDB", validation_alias=AliasChoices("POSTGRES_DB"))
+    postgres_user: str = Field(default="postgres", validation_alias=AliasChoices("POSTGRES_USER"))
+    postgres_password: SecretStr = Field(
+        default=SecretStr(""), validation_alias=AliasChoices("POSTGRES_PASSWORD")
+    )
+    postgres_sslmode: str = Field(
+        default="prefer", validation_alias=AliasChoices("POSTGRES_SSLMODE")
+    )
+
+    def postgres_params(self) -> dict[str, Any]:
+        """Connection keyword arguments for psycopg. Never logged: holds the password."""
+        return {
+            "host": self.postgres_host,
+            "port": self.postgres_port,
+            "dbname": self.postgres_db,
+            "user": self.postgres_user,
+            "password": self.postgres_password.get_secret_value(),
+            "sslmode": self.postgres_sslmode,
+        }
 
     @property
     def fill_rate_targets(self) -> dict[str, float]:

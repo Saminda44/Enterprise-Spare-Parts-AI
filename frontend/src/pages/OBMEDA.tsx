@@ -49,15 +49,15 @@ export function OBMEDA() {
   }, [salesYear]);
 
   const TABS = [
-    { key: "orders" as Tab, label: "Orders EDA (Stage 4)" },
-    { key: "sales"  as Tab, label: "Sales EDA (Stage 5)"  },
+    { key: "orders" as Tab, label: "Orders Analysis (Steps 03-05)" },
+    { key: "sales"  as Tab, label: "Sales Analysis (Step 04)"  },
   ];
 
   return (
     <div className="flex-1 p-6 space-y-6 overflow-y-auto">
       <div>
         <h2 className="text-xl font-bold text-slate-800">Outboard Motor (OBM) Parts EDA</h2>
-        <p className="text-xs text-slate-500 mt-0.5">Stages 4 &amp; 5 · OBM dealer orders &amp; sales performance · Separate from motorcycle spare parts</p>
+        <p className="text-xs text-slate-500 mt-0.5">Steps 03-05 · OBM dealer orders &amp; sales performance · Separate from motorcycle spare parts</p>
       </div>
 
       {/* Global KPIs */}

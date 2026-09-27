@@ -23,6 +23,60 @@ from src.io.sap import split_code_label
 #: Bill. Type codes that represent a return rather than a sale.
 RETURN_BILL_TYPES = {"RE", "ZRE", "ZRVT", "ZRSV"}
 
+#: Candidate revenue columns. This export ships two headers that both read "Net Sales":
+#: one net of ``Surcharge`` (which goes negative on VAT-surcharge lines and is therefore
+#: not the revenue line) and one that satisfies the declared identity. The right column
+#: is chosen by testing the business rule, never by position — a newer export may order
+#: or name them differently.
+NET_SALES_CANDIDATES = ("Net Sales", "Net Sales_1", "Net Sales_2")
+
+
+def resolve_net_sales(frame: pd.DataFrame, result: StageResult) -> str | None:
+    """Return the column that satisfies ``Net Sales = Sales Pric + Discount``.
+
+    Business meaning: revenue on a billed line, after discount and before tax. The
+    identity is verified against every candidate and the best match wins; picking the
+    wrong one silently turns 9.1B LKR of revenue into a 1.7B loss, because the rejected
+    column is net of ``Surcharge``.
+    """
+    present = [c for c in NET_SALES_CANDIDATES if c in frame.columns]
+    if not present:
+        return None
+    if not {"Sales Pric", "Discount"}.issubset(frame.columns):
+        result.warn(
+            f"Sales Pric/Discount absent — cannot verify the revenue identity; "
+            f"using {present[0]!r} as recorded"
+        )
+        return present[0]
+
+    expected = pd.to_numeric(frame["Sales Pric"], errors="coerce") + pd.to_numeric(
+        frame["Discount"], errors="coerce"
+    )
+    scores: dict[str, int] = {}
+    for column in present:
+        difference = (pd.to_numeric(frame[column], errors="coerce") - expected).abs()
+        scores[column] = int((difference < 0.01).sum())
+
+    chosen = max(scores, key=lambda c: scores[c])
+    total = len(frame)
+    detail = ", ".join(f"{c}={scores[c] / total:.1%}" for c in present)
+    result.warn(
+        f"revenue column resolved to {chosen!r} by the identity "
+        f"Net Sales == Sales Pric + Discount ({detail} of {total:,} rows)"
+    )
+    if len(present) > 1:
+        rejected = [c for c in present if c != chosen]
+        result.warn(
+            f"rejected revenue column(s) {rejected} — they carry a different measure "
+            f"(net of Surcharge in this vintage), not billed revenue"
+        )
+    if scores[chosen] / total < 0.95:
+        result.warn(
+            f"WARNING: the best revenue column {chosen!r} still fails the identity on "
+            f"{total - scores[chosen]:,} row(s) — revenue figures are suspect"
+        )
+    return chosen
+
 
 def parse_billing_date(series: pd.Series) -> pd.Series:
     """Billing Date arrives as ``DD.MM.YYYY`` text in this export."""
@@ -48,10 +102,14 @@ def run(ctx: PlanningContext) -> StageResult:  # noqa: ARG001 — contract requi
     if dropped_rows:
         result.reject("fully null row", dropped_rows)
 
-    required = {"Net Sales", "SlsVolQty", "Payer", "Material"}
+    required = {"SlsVolQty", "Payer", "Material"}
     if not required.issubset(frame.columns):
         result.status = StageStatus.FAILED
         result.error = f"sales is missing {sorted(required - set(frame.columns))}"
+        return result
+    if not any(c in frame.columns for c in NET_SALES_CANDIDATES):
+        result.status = StageStatus.FAILED
+        result.error = f"sales carries no revenue column; expected one of {NET_SALES_CANDIDATES}"
         return result
 
     # Apply the declared parser; in this vintage it correctly yields no codes.
@@ -90,18 +148,25 @@ def run(ctx: PlanningContext) -> StageResult:  # noqa: ARG001 — contract requi
         for d, t in zip(frame["material_description"], frame["Dealer Type"], strict=True)
     ]
 
-    # Money. Net Sales is used as recorded; the identity is verified, not imposed.
-    for column in ("Net Sales", "Sales Pric", "Discount", "Cost", "SlsVolQty", "Tax Amount"):
+    # Money. The revenue column is chosen by the identity, then used as recorded.
+    numeric = ("Sales Pric", "Discount", "Cost", "SlsVolQty", "Tax Amount", "Surcharge")
+    for column in (*numeric, *NET_SALES_CANDIDATES):
         if column in frame.columns:
             frame[column] = pd.to_numeric(frame[column], errors="coerce")
-    if {"Sales Pric", "Discount"}.issubset(frame.columns):
+
+    net_sales_column = resolve_net_sales(frame, result)
+    if net_sales_column is None:  # pragma: no cover — guarded above
+        result.status = StageStatus.FAILED
+        result.error = "no revenue column survived resolution"
+        return result
+    frame["net_sales_column"] = net_sales_column
+    frame["Net Sales"] = frame[net_sales_column]
+
+    if "Sales Pric" in frame.columns and "Bill. Type" in frame.columns:
         difference = (frame["Net Sales"] - (frame["Sales Pric"] + frame["Discount"])).abs()
-        holds = int((difference < 0.01).sum())
         offenders = frame.loc[difference >= 0.01, "Bill. Type"].value_counts().head(3).to_dict()
-        result.warn(
-            f"Net Sales == Sales Pric + Discount on {holds:,}/{len(frame):,} rows "
-            f"({holds / len(frame):.1%}); offenders by Bill. Type: {offenders}"
-        )
+        if offenders:
+            result.warn(f"rows still failing the identity, by Bill. Type: {offenders}")
     frame["margin"] = frame["Net Sales"] - frame.get("Cost", 0)
 
     bill_type = frame.get("Bill. Type", pd.Series("", index=frame.index)).astype(str).str.upper()
@@ -169,6 +234,8 @@ def run(ctx: PlanningContext) -> StageResult:  # noqa: ARG001 — contract requi
                 "total_margin": float(parts_sales["margin"].sum()),
                 "unique_materials": parts_sales["material_description"].nunique(),
                 "returns": int(parts_sales["is_return"].sum()),
+                # Provenance: which of the export's two "Net Sales" headers was used.
+                "net_sales_column": net_sales_column,
             }
         ]
     )

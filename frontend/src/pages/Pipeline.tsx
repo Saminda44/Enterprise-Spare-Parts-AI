@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { api } from "../api/client";
+import { api, startRefresh } from "../api/client";
 import {
   Play, CheckCircle2, XCircle, Clock, Loader2,
   ChevronDown, ChevronUp, Trash2, RefreshCw, Terminal,
@@ -37,7 +37,7 @@ interface Job {
 // ── API helpers ────────────────────────────────────────────────────────────────
 
 const fetchStages = () =>
-  api.get<{ stages: StageInfo[]; pipeline_status: PipelineStatusMap; pipeline_freshness: Record<string, string | null> }>
+  api.get<{ stages: StageInfo[]; pipeline_status: PipelineStatusMap; can_execute: boolean; pipeline_freshness: Record<string, string | null> }>
     ("/pipeline/stages").then(r => r.data);
 
 const fetchModules = () =>
@@ -110,7 +110,7 @@ function LogPanel({ job, onClose }: { job: Job | null; onClose: () => void }) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2">
         <Terminal size={28} className="opacity-40"/>
-        <p className="text-sm">Run a stage or module to see logs here</p>
+        <p className="text-sm">Select a published run to see logs here</p>
       </div>
     );
   }
@@ -155,6 +155,7 @@ type Tab = "stages" | "modules";
 
 export function Pipeline() {
   const [tab, setTab]               = useState<Tab>("stages");
+  const [canExecute, setCanExecute] = useState(false);
   const [stages, setStages]         = useState<StageInfo[]>([]);
   const [pStatus, setPStatus]       = useState<PipelineStatusMap>({});
   const [modules, setModules]       = useState<ModuleInfo[]>([]);
@@ -169,7 +170,7 @@ export function Pipeline() {
 
   // ── Load stages and modules once ──────────────────────────────────────────
   useEffect(() => {
-    fetchStages().then(d => { setStages(d.stages); setPStatus(d.pipeline_status); });
+    fetchStages().then(d => { setStages(d.stages); setPStatus(d.pipeline_status); setCanExecute(d.can_execute); });
     fetchModules().then(d => setModules(d.modules));
     loadJobs();
   }, []);
@@ -233,6 +234,28 @@ export function Pipeline() {
     }
   };
 
+  // ── Refresh from source workbooks (src/refresh.py) ─────────────────────────
+  const [refreshing, setRefreshing] = useState(false);
+  const triggerSourceRefresh = async (rerunAll: boolean) => {
+    setRefreshing(true);
+    try {
+      const r = await startRefresh(rerunAll);
+      setToast({
+        msg: r.started
+          ? (rerunAll
+            ? "Re-running every stage except the catalogue — progress shows in the banner."
+            : "Checking source files — changed ones are re-ingested and their stages re-run.")
+          : "A refresh is already running.",
+        ok: true,
+      });
+      setTimeout(() => { setToast(null); loadJobs(); }, 6000);
+    } catch {
+      setToast({ msg: "Could not start the refresh", ok: false });
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const handleClearJobs = async () => {
     await clearJobs();
     setJobs([]);
@@ -240,7 +263,6 @@ export function Pipeline() {
   };
 
   // ── Derive artifact readiness for display ─────────────────────────────────
-  const stageKeys = Object.keys(pStatus);
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-slate-50">
@@ -263,20 +285,39 @@ export function Pipeline() {
           <div>
             <h2 className="text-lg font-bold text-slate-800">Pipeline Runner</h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Execute pipeline stages and intelligence modules — logs stream in real-time
+              Published planning stages and run reports. Edited source workbooks are picked up
+              automatically; the buttons run it now.
             </p>
           </div>
-          <button
-            onClick={loadJobs}
-            className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700"
-          >
-            <RefreshCw size={13}/> Refresh
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => triggerSourceRefresh(false)}
+              disabled={refreshing}
+              title="Re-ingest changed workbooks in data/raw and re-run the stages that depend on them"
+              className="rounded-lg bg-brand-blue text-white px-3 py-1.5 text-xs font-medium hover:opacity-90 disabled:opacity-50"
+            >
+              Refresh from source files
+            </button>
+            <button
+              onClick={() => triggerSourceRefresh(true)}
+              disabled={refreshing}
+              title="Re-run every stage except the PDF catalogue step, even if no workbook changed"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+            >
+              Re-run all stages
+            </button>
+            <button
+              onClick={loadJobs}
+              className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700"
+            >
+              <RefreshCw size={13}/> Refresh list
+            </button>
+          </div>
         </div>
 
         {/* tabs */}
         <div className="flex gap-1 mt-3">
-          {(["stages", "modules"] as Tab[]).map(t => (
+          {((modules.length ? ["stages", "modules"] : ["stages"]) as Tab[]).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -284,7 +325,7 @@ export function Pipeline() {
                 tab === t ? "bg-brand-blue text-white" : "text-slate-500 hover:bg-slate-100"
               }`}
             >
-              {t === "stages" ? "Pipeline Stages (1–14)" : "Intelligence Modules (1–6)"}
+              {t === "stages" ? `Planning Stages (${stages.length})` : "Intelligence Modules (1–6)"}
             </button>
           ))}
         </div>
@@ -310,7 +351,7 @@ export function Pipeline() {
                 {stages.map(({ stage, name }) => {
                   const busy = !!running[stage];
                   // find matching artifact key
-                  const ready = stageKeys.some(k => k.includes(`stage${stage.replace(".", "_")}`) && pStatus[k]);
+                  const ready = !!pStatus[`stage${stage}`];
                   return (
                     <tr key={stage} className="hover:bg-blue-50/40 transition-colors">
                       <td className="pl-4 pr-2 py-2.5 font-mono font-bold text-slate-400">{stage}</td>
@@ -321,6 +362,7 @@ export function Pipeline() {
                       <td className="px-2 py-2.5 text-center">
                         <input
                           type="checkbox"
+                          disabled={!canExecute}
                           checked={!!refresh[stage]}
                           onChange={e => setRefresh(r => ({ ...r, [stage]: e.target.checked }))}
                           className="accent-brand-blue cursor-pointer"
@@ -330,7 +372,7 @@ export function Pipeline() {
                       <td className="pr-4 py-2.5 text-right">
                         <button
                           onClick={() => triggerStage(stage)}
-                          disabled={busy}
+                          disabled={busy || !canExecute} title={!canExecute ? "Use the planning stage runner to execute; this view shows published outputs" : undefined}
                           className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors ${
                             busy
                               ? "bg-slate-100 text-slate-400 cursor-not-allowed"
@@ -381,7 +423,7 @@ export function Pipeline() {
                       <td className="pr-4 py-3 text-right">
                         <button
                           onClick={() => triggerModule(module)}
-                          disabled={busy}
+                          disabled={busy || !canExecute} title={!canExecute ? "Use the planning stage runner to execute; this view shows published outputs" : undefined}
                           className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors ${
                             busy
                               ? "bg-slate-100 text-slate-400 cursor-not-allowed"
@@ -421,7 +463,7 @@ export function Pipeline() {
             >
               <span>Job History ({jobs.length})</span>
               <div className="flex items-center gap-2">
-                {jobs.length > 0 && (
+                {jobs.length > 0 && canExecute && (
                   <span
                     onClick={e => { e.stopPropagation(); handleClearJobs(); }}
                     className="flex items-center gap-1 text-red-400 hover:text-red-600 cursor-pointer"
@@ -436,7 +478,7 @@ export function Pipeline() {
             {showHistory && (
               <div className="max-h-48 overflow-y-auto">
                 {jobs.length === 0 ? (
-                  <p className="px-5 py-3 text-xs text-slate-400 italic">No jobs yet. Run a stage or module above.</p>
+                  <p className="px-5 py-3 text-xs text-slate-400 italic">No published run reports yet.</p>
                 ) : (
                   <table className="w-full text-xs">
                     <tbody className="divide-y divide-slate-100">

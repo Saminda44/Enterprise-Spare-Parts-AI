@@ -19,6 +19,56 @@ NULL_TOKENS = {"No order record", "nan", "None", ""}
 GEO_COLUMNS = ("Province", "District", "RM", "ASE")
 
 
+#: A VIN's SlsVolQty summed over all its MCSI rows: 1 = sold, 0 = returned (owner's rule).
+SOLD_NET_QTY = 1
+RETURNED_NET_QTY = 0
+#: A vehicle identification number is 17 characters (ISO 3779). Anything else — MCSI
+#: carries 30 rows under the placeholder "0" — identifies no motorcycle.
+VIN_LENGTH = 17
+
+
+def classify_vins(unit_sales: pd.DataFrame) -> pd.DataFrame:
+    """One row per VIN, classified by the sum of its SlsVolQty.
+
+    Business meaning: a VIN whose quantities sum to 1 is a sold motorcycle; one whose
+    quantities sum to 0 was returned. A billing reversal that is re-invoiced (−1 then +1
+    again) nets to 1 and stays sold — 782 of the 787 VINs carrying a reversal in this
+    vintage were re-billed, so counting reversal rows as returns overstated returns 178x
+    and counted the re-billed bikes twice as sold. Any other sum is an exception.
+
+    The VIN's model, month and dealer come from its last sale row (qty > 0) — the invoice
+    that stands; revenue and cost are summed over every row, so reversals net out.
+
+    Args:
+        unit_sales: row-level MCSI with ``vin``, ``qty``, ``month`` and the attributes.
+
+    Returns:
+        One row per VIN with ``status`` (sold / returned / exception / no_vin), ``net_qty``,
+        ``billing_reversals`` and the representative row's attributes.
+    """
+    frame = unit_sales.copy()
+    frame["_row"] = range(len(frame))
+    frame["_month"] = frame["month"].fillna("").astype(str)
+    net = frame.groupby("vin")["qty"].sum()
+    sales_rows = frame[frame["qty"] > 0].sort_values(["_month", "_row"])
+    rep = sales_rows.groupby("vin").tail(1)
+    without_sale = frame[~frame["vin"].isin(rep["vin"])].sort_values(["_month", "_row"])
+    rep = pd.concat([rep, without_sale.groupby("vin").tail(1)]).set_index("vin")
+    out = rep.drop(columns=["qty", "is_return", "_row", "_month", "net_sales", "cost"])
+    out["net_qty"] = net
+    out["net_sales"] = frame.groupby("vin")["net_sales"].sum(min_count=1)
+    out["cost"] = frame.groupby("vin")["cost"].sum(min_count=1)
+    out["billing_reversals"] = (
+        frame[frame["qty"] < 0].groupby("vin").size().reindex(out.index).fillna(0).astype(int)
+    )
+    out["status"] = "exception"
+    out.loc[out["net_qty"] == SOLD_NET_QTY, "status"] = "sold"
+    out.loc[out["net_qty"] == RETURNED_NET_QTY, "status"] = "returned"
+    valid = out.index.to_series().astype(str).str.strip().str.len() == VIN_LENGTH
+    out.loc[~valid.to_numpy(), "status"] = "no_vin"
+    return out.reset_index()
+
+
 def detect_office_leak(frame: pd.DataFrame) -> pd.Series:
     """Rows where every geography field carries the same value.
 
@@ -100,6 +150,12 @@ def run(ctx: PlanningContext) -> StageResult:  # noqa: ARG001 — contract requi
         {
             "vin": frame["VIN"],
             "model_name": frame.get("Model"),
+            # MCSI's readable model name ("FZ FI V2" for B1N2), shown beside the code.
+            "model_description": frame.get("Model Name"),
+            # The motorcycle's colour, e.g. "BLACK METALLIC X".
+            "colour": frame["Color"].astype(str).str.strip().replace({"nan": None, "": None})
+            if "Color" in frame.columns
+            else None,
             "year": frame["year"],
             "month": frame["month"],
             "month_no": frame["month_no"],
@@ -118,6 +174,33 @@ def run(ctx: PlanningContext) -> StageResult:  # noqa: ARG001 — contract requi
     )
     result.rows_out = len(unit_sales)
     result.artifact("unit_sales", write_table(unit_sales, "facts", "unit_sales"))
+
+    vins_classified = classify_vins(unit_sales)
+    counts = vins_classified["status"].value_counts().to_dict()
+    exceptions = int(counts.get("exception", 0))
+    no_vin = int(counts.get("no_vin", 0))
+    # The rows stay in unit_sales, so these are flagged, not rejected.
+    if exceptions:
+        result.warn(
+            f"{exceptions:,} VIN(s) whose SlsVolQty sums to neither 1 (sold) nor 0 (returned) "
+            "— status 'exception', counted as neither"
+        )
+    if no_vin:
+        result.warn(
+            f"{no_vin:,} VIN value(s) that are not a {VIN_LENGTH}-character VIN (e.g. '0') "
+            "— status 'no_vin', counted as neither sold nor returned"
+        )
+    reversal_vins = int((vins_classified["billing_reversals"] > 0).sum())
+    rebilled = int(
+        ((vins_classified["billing_reversals"] > 0) & (vins_classified["status"] == "sold")).sum()
+    )
+    result.warn(
+        f"VIN status by SlsVolQty sum: {counts.get('sold', 0):,} sold (sum 1), "
+        f"{counts.get('returned', 0):,} returned (sum 0), {exceptions:,} exception(s); "
+        f"{int(vins_classified['billing_reversals'].sum()):,} billing reversal row(s) on "
+        f"{reversal_vins:,} VIN(s), {rebilled:,} of them re-billed and so still sold"
+    )
+    result.artifact("unit_sales_vin", write_table(vins_classified, "facts", "unit_sales_vin"))
 
     by_model = (
         unit_sales.groupby("model_name", as_index=False)

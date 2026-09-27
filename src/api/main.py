@@ -8,19 +8,43 @@ purchase order to SAP: the proposal is a recommendation and a human sends the or
 from __future__ import annotations
 
 import uuid
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from loguru import logger
+from src.api.compat import router as compatibility_router
 from src.api.deps import freshness
-from src.api.routers import parts, runs
+from src.api.routers import parts, runs, tables
 from src.api.routers.planning import demand, inventory, orders, parc
 from src.api.schemas import Health, TableFreshness
 from src.core.settings import get_settings
 from src.stages import load_stages
 
+#: Serve the original dashboard against the current planning API on one origin.
+DASHBOARD_DIR = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+
 load_stages()
 
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    """Keep the analysis in step with the source workbooks (see ``src/refresh.py``)."""
+    if get_settings().auto_refresh_sources:
+        from src.refresh import start_watcher, stop_watcher  # noqa: PLC0415
+
+        start_watcher()
+        yield
+        stop_watcher()
+    else:
+        yield
+
+
 app = FastAPI(
+    lifespan=lifespan,
     title="Yamaha Spare Parts Planning",
     version="1.0.0",
     description=(
@@ -29,11 +53,13 @@ app = FastAPI(
     ),
 )
 
+app.include_router(compatibility_router)
 app.include_router(parts.router)
 app.include_router(demand)
 app.include_router(parc)
 app.include_router(inventory)
 app.include_router(orders)
+app.include_router(tables.router)
 app.include_router(runs.router)
 
 
@@ -61,15 +87,43 @@ def health() -> Health:
     )
 
 
-@app.get("/", tags=["ops"])
+@app.get("/info", tags=["ops"])
 def index() -> dict[str, object]:
     settings = get_settings()
     return {
         "service": "Yamaha Spare Parts Planning",
         "docs": "/docs",
+        "dashboard": "/" if DASHBOARD_DIR.joinpath("index.html").exists() else None,
         "plant": settings.plant,
         "lead_time_months": settings.lead_time_months,
         "protection_interval_months": settings.lead_time_months + settings.review_period_months,
         "on_order_interpretation": settings.on_order_interpretation,
         "note": "The order proposal is a recommendation. No endpoint writes to SAP.",
     }
+
+
+# --------------------------------------------------------------------- dashboard
+# Registered last, so every API route above wins the match. What is left is either a
+# built asset or a client-side route, and a client-side route has to return index.html
+# for a deep link or a page reload to work.
+if DASHBOARD_DIR.joinpath("assets").is_dir():
+    app.mount("/assets", StaticFiles(directory=DASHBOARD_DIR / "assets"), name="assets")
+
+
+@app.get("/{path:path}", include_in_schema=False)
+def dashboard(path: str) -> FileResponse:
+    """Serve the existing dashboard, or say plainly that it has not been built."""
+    if path == "api" or path.startswith("api/"):
+        raise HTTPException(404, "unknown API endpoint")
+    index_html = DASHBOARD_DIR / "index.html"
+    if not index_html.exists():
+        raise HTTPException(
+            404,
+            "dashboard not built — run `npm run build` in frontend/, or use /docs for the API",
+        )
+    # A request for a real file (favicon, a root-level asset) is served as itself; a
+    # path with no file behind it is a client-side route and gets the shell.
+    candidate = (DASHBOARD_DIR / path).resolve()
+    if path and candidate.is_file() and candidate.is_relative_to(DASHBOARD_DIR.resolve()):
+        return FileResponse(candidate)
+    return FileResponse(index_html)

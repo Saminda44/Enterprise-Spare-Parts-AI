@@ -91,6 +91,38 @@ def trigger_reason(policy: str, ip: float, reorder_point: float, q_raw: float) -
     return "firm requirement"
 
 
+#: CLAUDE.md stop-and-ask: an order or ROL above this multiple of recent realised demand
+#: over the protection interval goes to a human before it goes to a supplier.
+REVIEW_MULTIPLE = 3.0
+#: Months of realised demand the review test looks back over.
+REVIEW_LOOKBACK_MONTHS = 6
+
+
+def review_hold(
+    q_final: float, rol: float, recent_protection_demand: float
+) -> tuple[float, float, str]:
+    """Split a proposed quantity into (placeable, held for review) and say why.
+
+    Business meaning: an order more than ``REVIEW_MULTIPLE``x what the part actually sold
+    over the protection interval — including any order for a part that sold nothing — is
+    not placed automatically; a buyer confirms it. An inflated ROL is flagged but the line
+    is not held for that alone.
+    """
+    flags: list[str] = []
+    held = 0.0
+    limit = REVIEW_MULTIPLE * recent_protection_demand
+    if q_final > 0 and q_final > limit:
+        held, q_final = q_final, 0.0
+        flags.append(
+            f"REVIEW: no demand in the last {REVIEW_LOOKBACK_MONTHS} months"
+            if recent_protection_demand <= 0
+            else f"REVIEW: order > {REVIEW_MULTIPLE:g}x recent demand"
+        )
+    if rol > 0 and rol > limit:
+        flags.append(f"ROL > {REVIEW_MULTIPLE:g}x recent demand")
+    return q_final, held, "; ".join(flags)
+
+
 @REGISTRY.register(
     "14_monthly_order",
     depends_on=["13_policy"],
@@ -105,7 +137,17 @@ def run(ctx: PlanningContext) -> StageResult:
     stock = read_table("facts", "stock_position")
     master = read_table("facts", "part_master")
     classification = read_table("facts", "sku_classification")
+    history = read_table("facts", "demand_history")
     result.rows_in = len(params)
+
+    # Realised demand over the last REVIEW_LOOKBACK_MONTHS months, scaled to the
+    # protection interval — the yardstick for the stop-and-ask review.
+    recent_months = sorted(history["month"].dropna().astype(str).unique())[-REVIEW_LOOKBACK_MONTHS:]
+    recent = (
+        history[history["month"].astype(str).isin(recent_months)]
+        .groupby("active_sku_id")["ordered_quantity"]
+        .sum()
+    )
 
     frame = (
         params.merge(selection[["active_sku_id", "policy"]], on="active_sku_id", how="left")
@@ -163,6 +205,11 @@ def run(ctx: PlanningContext) -> StageResult:
             use_supply_inflation=settings.use_supply_inflation,
             inflation_cap=settings.supply_inflation_cap,
         )
+        recent_6m = float(recent.get(row.active_sku_id, 0.0))
+        recent_p = recent_6m / max(len(recent_months), 1) * ctx.protection_interval_months
+        placeable, held, flags = review_hold(float(quantities["q_final"]), float(row.rol), recent_p)
+        proposed = float(quantities["q_final"])
+        quantities = {**quantities, "q_final": placeable}
         rows.append(
             {
                 "active_sku_id": row.active_sku_id,
@@ -181,6 +228,11 @@ def run(ctx: PlanningContext) -> StageResult:
                 **quantities,
                 "unit_cost": row.unit_value,
                 "value": quantities["q_final"] * float(row.unit_value),
+                "q_proposed": proposed,
+                "q_review": held,
+                "value_review": held * float(row.unit_value),
+                "recent_demand_6m": recent_6m,
+                "flags": flags,
                 "lead_time_months": ctx.lead_time_months,
                 "expected_arrival": (
                     pd.Timestamp(ctx.as_of) + pd.DateOffset(months=ctx.lead_time_months)
@@ -205,6 +257,8 @@ def run(ctx: PlanningContext) -> StageResult:
         "monthly_order_proposal", write_table(proposal, "facts", "monthly_order_proposal")
     )
     result.artifact("mart_monthly_order", write_table(triggered, "marts", "mart_monthly_order"))
+    review = proposal[proposal["q_review"] > 0]
+    result.artifact("mart_order_review", write_table(review, "marts", "mart_order_review"))
 
     policy_summary = proposal.groupby(["policy", "abc_class"], as_index=False).agg(
         skus=("active_sku_id", "nunique"),
@@ -244,6 +298,12 @@ def run(ctx: PlanningContext) -> StageResult:
         result.artifact("mart_exceptions", write_table(combined, "marts", "mart_exceptions"))
 
     total_value = float(triggered["value"].sum())
+    result.warn(
+        f"STOP-AND-ASK: {len(review):,} line(s) held for buyer review "
+        f"({float(review['value_review'].sum()):,.0f} {settings.currency}) — order above "
+        f"{REVIEW_MULTIPLE:g}x the last {len(recent_months)} months' demand over the protection "
+        f"interval, {int((review['recent_demand_6m'] <= 0).sum()):,} of them with no demand at all"
+    )
     result.warn(
         f"{len(triggered):,} of {len(proposal):,} SKUs triggered an order this cycle, "
         f"total {total_value:,.0f} {settings.currency}; arrival "

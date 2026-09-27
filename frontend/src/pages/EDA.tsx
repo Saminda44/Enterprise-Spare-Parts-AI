@@ -164,8 +164,8 @@ export function EDA() {
   }, [salesDt, salesMcCat, salesYear]);
 
   const TABS = [
-    { key: "orders" as Tab, label: "Orders EDA (Stage 4)" },
-    { key: "sales"  as Tab, label: "Sales EDA (Stage 5)"  },
+    { key: "orders" as Tab, label: "Orders Analysis (Steps 03–05)" },
+    { key: "sales"  as Tab, label: "Sales Analysis (Step 04)"  },
     { key: "classification" as Tab, label: "SKU Classification" },
     { key: "inventory"      as Tab, label: "Inventory Status"   },
   ];
@@ -173,14 +173,34 @@ export function EDA() {
   return (
     <div className="flex-1 p-6 space-y-6 overflow-y-auto">
       <h2 className="text-xl font-bold text-slate-800">Motorcycle Spare Parts EDA</h2>
-      <p className="text-xs text-slate-500 -mt-4">Stages 4, 5, 9 &amp; 11 · dealer orders, sales, SKU classification &amp; inventory status</p>
+      <p className="text-xs text-slate-500 -mt-4">Steps 03-06 and 12 - dealer demand, billed sales, classification and PDC inventory</p>
 
-      {/* Global KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <KpiCard label="Purchase Orders" value={ordersData ? fmt(ordersData.total_po)                           : "…"} color="blue"/>
-        <KpiCard label="Avg Fill Rate"   value={ordersData ? `${(ordersData.avg_fill_rate*100).toFixed(1)}%`    : "…"} sub={`${ordersData?.fill_rate_lt1_count ?? 0} lines short-shipped`} color="green"/>
-        <KpiCard label="Net Revenue"      value={salesData  ? `LKR ${fmt(salesData.net_sale_value_lkr)}`        : "…"} sub="sales EDA · billed minus returns" color="purple"/>
-      </div>
+      {/* Global KPIs — the selected orders period, against the same months a year earlier */}
+      {(() => {
+        const pp = ordersData?.prior_period;
+        const pct = (curr: number, prev: number | undefined) =>
+          prev ? `${curr >= prev ? "+" : ""}${((curr / prev - 1) * 100).toFixed(1)}%` : null;
+        const period = ordersData?.period_label ?? "";
+        const vs = pp ? ` vs ${pp.label}` : "";
+        const fillPts = ordersData && pp ? (ordersData.avg_fill_rate - pp.fill_rate) * 100 : null;
+        return (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <KpiCard label={`Order value · ${period}`}
+              value={ordersData ? `LKR ${fmt(ordersData.total_order_value_lkr)}` : "…"}
+              sub={ordersData && pp ? `${pct(ordersData.total_order_value_lkr, pp.ordered_value)}${vs}` : "all dealer orders (C)"} color="blue"/>
+            <KpiCard label={`Order lines · ${period}`}
+              value={ordersData ? ordersData.total_po.toLocaleString() : "…"}
+              sub={ordersData ? `${ordersData.total_po_documents.toLocaleString()} order documents${pp ? ` · ${pct(ordersData.total_po, pp.order_lines)}${vs}` : ""}` : ""} color="teal"/>
+            <KpiCard label={`Qty fill rate · ${period}`}
+              value={ordersData ? `${(ordersData.avg_fill_rate * 100).toFixed(1)}%` : "…"}
+              sub={ordersData ? `${fillPts != null ? `${fillPts >= 0 ? "+" : ""}${fillPts.toFixed(1)} pts${vs} · ` : ""}${fmt(ordersData.lost_quantity ?? 0)} units lost` : ""}
+              color={fillPts != null && fillPts < 0 ? "red" : "green"}/>
+            <KpiCard label={`Net revenue · ${salesData?.data_year ?? ""}`}
+              value={salesData ? `LKR ${fmt(salesData.net_sale_value_lkr)}` : "…"}
+              sub="billed minus returns (sales.xlsx — separate extract)" color="purple"/>
+          </div>
+        );
+      })()}
 
       <div className="bg-white rounded-xl shadow-sm p-5">
         <div className="flex gap-1 mb-5 border-b border-slate-100 pb-2 flex-wrap">
@@ -263,7 +283,7 @@ export function EDA() {
                     <KpiCard label="Rejection Rate"    value={`${ordersData.rejection_rate_pct.toFixed(1)}%`}               sub="PO lines fully undelivered"              color="amber"/>
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <KpiCard label="Qty Fill Rate"     value={`${(ordersData.avg_fill_rate * 100).toFixed(1)}%`}            sub={`${ordersData.fill_rate_lt1_count} lines short-shipped`} color="purple"/>
+                    <KpiCard label="Qty Fill Rate"     value={`${(ordersData.avg_fill_rate * 100).toFixed(1)}%`}            sub={`${ordersData.fill_rate_lt1_count} parts short-shipped`} color="purple"/>
                     <KpiCard label="Total POs"         value={ordersData.total_po_documents.toLocaleString()}               sub="Unique purchase order documents"         color="blue"/>
                     <KpiCard label="Avg Dispatch LT"   value={`${ordersData.avg_lead_time_days.toFixed(1)} days`}           sub="Warehouse → dealer"                      color="purple"/>
                     <KpiCard label="Return Value"      value={`LKR ${fmt(ordersData.total_return_value_lkr)}`}              sub="H-type return order value"               color="red"/>
@@ -410,7 +430,7 @@ export function EDA() {
                           <div className="flex-1 min-w-0">
                             <div className="flex justify-between items-baseline">
                               <span className="text-xs font-semibold text-slate-700">{label}</span>
-                              <span className="text-sm font-bold" style={{ color }}>{bucket.pct_of_lines}%</span>
+                              <span className="text-sm font-bold" style={{ color }}>{Number(bucket.pct_of_lines ?? 0).toFixed(2)}%</span>
                             </div>
                             <div className="text-xs text-slate-400 mt-0.5">{sub}</div>
                             <div className="grid grid-cols-3 gap-x-2 mt-1 text-xs">
@@ -449,7 +469,7 @@ export function EDA() {
                           <div className="flex-1">
                             <div className="flex justify-between items-baseline">
                               <span className="text-xs font-semibold text-slate-700">{label}</span>
-                              <span className="text-sm font-bold" style={{ color }}>{pct}%</span>
+                              <span className="text-sm font-bold" style={{ color }}>{Number(pct ?? 0).toFixed(2)}%</span>
                             </div>
                             <div className="text-xs text-slate-400 mt-0.5">{sub}</div>
                             <div className="mt-1 text-xs text-slate-500">
@@ -897,7 +917,7 @@ export function EDA() {
 
                 <div className="pt-3 border-t border-slate-200">
                   <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Business Insights</p>
-                  <p className="text-xs text-slate-400 mt-0.5">Computed across all segments (MC sub-categories + OBM) · 2024 – 2025</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Computed across all segments (MC sub-categories + OBM) · {ordersData.period_label ?? ordersData.data_year}{ordersData.prior_period ? ` · compared with ${ordersData.prior_period.label}` : ""}</p>
                 </div>
 
                 {/* Row 1: Category Mix + YoY Growth */}
@@ -905,7 +925,7 @@ export function EDA() {
                   {/* Category Value Mix */}
                   <div>
                     <h3 className="text-sm font-semibold text-slate-700 mb-1">Category Value Mix</h3>
-                    <p className="text-xs text-slate-400 mb-2">LKR order value by segment</p>
+                    <p className="text-xs text-slate-400 mb-2">LKR order value by segment · {ordersData.period_label ?? ordersData.data_year}</p>
                     <ResponsiveContainer width="100%" height={170}>
                       <BarChart data={ordersData.category_mix} layout="vertical" margin={{ top:0, right:16, left:10, bottom:0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" horizontal={false}/>
@@ -934,7 +954,7 @@ export function EDA() {
                   {ordersData.yoy_growth.length > 0 && (
                     <div>
                       <h3 className="text-sm font-semibold text-slate-700 mb-1">Year-on-Year Growth</h3>
-                      <p className="text-xs text-slate-400 mb-2">{ordersData.yoy_growth[0]?.year_prev ?? "Prev"} vs {ordersData.yoy_growth[0]?.year_curr ?? "Curr"} order value by segment</p>
+                      <p className="text-xs text-slate-400 mb-2">{ordersData.yoy_growth[0]?.year_prev ?? "Prev"} vs {ordersData.yoy_growth[0]?.year_curr ?? "Curr"} order value by segment · same months ({ordersData.yoy_growth[0]?.period ?? "full year"}) both years</p>
                       <ResponsiveContainer width="100%" height={170}>
                         <BarChart data={ordersData.yoy_growth} margin={{ top:0, right:10, left:0, bottom:32 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9"/>

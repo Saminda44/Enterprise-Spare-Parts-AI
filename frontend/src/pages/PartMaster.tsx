@@ -9,6 +9,15 @@ import {
   type PartMasterRebuildStatus,
 } from "../api/client";
 
+const SUPERSEDE_HEADERS = [
+  "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th", "10th",
+].map(n => `${n} Supersede`);
+const SHOW_SUPERSEDE_KEY = "partMaster.showSupersede";
+
+function readShowSupersede(): boolean {
+  try { return localStorage.getItem(SHOW_SUPERSEDE_KEY) === "1"; } catch { return false; }
+}
+
 // ── KPI card ──────────────────────────────────────────────────────────────────
 
 function Kpi({ label, value, sub }: { label: string; value: string; sub?: string }) {
@@ -39,12 +48,12 @@ function ModelBadges({ models }: { models: string }) {
   return (
     <div className="flex flex-wrap gap-1">
       {list.map(m => {
-        // "AEROX B65J" → model="AEROX", variant="B65J"
-        // "AEROX B65J/DBNM8" → model="AEROX", variant="B65J", colour="DBNM8"
+        // Database form "AEROX - B65L", "FZ & FZS - 21C2"; older "AEROX B65J/DBNM8".
         const [modelPart, colourPart] = m.split("/");
+        const dashed = modelPart.split(" - ");
         const tokens = modelPart.trim().split(" ");
-        const modelName = tokens[0];
-        const variant   = tokens.slice(1).join(" ");
+        const modelName = dashed.length > 1 ? dashed[0].trim() : tokens[0];
+        const variant   = dashed.length > 1 ? dashed.slice(1).join(" - ").trim() : tokens.slice(1).join(" ");
         return (
           <span
             key={m}
@@ -136,10 +145,15 @@ export function PartMaster() {
   const [search,      setSearch]      = useState("");
   const [debSearch,   setDebSearch]   = useState("");
   const [modelFilter, setModelFilter] = useState("");
-  const [kindFilter,  setKindFilter]  = useState<"" | "shared" | "colour_specific">("");
+  const [kindFilter,  setKindFilter]  = useState<"" | "in_catalogue" | "not_in_catalogue">("");
+  const [showSupersede, setShowSupersede] = useState<boolean>(readShowSupersede);
+  const toggleSupersede = (on: boolean) => {
+    setShowSupersede(on);
+    try { localStorage.setItem(SHOW_SUPERSEDE_KEY, on ? "1" : "0"); } catch { /* storage blocked */ }
+  };
   const [loading,     setLoading]     = useState(true);
   const [rebuilding,  setRebuilding]  = useState(false);
-  const [rebuildStatus, setRebuildStatus] = useState<PartMasterRebuildStatus | null>(null);
+  const [rebuildStatus] = useState<PartMasterRebuildStatus | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = useCallback(() => {
@@ -160,30 +174,33 @@ export function PartMaster() {
   // Client-side filtering
   const filtered: CatalogDerivedPartRow[] = (data?.rows ?? []).filter(r => {
     const q = debSearch.toLowerCase();
+    // A material id typed without separators ("B65E390710") finds "B65-E3907-10-00".
+    const qKey = q.replace(/[^a-z0-9]/g, "");
     const okSearch = !q
       || r.part_no.toLowerCase().includes(q)
-      || r.description.toLowerCase().includes(q);
+      || (qKey.length > 0 && r.part_no.toLowerCase().replace(/[^a-z0-9]/g, "").includes(qKey))
+      || (qKey.length > 0 && (r.latest_ss ?? "").toLowerCase().replace(/[^a-z0-9]/g, "").includes(qKey))
+      || (qKey.length > 0 && (r.supersedes ?? []).some(
+        n => n && n.toLowerCase().replace(/[^a-z0-9]/g, "").includes(qKey)))
+      || r.description.toLowerCase().includes(q)
+      || (r.catalogue_description ?? "").toLowerCase().includes(q);
     const okModel = !modelFilter
       || r.compatible_models.toLowerCase().includes(modelFilter.toLowerCase());
-    const okKind = !kindFilter || r.kind === kindFilter;
+    const inCatalogue = r.in_catalogue ?? Boolean(r.compatible_models);
+    const okKind = !kindFilter
+      || (kindFilter === "in_catalogue" ? inCatalogue : !inCatalogue);
     return okSearch && okModel && okKind;
   });
+
+  // Materials with at least one superseded number, shown on the supersede switch.
+  const supersededCount = (data?.rows ?? []).filter(r => (r.supersedes ?? []).some(Boolean)).length;
 
   // Rebuild flow — reads agent builds and aggregates
   const handleRebuild = async () => {
     setRebuilding(true);
-    await rebuildPartMaster(true);
-    pollRef.current = setInterval(async () => {
-      const s = await fetchPartMasterStatus();
-      setRebuildStatus(s);
-      if (!s.running) {
-        clearInterval(pollRef.current!);
-        setRebuilding(false);
-        setRebuildStatus(null);
-        load();
-      }
-    }, 3000);
+    try { await load(); } finally { setRebuilding(false); }
   };
+
   useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
 
   // ── Not indexed yet ──────────────────────────────────────────────────────────
@@ -193,7 +210,7 @@ export function PartMaster() {
         <div className="space-y-2 mb-6">
           <h2 className="text-xl font-bold text-slate-800">Part Master</h2>
           <p className="text-xs text-slate-500">
-            Derived from PDF catalogues via AI agent · unique parts across all models
+            PN_Yamaha master with catalogue model compatibility
           </p>
         </div>
         <div className="bg-white rounded-xl shadow-sm p-8">
@@ -212,19 +229,21 @@ export function PartMaster() {
             <h2 className="text-xl font-bold text-slate-800">Part Master</h2>
             <p className="text-xs text-slate-500 mt-0.5">
               {data
-                ? `${data.total.toLocaleString()} unique part numbers · ${data.total_models} models · ${data.agent_master ? "AI-agent catalogue index" : "legacy index"}`
+                ? data.source === "pn_yamaha_db"
+                  ? `${data.total.toLocaleString()} PN_Yamaha materials (Brand YM) · ${data.total_models} model variants`
+                  : `${data.total.toLocaleString()} unique part numbers · ${data.total_models} models · PN_Yamaha master`
                 : "Loading…"}
             </p>
           </div>
           <button
             onClick={handleRebuild}
             disabled={rebuilding || loading}
-            title="Run agent on all unprocessed PDFs then rebuild the part master"
+            title="Reload the published PN_Yamaha part master"
             className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 transition-colors"
           >
             {rebuilding
               ? <><Loader2 size={12} className="animate-spin" /> Rebuilding…</>
-              : <><RefreshCw size={12} /> Rebuild from All PDFs</>}
+              : <><RefreshCw size={12} /> Refresh Master</>}
           </button>
         </div>
 
@@ -243,14 +262,16 @@ export function PartMaster() {
         {/* KPI row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Kpi
-            label="Unique Parts"
+            label={data?.source === "pn_yamaha_db" ? "Materials (YM)" : "Unique Parts"}
             value={loading ? "…" : (data?.total ?? 0).toLocaleString()}
-            sub="distinct part numbers"
+            sub={data?.source === "pn_yamaha_db" ? "PN_Yamaha Brand YM" : "distinct part numbers"}
           />
           <Kpi
-            label="Models Covered"
+            label="Model Variants"
             value={loading ? "…" : (data?.total_models ?? 0).toString()}
-            sub="catalogue models indexed"
+            sub={data?.compatibility?.source === "catalogue_database"
+              ? `${(data.compatibility.parts_with_models ?? 0).toLocaleString()} materials found in catalogues`
+              : "catalogue models indexed"}
           />
           <Kpi
             label="Showing"
@@ -258,9 +279,13 @@ export function PartMaster() {
             sub="after current filters"
           />
           <Kpi
-            label="Index"
-            value={data?.agent_master ? "AI Agent" : data?.indexed ? "Legacy" : "Not built"}
-            sub={data?.agent_master ? "agent-derived, full variant detail" : data?.indexed ? "basic extraction" : "click Rebuild"}
+            label="Compatibility"
+            value={!data ? "…" : data.compatibility?.source === "catalogue_database" ? "Catalogue DB" : "Step 02"}
+            sub={data?.compatibility?.source === "catalogue_database"
+              ? "merged across each supersession chain"
+              : data?.compatibility?.error
+                ? "catalogue database unreachable — Step 02 fallback"
+                : "supersession-resolved current identities"}
           />
         </div>
 
@@ -272,7 +297,7 @@ export function PartMaster() {
               <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 className="w-full pl-8 pr-7 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-blue/30"
-                placeholder="Search part no. or description…"
+                placeholder="Search material, Latest SS or description…"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
@@ -297,13 +322,27 @@ export function PartMaster() {
 
             <select
               value={kindFilter}
-              onChange={e => setKindFilter(e.target.value as "" | "shared" | "colour_specific")}
+              onChange={e => setKindFilter(e.target.value as "" | "in_catalogue" | "not_in_catalogue")}
               className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/30 bg-white"
             >
-              <option value="">All Types</option>
-              <option value="shared">Shared (universal)</option>
-              <option value="colour_specific">Colour-specific</option>
+              <option value="">All materials</option>
+              <option value="in_catalogue">In catalogues</option>
+              <option value="not_in_catalogue">Not in catalogues</option>
             </select>
+
+            <button
+              type="button"
+              aria-pressed={showSupersede}
+              onClick={() => toggleSupersede(!showSupersede)}
+              title={`${showSupersede ? "Hide" : "Show"} PN_Yamaha's 1st to 10th Supersede columns`
+                + ` (${supersededCount.toLocaleString()} materials have supersede history)`}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-brand-blue/30 ${
+                showSupersede
+                  ? "bg-brand-blue text-white hover:opacity-90"
+                  : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
+            >
+              {showSupersede ? "Hide supersede" : "Show supersede"}
+            </button>
 
             <span className="text-xs text-slate-400 ml-auto">
               {filtered.length.toLocaleString()} part{filtered.length !== 1 ? "s" : ""}
@@ -326,7 +365,8 @@ export function PartMaster() {
               <table className="w-full text-sm border-collapse">
                 <thead className="sticky top-0 z-10">
                   <tr style={{ background: "#1B3A6B" }}>
-                    {["Part No.", "Description", "Kind", "Compatible Models"].map(h => (
+                    {["Material", "Latest SS", "Material Description", "Part Name (catalogue)", "Compatible Models",
+                      ...(showSupersede ? SUPERSEDE_HEADERS : [])].map(h => (
                       <th key={h}
                         className="py-2.5 px-3 text-left text-xs font-bold text-white whitespace-nowrap border-r border-blue-800 last:border-r-0">
                         {h}
@@ -340,19 +380,41 @@ export function PartMaster() {
                       <td className="py-2 px-3 border-b border-slate-100 font-mono text-xs text-slate-700 whitespace-nowrap">
                         {r.part_no}
                       </td>
-                      <td className="py-2 px-3 border-b border-slate-100 text-slate-700 max-w-[300px]">
+                      <td className="py-2 px-3 border-b border-slate-100 font-mono text-xs text-slate-500 whitespace-nowrap">
+                        {/* PN_Yamaha fills Latest SS on every row; a material that is its
+                            own latest supersession shows its own number. */}
+                        {r.latest_ss || <span className="text-slate-300">—</span>}
+                      </td>
+                      <td className="py-2 px-3 border-b border-slate-100 text-slate-700 max-w-[260px]">
                         <span title={r.description}>{r.description || <span className="text-slate-300">—</span>}</span>
                       </td>
-                      <td className="py-2 px-3 border-b border-slate-100 whitespace-nowrap">
-                        {r.kind === "colour_specific" ? (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold bg-amber-100 text-amber-700">Colour</span>
-                        ) : (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold bg-emerald-100 text-emerald-700">Shared</span>
-                        )}
+                      <td className="py-2 px-3 border-b border-slate-100 text-slate-700 max-w-[260px]">
+                        {r.catalogue_description ? (
+                          <span title={"Catalogue part no. " + (r.catalogue_part_nos ?? "")}>
+                            {r.catalogue_description}
+                            {r.matched_on && r.matched_on !== "material" && (
+                              <span className="ml-1 text-[10px] text-indigo-600">
+                                via {r.matched_on === "latest_ss"
+                                  ? "Latest SS"
+                                  : r.matched_on === "chain"
+                                    ? "supersession chain"
+                                    : r.matched_on.replace("supersede_", "Supersede ")}
+                              </span>
+                            )}
+                          </span>
+                        ) : <span className="text-slate-300">—</span>}
                       </td>
                       <td className="py-2 px-3 border-b border-slate-100">
                         <ModelBadges models={r.compatible_models} />
                       </td>
+                      {showSupersede && SUPERSEDE_HEADERS.map((h, k) => {
+                        const n = r.supersedes?.[k] ?? "";
+                        return (
+                          <td key={h} className="py-2 px-3 border-b border-slate-100 font-mono text-xs text-slate-500 whitespace-nowrap">
+                            {n || <span className="text-slate-200">—</span>}
+                          </td>
+                        );
+                      })}
                     </tr>
                   ))}
                 </tbody>
@@ -366,8 +428,11 @@ export function PartMaster() {
               {data.agent_master
                 ? <><CheckCircle2 size={12} className="text-emerald-500" />
                     AI-agent part master · {data.total.toLocaleString()} unique parts from {data.total_models} models</>
-                : <><Layers size={12} className="text-slate-300" />
-                    Legacy extraction index · rebuild to get full variant detail</>
+                : data.source === "pn_yamaha_db"
+                  ? <><Layers size={12} className="text-slate-300" />
+                      PN_Yamaha Brand YM from the database · part name and compatible models where the Material, Latest SS or a superseded number is in a catalogue</>
+                  : <><Layers size={12} className="text-slate-300" />
+                      Published PN_Yamaha master (Step 02 — catalogue database not reachable or PN_Yamaha not loaded)</>
               }
             </div>
           )}

@@ -29,3 +29,7 @@ class RegistryError(PipelineError):
 
 class CycleError(RegistryError):
     """The stage graph contains a cycle, so no topological order exists."""
+
+
+class CatalogueStoreError(PipelineError):
+    """The catalogue database could not be reached, or a write failed to reconcile."""
