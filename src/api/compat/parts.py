@@ -1,8 +1,4 @@
-"""Spare-parts pages: forecast, policy, classification, inventory and the part master.
-
-All of these read one published table — ``mart_ui_sku`` — which carries classification,
-forecast, stock, policy and the proposed order for every active SKU on a single row.
-"""
+"""Spare-parts pages backed by published per-SKU and Part Master marts."""
 
 from __future__ import annotations
 
@@ -19,6 +15,7 @@ router = APIRouter(tags=["parts"])
 
 def _sku(
     *,
+    source: str = "mart_ui_sku",
     abc: str | None = None,
     tier: str | None = None,
     urgency: str | None = None,
@@ -28,7 +25,7 @@ def _sku(
     demand_class: str | None = None,
     search: str | None = None,
 ) -> pd.DataFrame:
-    frame = mart("mart_ui_sku")
+    frame = mart(source)
     if frame.empty:
         from fastapi import HTTPException
 
@@ -46,13 +43,17 @@ def _sku(
             frame = frame[frame[column].astype(str).str.upper() == value.upper()]
     if search:
         needle = search.strip().upper()
-        frame = frame[
-            frame["material_9"].astype(str).str.upper().str.contains(needle, na=False, regex=False)
-            | frame["description"]
-            .astype(str)
-            .str.upper()
-            .str.contains(needle, na=False, regex=False)
-        ]
+        matched = frame["material_9"].astype(str).str.upper().str.contains(
+            needle, na=False, regex=False
+        ) | frame["description"].astype(str).str.upper().str.contains(needle, na=False, regex=False)
+        if "superseded_numbers" in frame:
+            matched |= (
+                frame["superseded_numbers"]
+                .astype(str)
+                .str.upper()
+                .str.contains(needle, na=False, regex=False)
+            )
+        frame = frame[matched]
     return frame
 
 
@@ -62,6 +63,18 @@ def _counts(frame: pd.DataFrame, column: str) -> dict[str, int]:
     return {
         str(k): int(v) for k, v in frame[column].fillna("UNSET").astype(str).value_counts().items()
     }
+
+
+def _classification_coverage(frame: pd.DataFrame, column: str) -> dict[str, int]:
+    """Count assigned and missing labels against the same filtered Part Master set."""
+    labels = frame[column].fillna("").astype(str).str.strip().str.lower()
+    assigned = int((~labels.isin(("", "unclassified", "unset"))).sum())
+    return {"assigned": assigned, "not_classified": len(frame) - assigned}
+
+
+def _planned_f(row: pd.Series, column: str) -> float | None:
+    """Do not report an unmeasured Part Master planning measure as zero."""
+    return f(row[column]) if row["has_planning"] else None
 
 
 @router.get("/forecast")
@@ -391,22 +404,51 @@ def classification(
     tier: str | None = None,
     part_type: str | None = None,
     demand_class: str | None = None,
+    scope: str | None = None,
+    search: str | None = None,
     limit: int = Query(500, ge=1, le=50000),
     offset: int = Query(0, ge=0),
 ) -> dict[str, Any]:
     """The ABC/XYZ/FSN and demand-pattern view of the book."""
-    frame = _sku(abc=abc, tier=tier, demand_class=demand_class)
+    frame = _sku(
+        source="mart_ui_part_master_analysis",
+        tier=tier,
+        demand_class=demand_class,
+        search=search,
+    )
+    if scope in {"active", "classified"}:
+        frame = frame[frame["sales_activity_12m"] == "ACTIVE"]
+    elif scope in {"inactive", "unclassified"}:
+        frame = frame[frame["sales_activity_12m"] == "INACTIVE"]
+    if abc:
+        frame = frame[frame["sales_abc"].astype(str).str.upper() == abc.upper()]
     if part_type:
         frame = frame[frame["part_type"].astype(str) == part_type]
     if xyz:
         frame = frame[frame["xyz"].astype(str).str.upper() == xyz.upper()]
     total = len(frame)
-    page = frame.sort_values("total_issue_value_lkr", ascending=False).iloc[offset : offset + limit]
+    classified = frame[frame["has_planning"]]
+    billed = frame[frame["sales_abc"].notna()]
+    page = frame.sort_values(
+        ["sales_net_lkr", "active_sku_id"], ascending=[False, True], na_position="last"
+    ).iloc[offset : offset + limit]
     rows = [
         {
             "material_9": s(r["material_9"]),
+            "active_sku_id": s(r["active_sku_id"]),
             "description": s(r["description"]),
-            "abc": s(r["abc"]),
+            "material_type": s(r["material_type"]),
+            "material_group": s(r["material_group"]),
+            "brand": s(r["brand"]),
+            "compatible_models": s(r["compatible_models"]),
+            "alias_count": i(r["alias_count"]),
+            "superseded_numbers": s(r["superseded_numbers"]),
+            "has_planning": bool(r["has_planning"]),
+            "abc": s(r["sales_abc"]),
+            "sales_activity_12m": s(r["sales_activity_12m"]),
+            "order_abc": s(r["abc"]),
+            "sales_net_lkr": f(r["sales_net_lkr"]) if pd.notna(r["sales_abc"]) else None,
+            "billed_lines": i(r["billed_lines"]) if pd.notna(r["sales_abc"]) else None,
             "xyz": s(r["xyz"]),
             "fsn": s(r["fsn"]),
             "abc_xyz_fsn": s(r["abc_xyz_fsn"]),
@@ -415,29 +457,70 @@ def classification(
             "demand_cluster": None,
             "demand_segment": s(r["behaviour_class"]),
             "in_ssop": None,
-            "avg_monthly_demand": f(r["avg_monthly_demand"]),
-            "cv": f(r["cv"]),
-            "p_zero": f(r["p_zero"]),
-            "active_months": i(r["active_months"]),
-            "total_months": i(r["total_months"]),
-            "total_issue_qty": f(r["total_issue_qty"]),
-            "total_issue_value_lkr": f(r["total_issue_value_lkr"]),
-            "total_return_qty": f(r["total_return_qty"]),
+            "avg_monthly_demand": _planned_f(r, "avg_monthly_demand"),
+            "cv": _planned_f(r, "cv"),
+            "p_zero": _planned_f(r, "p_zero"),
+            "active_months": i(r["active_months"]) if r["has_planning"] else None,
+            "total_months": i(r["total_months"]) if r["has_planning"] else None,
+            "total_issue_qty": _planned_f(r, "total_issue_qty"),
+            "total_issue_value_lkr": _planned_f(r, "total_issue_value_lkr"),
+            "total_return_qty": _planned_f(r, "total_return_qty"),
             "last_issue_date": s(r["last_issue_date"]) or None,
             "part_type": s(r["part_type"]) or None,
         }
         for _, r in page.iterrows()
     ]
+    sales_audit = mart("mart_ui_sales_abc_audit")
     return {
         "total": total,
         "rows": rows,
-        "abc_counts": _counts(frame, "abc"),
-        "xyz_counts": _counts(frame, "xyz"),
-        "fsn_counts": _counts(frame, "fsn"),
-        "segment_counts": _counts(frame, "behaviour_class"),
-        "demand_category_counts": _counts(frame, "demand_category"),
-        "tier_counts": _counts(frame, "policy_tier"),
+        "classified_count": len(billed),
+        "unclassified_count": total - len(billed),
+        "active_count": len(billed),
+        "inactive_count": total - len(billed),
+        "order_classified_count": len(classified),
+        "sales_abc_audit": (
+            {
+                "window_start": s(sales_audit.at[0, "window_start"]),
+                "window_end": s(sales_audit.at[0, "window_end"]),
+                "sales_lines": i(sales_audit.at[0, "sales_lines"]),
+                "code_linked_lines": i(sales_audit.at[0, "code_linked_lines"]),
+                "description_linked_lines": i(sales_audit.at[0, "description_linked_lines"]),
+                "unmapped_lines": i(sales_audit.at[0, "unmapped_lines"]),
+                "ambiguous_lines": i(sales_audit.at[0, "ambiguous_lines"]),
+                "no_match_lines": i(sales_audit.at[0, "no_match_lines"]),
+                "linked_skus": i(sales_audit.at[0, "linked_skus"]),
+                "active_skus": i(sales_audit.at[0, "active_skus"]),
+                "return_only_skus": i(sales_audit.at[0, "return_only_skus"]),
+            }
+            if not sales_audit.empty
+            else None
+        ),
+        "classification_coverage": {
+            label: _classification_coverage(frame, column)
+            for label, column in (
+                ("ABC", "sales_abc"),
+                ("XYZ", "xyz"),
+                ("FSN", "fsn"),
+                ("Demand pattern", "demand_category"),
+                ("Behaviour", "behaviour_class"),
+                ("Catalogue type", "part_type"),
+            )
+        },
+        "abc_counts": _counts(billed, "sales_abc"),
+        "xyz_counts": _counts(classified, "xyz"),
+        "fsn_counts": _counts(classified, "fsn"),
+        "segment_counts": _counts(classified, "behaviour_class"),
+        "demand_category_counts": _counts(classified, "demand_category"),
+        "tier_counts": _counts(classified, "policy_tier"),
         "part_type_counts": _counts(frame, "part_type"),
+        "abc_fsn_counts": {
+            abc_key: {
+                fsn_key: int(((billed["sales_abc"] == abc_key) & (billed["fsn"] == fsn_key)).sum())
+                for fsn_key in ("F", "S", "N")
+            }
+            for abc_key in ("A", "B", "C")
+        },
     }
 
 
@@ -450,28 +533,39 @@ def inventory(
     offset: int = Query(0, ge=0),
 ) -> dict[str, Any]:
     """Stock on hand, cover and status per SKU."""
-    frame = _sku(status=status, abc=abc, search=search)
+    frame = _sku(source="mart_ui_part_master_analysis", status=status, abc=abc, search=search)
     total = len(frame)
     page = frame.sort_values("stock_value_lkr", ascending=False).iloc[offset : offset + limit]
     rows = [
         {
             "material_9": s(r["material_9"]),
+            "active_sku_id": s(r["active_sku_id"]),
             "description": s(r["description"]),
+            "material_type": s(r["material_type"]),
+            "material_group": s(r["material_group"]),
+            "brand": s(r["brand"]),
+            "compatible_models": s(r["compatible_models"]),
+            "alias_count": i(r["alias_count"]),
+            "superseded_numbers": s(r["superseded_numbers"]),
+            "has_planning": bool(r["has_planning"]),
+            "has_stock_snapshot": bool(r["has_stock_snapshot"]),
             "abc": s(r["abc"]),
             "xyz": s(r["xyz"]),
             "fsn": s(r["fsn"]),
             "policy_tier": s(r["policy_tier"]),
-            "stock_on_hand": f(r["stock_on_hand"]),
-            "stock_value_lkr": f(r["stock_value_lkr"]),
-            "coverage_months": f(r["coverage_months"]),
-            "days_of_stock": f(r["days_of_stock"]),
+            "stock_on_hand": f(r["stock_on_hand"])
+            if r["has_planning"] or r["has_stock_snapshot"]
+            else None,
+            "stock_value_lkr": _planned_f(r, "stock_value_lkr"),
+            "coverage_months": _planned_f(r, "coverage_months"),
+            "days_of_stock": _planned_f(r, "days_of_stock"),
             "stock_status": s(r["stock_status"]),
-            "avg_monthly_demand": f(r["avg_monthly_demand"]),
-            "forecast_lt": f(r["forecast_lt"]),
+            "avg_monthly_demand": _planned_f(r, "avg_monthly_demand"),
+            "forecast_lt": _planned_f(r, "forecast_lt"),
             "method": s(r["method"]),
-            "total_receipts": 0.0,
-            "total_issues": f(r["total_issue_qty"]),
-            "total_returns": f(r["total_return_qty"]),
+            "total_receipts": None,
+            "total_issues": _planned_f(r, "total_issue_qty"),
+            "total_returns": _planned_f(r, "total_return_qty"),
             "last_movement_date": s(r["last_issue_date"]) or None,
         }
         for _, r in page.iterrows()
@@ -480,6 +574,9 @@ def inventory(
     return {
         "total": total,
         "rows": rows,
+        "classified_count": int(frame["has_planning"].sum()),
+        "stock_snapshot_count": int(frame["has_stock_snapshot"].sum()),
+        "unassessed_count": int((~frame["has_planning"]).sum()),
         "status_counts": _counts(frame, "stock_status"),
         # Zero stock AND at least one unit a month of demand: the stockouts that need ordering.
         # Most zero-stock parts are slow movers selling well under one a month.
@@ -555,6 +652,7 @@ def at_risk(limit: int = Query(50, ge=1, le=5000)) -> list[dict[str, Any]]:
             "net_requirement": f(r["net_requirement"]),
             "order_urgency": s(r["order_urgency"]),
             "unit_value_lkr": f(r["unit_value_lkr"]),
+            "compatible_models": s(r["compatible_models"]),
         }
         for _, r in risky.head(limit).iterrows()
     ]
@@ -577,6 +675,7 @@ def excess(limit: int = Query(100, ge=1, le=5000)) -> list[dict[str, Any]]:
             "stock_value_lkr": f(r["stock_value_lkr"]),
             "coverage_months": f(r["coverage_months"]),
             "avg_monthly_demand": f(r["avg_monthly_demand"]),
+            "compatible_models": s(r["compatible_models"]),
         }
         for _, r in fat.head(limit).iterrows()
     ]

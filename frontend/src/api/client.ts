@@ -93,8 +93,20 @@ export interface OverviewData {
 
 export interface ClassificationRow {
   material_9: string;
+  active_sku_id: string;
   description: string;
+  material_type: string;
+  material_group: string;
+  brand: string;
+  compatible_models: string;
+  alias_count: number;
+  superseded_numbers: string;
+  has_planning: boolean;
   abc: string;
+  sales_activity_12m: "ACTIVE" | "INACTIVE";
+  order_abc: string;
+  sales_net_lkr: number | null;
+  billed_lines: number | null;
   xyz: string;
   fsn: string;
   abc_xyz_fsn: string;
@@ -103,14 +115,14 @@ export interface ClassificationRow {
   demand_cluster: number | null;
   demand_segment: string | null;
   in_ssop: boolean | null;
-  avg_monthly_demand: number;
-  cv: number;
-  p_zero: number;
-  active_months: number;
-  total_months: number;
-  total_issue_qty: number;
-  total_issue_value_lkr: number;
-  total_return_qty: number;
+  avg_monthly_demand: number | null;
+  cv: number | null;
+  p_zero: number | null;
+  active_months: number | null;
+  total_months: number | null;
+  total_issue_qty: number | null;
+  total_issue_value_lkr: number | null;
+  total_return_qty: number | null;
   last_issue_date: string | null;
   part_type: string | null;
 }
@@ -145,22 +157,31 @@ export interface MonthlyPoint {
 
 export interface InventoryRow {
   material_9: string;
+  active_sku_id: string;
   description: string;
+  material_type: string;
+  material_group: string;
+  brand: string;
+  compatible_models: string;
+  alias_count: number;
+  superseded_numbers: string;
+  has_planning: boolean;
+  has_stock_snapshot: boolean;
   abc: string;
   xyz: string;
   fsn: string;
   policy_tier: string;
-  stock_on_hand: number;
-  stock_value_lkr: number;
-  coverage_months: number;
-  days_of_stock: number;
+  stock_on_hand: number | null;
+  stock_value_lkr: number | null;
+  coverage_months: number | null;
+  days_of_stock: number | null;
   stock_status: string;
-  avg_monthly_demand: number;
-  forecast_lt: number;
+  avg_monthly_demand: number | null;
+  forecast_lt: number | null;
   method: string;
-  total_receipts: number;
-  total_issues: number;
-  total_returns: number;
+  total_receipts: number | null;
+  total_issues: number | null;
+  total_returns: number | null;
   last_movement_date: string | null;
 }
 
@@ -175,6 +196,7 @@ export interface LocationRow {
 export interface AtRiskRow {
   material_9: string;
   description: string;
+  compatible_models: string;
   abc: string;
   policy_tier: string;
   stock_on_hand: number;
@@ -188,6 +210,7 @@ export interface AtRiskRow {
 export interface ExcessRow {
   material_9: string;
   description: string;
+  compatible_models: string;
   abc: string;
   policy_tier: string;
   stock_on_hand: number;
@@ -278,6 +301,17 @@ export const fetchOverview = () =>
 export const fetchClassification = (params?: Record<string, unknown>) =>
   api.get<{
     total: number; rows: ClassificationRow[];
+    classified_count: number; unclassified_count: number;
+    active_count: number; inactive_count: number;
+    order_classified_count: number;
+    sales_abc_audit: {
+      window_start: string; window_end: string; sales_lines: number;
+      code_linked_lines: number; description_linked_lines: number; unmapped_lines: number;
+      ambiguous_lines: number; no_match_lines: number;
+      linked_skus: number; active_skus: number; return_only_skus: number;
+    } | null;
+    classification_coverage: Record<string, { assigned: number; not_classified: number }>;
+    abc_fsn_counts: Record<string, Record<string, number>>;
     abc_counts: Record<string, number>; xyz_counts: Record<string, number>;
     fsn_counts: Record<string, number>; segment_counts: Record<string, number>;
     demand_category_counts: Record<string, number>; tier_counts: Record<string, number>;
@@ -291,7 +325,7 @@ export const fetchTrend = (sku?: string) =>
   api.get<MonthlyPoint[]>("/forecast/trend", { params: sku ? { sku } : {} }).then(r => r.data);
 
 export const fetchInventory = (params?: Record<string, unknown>) =>
-  api.get<{ total: number; rows: InventoryRow[]; status_counts: Record<string, number>; total_value_lkr: number; excess_value_lkr: number; stockout_regular?: number }>("/inventory", { params }).then(r => r.data);
+  api.get<{ total: number; rows: InventoryRow[]; classified_count: number; stock_snapshot_count: number; unassessed_count: number; status_counts: Record<string, number>; total_value_lkr: number; excess_value_lkr: number; stockout_regular?: number }>("/inventory", { params }).then(r => r.data);
 
 export const fetchCoverageHistogram = () =>
   api.get<{ bin_start: number; bin_end: number; count: number }[]>("/inventory/coverage-histogram").then(r => r.data);

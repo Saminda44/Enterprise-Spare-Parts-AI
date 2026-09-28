@@ -110,9 +110,11 @@ export function McsiEDA() {
   const [tab,      setTab]      = useState<Tab>("trend");
   const [dlrSearch, setDlrSearch] = useState("");
   const [dlrYear,   setDlrYear]   = useState<number | undefined>(undefined);
+  const [dealerView, setDealerView] = useState<"overview" | "matrix">("overview");
   const [geoSub,      setGeoSub]      = useState<"rm" | "ase" | "province" | "district">("rm");
   const [geoView,     setGeoView]     = useState<"overview" | "model" | "model_color">("overview");
   const [dealerMatrix, setDealerMatrix] = useState<DealerModelMatrix | null>(null);
+  const [dealerMatrixError, setDealerMatrixError] = useState(false);
   const [geoModel,      setGeoModel]      = useState<GeoModelData | null>(null);
   const [geoModelColor, setGeoModelColor] = useState<GeoModelData | null>(null);
   const [hoveredModel,  setHoveredModel]  = useState<string | null>(null);
@@ -123,7 +125,9 @@ export function McsiEDA() {
   const [collapsedFams, setCollapsedFams] = useState<Set<string>>(new Set());
 
   useEffect(() => { fetchMcsiEda().then(setData); }, []);
-  useEffect(() => { fetchDealerModelMatrix().then(setDealerMatrix); }, []);
+  useEffect(() => {
+    fetchDealerModelMatrix().then(setDealerMatrix).catch(() => setDealerMatrixError(true));
+  }, []);
   useEffect(() => { fetchGeoModel().then(setGeoModel); }, []);
   useEffect(() => { fetchGeoModelColor().then(setGeoModelColor); }, []);
   useEffect(() => { fetchBikeDealers(500, dlrYear).then(setDealers); }, [dlrYear]);
@@ -138,7 +142,7 @@ export function McsiEDA() {
     { key: "color",  label: "By Color"              },
     { key: "year",   label: "By Year"               },
     { key: "geo",    label: "RM / ASE / Geography" },
-    { key: "dealer",   label: "Dealer Performance"      },
+    { key: "dealer", label: "Dealer Performance" },
   ];
 
   // ── Dealer Performance tab data prep ───────────────────────────────────────
@@ -1390,6 +1394,20 @@ export function McsiEDA() {
         {/* ── Dealer Performance ── */}
         {tab === "dealer" && (
           <div className="space-y-5">
+            <div className="flex flex-wrap gap-1 border-b border-slate-100 pb-2">
+              {(["overview", "matrix"] as const).map(view => (
+                <button key={view} type="button" onClick={() => setDealerView(view)}
+                  aria-pressed={dealerView === view}
+                  className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${
+                    dealerView === view ? "bg-brand-blue text-white" : "text-slate-500 hover:bg-slate-50"
+                  }`}>
+                  {view === "overview" ? "Overview" : "Dealer × Model Sales Matrix"}
+                </button>
+              ))}
+            </div>
+
+            {dealerView === "overview" && (
+              <>
             {/* Year filter + KPIs */}
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <p className="text-xs text-slate-500">Province → RM → ASE → Dealer hierarchy · Units sold &amp; revenue</p>
@@ -1440,9 +1458,10 @@ export function McsiEDA() {
                     />
                     <span className="text-xs text-slate-400">{filteredDealers.length} dealers</span>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
+                  <div className="max-h-[560px] overflow-auto rounded-md border border-slate-100"
+                    role="region" aria-label="Dealer overview table" tabIndex={0}>
+                    <table className="w-full min-w-[780px] text-sm">
+                      <thead className="sticky top-0 z-20 bg-slate-50">
                         <tr className="border-b border-slate-100 text-left text-xs text-slate-500 uppercase">
                           <th className="py-2 pr-3">Province</th>
                           <th className="py-2 pr-3">RM</th>
@@ -1454,7 +1473,7 @@ export function McsiEDA() {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredDealers.slice(0, 200).map((r, i) => (
+                        {filteredDealers.map((r, i) => (
                           <tr key={i} className="border-b border-slate-50 hover:bg-slate-50/50">
                             <td className="py-2 pr-3 text-xs font-medium text-slate-700">{r.province}</td>
                             <td className="py-2 pr-3 text-xs text-slate-500">{r.rm}</td>
@@ -1467,72 +1486,83 @@ export function McsiEDA() {
                         ))}
                       </tbody>
                     </table>
-                    {filteredDealers.length > 200 && (
-                      <p className="text-xs text-slate-400 mt-2 text-center">Showing 200 of {filteredDealers.length}</p>
-                    )}
                   </div>
                 </div>
 
-                {/* Dealer × Model matrix */}
-                {dealerMatrix && dealerMatrix.models.length > 0 && (() => {
-                  const { models: dmModels, rows: dmRows } = dealerMatrix;
-                  const colMax: Record<string, number> = {};
-                  for (const m of dmModels) colMax[m] = Math.max(1, ...dmRows.map(r => r.totals[m] ?? 0));
-                  return (
-                    <div className="bg-white rounded-xl shadow-sm p-5">
-                      <h3 className="text-sm font-semibold text-slate-700 mb-1">Dealer × Model Sales Matrix</h3>
-                      <p className="text-xs text-slate-400 mb-3">
-                        {dmRows.length} dealers × {dmModels.length} models · sorted by total units (desc) · heat-map intensity = column max
-                      </p>
-                      <div className="overflow-x-auto">
-                        <table className="text-xs w-full border-collapse">
-                          <thead>
-                            <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-left">
-                              <th className="py-2 px-2 font-semibold sticky left-0 bg-slate-50 z-10 min-w-[160px]">Dealer</th>
-                              <th className="py-2 px-2 font-semibold min-w-[80px]">Province</th>
-                              <th className="py-2 px-2 font-semibold min-w-[80px]">RM</th>
-                              <th className="py-2 px-2 font-semibold min-w-[80px]">ASE</th>
-                              <th className="py-2 px-2 font-semibold text-right min-w-[52px]">Total</th>
-                              {dmModels.map(m => (
-                                <th key={m} className="py-2 px-2 text-right font-semibold min-w-[70px]">{m}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {dmRows.map((r, ri) => (
-                              <tr key={ri} className="border-b border-slate-100 hover:bg-slate-50/60">
-                                <td className="py-1.5 px-2 font-medium text-slate-800 sticky left-0 bg-white z-10 max-w-[200px] truncate" title={r.dealer}>
-                                  {r.dealer}
-                                </td>
-                                <td className="py-1.5 px-2 text-slate-500">{r.province}</td>
-                                <td className="py-1.5 px-2 text-slate-500">{r.rm}</td>
-                                <td className="py-1.5 px-2 text-slate-500">{r.ase}</td>
-                                <td className="py-1.5 px-2 text-right font-bold text-slate-800">{r.total.toLocaleString()}</td>
-                                {dmModels.map(m => {
-                                  const v = r.totals[m] ?? 0;
-                                  const opacity = v === 0 ? 0 : 0.12 + 0.78 * (v / colMax[m]);
-                                  return (
-                                    <td key={m} className="py-1.5 px-2 text-right"
-                                      style={{
-                                        background: v > 0 ? `rgba(67,97,238,${opacity.toFixed(2)})` : "transparent",
-                                        color: opacity > 0.55 ? "#fff" : v > 0 ? "#1E3A8A" : "#CBD5E1",
-                                        fontWeight: v > 0 ? 600 : 400,
-                                      }}>
-                                      {v > 0 ? v.toLocaleString() : "—"}
-                                    </td>
-                                  );
-                                })}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  );
-                })()}
               </>
             ) : (
               <div className="flex items-center justify-center py-12 text-slate-400">Loading dealer data…</div>
+            )}
+              </>
+            )}
+
+            {/* Dealer × Model matrix */}
+            {dealerView === "matrix" && (
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-slate-700">Dealer × Model Sales Matrix</h3>
+            {!dealerMatrix && (
+              <p className="py-12 text-center text-sm text-slate-500">
+                {dealerMatrixError ? "Unable to load dealer-model sales." : "Loading dealer-model sales…"}
+              </p>
+            )}
+            {dealerMatrix && dealerMatrix.models.length === 0 && (
+              <p className="py-12 text-center text-sm text-slate-500">No dealer-model sales available.</p>
+            )}
+            {dealerMatrix && dealerMatrix.models.length > 0 && (() => {
+              const { models: dmModels, rows: dmRows } = dealerMatrix;
+              const colMax: Record<string, number> = {};
+              for (const m of dmModels) colMax[m] = Math.max(1, ...dmRows.map(r => r.totals[m] ?? 0));
+              return (
+                <>
+                  <p className="text-xs text-slate-500">All years · {dmRows.length} dealers × {dmModels.length} models</p>
+                  <div className="max-h-[560px] overflow-auto rounded-md border border-slate-100"
+                    role="region" aria-label="Dealer by model sales matrix" tabIndex={0}>
+                    <table className="text-xs w-full min-w-max border-collapse">
+                      <thead className="sticky top-0 z-20 bg-slate-50">
+                        <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-left">
+                          <th className="py-2 px-2 font-semibold sticky left-0 bg-slate-50 z-30 min-w-[160px]">Dealer</th>
+                          <th className="py-2 px-2 font-semibold min-w-[80px]">Province</th>
+                          <th className="py-2 px-2 font-semibold min-w-[80px]">RM</th>
+                          <th className="py-2 px-2 font-semibold min-w-[80px]">ASE</th>
+                          <th className="py-2 px-2 font-semibold text-right min-w-[52px]">Total</th>
+                          {dmModels.map(m => (
+                            <th key={m} className="py-2 px-2 text-right font-semibold min-w-[70px]">{m}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dmRows.map((r, ri) => (
+                          <tr key={ri} className="border-b border-slate-100 hover:bg-slate-50/60">
+                            <td className="py-1.5 px-2 font-medium text-slate-800 sticky left-0 bg-white z-10 max-w-[200px] truncate" title={r.dealer}>
+                              {r.dealer}
+                            </td>
+                            <td className="py-1.5 px-2 text-slate-500">{r.province}</td>
+                            <td className="py-1.5 px-2 text-slate-500">{r.rm}</td>
+                            <td className="py-1.5 px-2 text-slate-500">{r.ase}</td>
+                            <td className="py-1.5 px-2 text-right font-bold text-slate-800">{r.total.toLocaleString()}</td>
+                            {dmModels.map(m => {
+                              const v = r.totals[m] ?? 0;
+                              const opacity = v === 0 ? 0 : 0.12 + 0.78 * (v / colMax[m]);
+                              return (
+                                <td key={m} className="py-1.5 px-2 text-right"
+                                  style={{
+                                    background: v > 0 ? `rgba(67,97,238,${opacity.toFixed(2)})` : "transparent",
+                                    color: opacity > 0.55 ? "#fff" : v > 0 ? "#1E3A8A" : "#CBD5E1",
+                                    fontWeight: v > 0 ? 600 : 400,
+                                  }}>
+                                  {v > 0 ? v.toLocaleString() : "—"}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              );
+            })()}
+            </div>
             )}
           </div>
         )}

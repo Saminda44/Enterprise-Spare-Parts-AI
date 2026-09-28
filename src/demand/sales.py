@@ -1,10 +1,7 @@
 """Step 04 — billed sales, revenue and margin.
 
-Divergence from the step specification, found by reading the file: in this vintage
-``Payer`` holds a dealer *name* only and ``Material`` a *description* only — neither is
-glued code+label, and there is no part number anywhere in the file. So sales cannot be
-joined to the part master by number; it is keyed on description text and reported as
-such. The Step 00 parser is still applied, and degrades correctly to (None, text).
+The export may mix coded material values and description-only values. The declared SAP
+parser preserves both; Step 15 attributes only unambiguous lines to Part Master SKUs.
 """
 
 from __future__ import annotations
@@ -112,7 +109,7 @@ def run(ctx: PlanningContext) -> StageResult:  # noqa: ARG001 — contract requi
         result.error = f"sales carries no revenue column; expected one of {NET_SALES_CANDIDATES}"
         return result
 
-    # Apply the declared parser; in this vintage it correctly yields no codes.
+    # Apply the declared parser; the source can mix coded and description-only rows.
     payer_parsed = frame["Payer"].map(split_code_label)
     frame["payer_code"] = [p[0] for p in payer_parsed]
     frame["payer_name"] = [p[1] or p[0] for p in payer_parsed]
@@ -122,8 +119,8 @@ def run(ctx: PlanningContext) -> StageResult:  # noqa: ARG001 — contract requi
 
     coded = int(frame["material_code"].notna().sum())
     result.warn(
-        f"Material carries a part number on {coded:,}/{len(frame):,} rows — this vintage is "
-        f"description-only, so sales cannot be keyed to the part master by number"
+        f"Material carries a parsed code on {coded:,}/{len(frame):,} rows; "
+        "description-only rows require a unique Part Master description match for SKU attribution"
     )
 
     dealers = read_source("dealers")

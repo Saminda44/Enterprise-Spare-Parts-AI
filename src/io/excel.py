@@ -109,7 +109,7 @@ def workbook_to_parquet(
         raise SourceDataError(f"source workbook not found: {source}")
 
     settings = get_settings()
-    out_dir = out_dir or settings.raw_dir
+    out_dir = out_dir or settings.source_parquet_dir
     out_dir.mkdir(parents=True, exist_ok=True)
 
     stem = _slug(source.stem)
@@ -191,7 +191,7 @@ def _resolve_source(name: str, out_dir: Path | None) -> Path:
     collapse the ``__`` sheet separator and miss the file.
     """
     settings = get_settings()
-    out_dir = out_dir or settings.raw_dir
+    out_dir = out_dir or settings.source_parquet_dir
     for candidate in (out_dir / f"{name}.parquet", out_dir / f"{_slug(name)}.parquet"):
         if candidate.exists():
             return candidate

@@ -17,9 +17,9 @@ from src.api.main import app
 from src.core.context import PlanningContext
 from src.core.result import StageResult
 from src.core.settings import get_settings
-from src.dashboard import sku
+from src.dashboard import sales_abc, sku
 from src.dashboard.compatibility import service_plan, validate_output
-from src.io.parquet import write_table
+from src.io.parquet import read_table, write_table
 
 
 @pytest.fixture
@@ -108,16 +108,37 @@ def published_sku(workspace: Path) -> pd.DataFrame:
             "chain_depth": 0,
             "compatible_models": "SYNTHETIC-MODEL",
             "part_kind": "shared",
+            "material_type": "part",
             "material_group": "parts",
             "brand": "test",
         },
     }
     for name, row in tables.items():
         write_table(pd.DataFrame([row]), "facts", name)
+    billed = pd.DataFrame(
+        [
+            {
+                "material_code": "SYNTHETIC-PART",
+                "material_description": "Synthetic part",
+                "month": "2025-11",
+                "Net Sales": 1000.0,
+                "SlsVolQty": 1.0,
+                "is_return": False,
+            }
+        ]
+    )
+    write_table(billed, "facts", "parts_sales")
     result = StageResult("15_dashboard")
     frame = sku.build(PlanningContext(as_of=date(2025, 12, 1)), result)
     validate_output(frame, "mart_ui_sku")
     write_table(frame, "marts", "mart_ui_sku")
+    billed_abc, billed_audit = sales_abc.build(
+        read_table("facts", "part_master_enriched"), billed, date(2025, 12, 1)
+    )
+    master_analysis = sku.build_part_master_analysis(frame, billed_abc)
+    validate_output(master_analysis, "mart_ui_part_master_analysis")
+    write_table(master_analysis, "marts", "mart_ui_part_master_analysis")
+    write_table(billed_audit, "marts", "mart_ui_sales_abc_audit")
     write_table(sku.overview(frame, result), "marts", "mart_ui_overview")
     write_table(service_plan(frame), "marts", "mart_ui_service_plan")
     write_table(pd.DataFrame([tables["monthly_order_proposal"]]), "marts", "mart_monthly_order")
@@ -140,6 +161,77 @@ def test_forecast_and_order_reconcile_to_new_pipeline(published_sku: pd.DataFram
     assert client.get("/api/v1/inventory?status=stockout").json()["total"] == 1
     assert client.get("/api/v1/classification?tier=R_S&part_type=shared").json()["total"] == 1
     assert client.get("/api/v1/classification?part_type=absent").json()["total"] == 0
+
+
+def test_analysis_uses_full_part_master_and_resolved_alias_search(
+    published_sku: pd.DataFrame,
+) -> None:
+    master = read_table("facts", "part_master_enriched")
+    extra = pd.DataFrame(
+        [
+            {
+                "active_sku_id": "NEW-SYNTHETIC",
+                "material": material,
+                "description": description,
+                "chain_depth": depth,
+                "compatible_models": "MODEL-X",
+                "part_kind": "shared",
+                "material_group": "test-group",
+                "material_type": "part",
+                "brand": "YM",
+            }
+            for material, description, depth in (
+                ("OLD-SYNTHETIC", "Old description", 1),
+                ("NEW-SYNTHETIC", "Current description", 0),
+            )
+        ]
+    )
+    write_table(pd.concat([master, extra], ignore_index=True), "facts", "part_master_enriched")
+    billed_abc, billed_audit = sales_abc.build(
+        read_table("facts", "part_master_enriched"),
+        read_table("facts", "parts_sales"),
+        date(2025, 12, 1),
+    )
+    analysis = sku.build_part_master_analysis(published_sku, billed_abc)
+    validate_output(analysis, "mart_ui_part_master_analysis")
+    assert len(analysis) == 2
+    write_table(analysis, "marts", "mart_ui_part_master_analysis")
+    write_table(billed_audit, "marts", "mart_ui_sales_abc_audit")
+    clear_cache()
+    client = TestClient(app)
+    classified = client.get("/api/v1/classification").json()
+    assert classified["total"] == 2
+    assert classified["classified_count"] == 1
+    assert classified["unclassified_count"] == 1
+    assert classified["active_count"] == 1
+    assert classified["inactive_count"] == 1
+    assert classified["active_count"] + classified["inactive_count"] == classified["total"]
+    assert {r["sales_activity_12m"] for r in classified["rows"]} == {"ACTIVE", "INACTIVE"}
+    assert classified["abc_fsn_counts"]["A"]["F"] == 1
+    assert classified["classification_coverage"]["ABC"] == {"assigned": 1, "not_classified": 1}
+    assert classified["classification_coverage"]["XYZ"] == {"assigned": 1, "not_classified": 1}
+    assert all(
+        counts["assigned"] + counts["not_classified"] == classified["total"]
+        for counts in classified["classification_coverage"].values()
+    )
+    assert classified["sales_abc_audit"]["sales_lines"] == 1
+    assert client.get("/api/v1/classification?scope=unclassified").json()["total"] == 1
+    assert client.get("/api/v1/classification?scope=inactive").json()["total"] == 1
+    assert client.get("/api/v1/classification?scope=active").json()["total"] == 1
+    found = client.get("/api/v1/classification?search=OLD-SYNTHETIC").json()
+    assert found["total"] == 1
+    assert found["rows"][0]["active_sku_id"] == "NEW-SYNTHETIC"
+    assert found["rows"][0]["description"] == "Current description"
+    assert found["rows"][0]["has_planning"] is False
+    assert found["rows"][0]["sales_activity_12m"] == "INACTIVE"
+    assert found["rows"][0]["avg_monthly_demand"] is None
+    assert found["rows"][0]["alias_count"] == 2
+    inventory = client.get("/api/v1/inventory?status=not_assessed").json()
+    assert inventory["total"] == 1
+    assert inventory["rows"][0]["has_stock_snapshot"] is False
+    assert inventory["rows"][0]["stock_on_hand"] is None
+    assert inventory["rows"][0]["stock_value_lkr"] is None
+    assert inventory["unassessed_count"] == 1
 
 
 @pytest.mark.parametrize(

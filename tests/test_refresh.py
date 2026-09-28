@@ -24,6 +24,16 @@ def test_every_watched_workbook_maps_to_real_stages() -> None:
             assert stage in REGISTRY.stages
 
 
+def test_sales_summery_alias_uses_supplied_filename(tmp_path) -> None:
+    supplied = tmp_path / "Sales Summery.xlsx"
+    supplied.touch()
+    assert refresh.source_workbook_path(tmp_path, "Sales_Summery.xlsx") == supplied
+
+    canonical = tmp_path / "Sales_Summery.xlsx"
+    canonical.touch()
+    assert refresh.source_workbook_path(tmp_path, "Sales_Summery.xlsx") == canonical
+
+
 def test_orders_change_reruns_its_downstream_only() -> None:
     stale = REGISTRY.downstream(refresh.SOURCE_STAGES["orders.xlsx"])
     assert {"03_orders", "05_order_analysis", "08_forecast", "13_policy", "15_dashboard"} <= stale

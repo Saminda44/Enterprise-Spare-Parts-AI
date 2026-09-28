@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from datetime import date, datetime
 from pathlib import Path
 
@@ -10,12 +11,18 @@ import typer
 from src.core.context import PlanningContext
 from src.core.registry import REGISTRY
 from src.core.settings import get_settings
-from src.refresh import SOURCE_WORKBOOKS
+from src.refresh import SOURCE_WORKBOOKS, source_workbook_path
 from src.stages import load_stages
 
 load_stages()
 
 app = typer.Typer(add_completion=False, help="Yamaha spare-parts planning pipeline.")
+
+
+def _console_safe(value: str, encoding: str | None = None) -> str:
+    """Keep reports printable in Windows consoles with legacy code pages."""
+    codec = encoding or sys.stdout.encoding or "utf-8"
+    return value.encode(codec, errors="backslashreplace").decode(codec)
 
 
 def _context(as_of: str | None) -> PlanningContext:
@@ -53,7 +60,7 @@ def ingest(force: bool = typer.Option(False, help="Re-convert even if the hash m
     typer.echo(f"source dir: {settings.raw_dir}")
     failures = 0
     for name, sheets in SOURCE_WORKBOOKS.items():
-        path = settings.raw_dir / name
+        path = source_workbook_path(settings.raw_dir, name)
         if not path.exists():
             typer.echo(f"  {name:<24} MISSING")
             failures += 1
@@ -103,7 +110,7 @@ def run(
         settings_summary=settings.summary(),
         report_path=report_path,
     )
-    typer.echo(run_report.render())
+    typer.echo(_console_safe(run_report.render()))
     typer.echo(f"report: {report_path}")
     raise typer.Exit(0 if run_report.ok else 1)
 

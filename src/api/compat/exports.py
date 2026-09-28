@@ -87,7 +87,7 @@ def export_policy(
             table_path("marts", "mart_monthly_order").read_bytes()
         ).hexdigest()
     }
-    for path in sorted(settings.raw_dir.glob("*.meta.json")):
+    for path in sorted(settings.source_parquet_dir.glob("*.meta.json")):
         info = json.loads(path.read_text(encoding="utf-8"))
         hashes[path.name] = info.get(
             "source_sha256", info.get("sha256", info.get("source_hash", "see source metadata"))

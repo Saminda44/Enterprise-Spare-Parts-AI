@@ -45,6 +45,19 @@ SOURCE_WORKBOOKS: dict[str, str | None] = {
     "Sales_Summery.xlsx": "*",
 }
 
+SOURCE_ALIASES: dict[str, tuple[str, ...]] = {
+    "Sales_Summery.xlsx": ("Sales Summery.xlsx",),
+}
+
+
+def source_workbook_path(raw_dir: Path, name: str) -> Path:
+    """Find the supplied workbook without renaming a source file."""
+    for candidate in (name, *SOURCE_ALIASES.get(name, ())):
+        path = raw_dir / candidate
+        if path.exists():
+            return path
+    return raw_dir / name
+
 #: The stages that read each workbook; everything downstream of them goes stale when it
 #: changes. Declared from each stage's ``read_source`` calls.
 SOURCE_STAGES: dict[str, tuple[str, ...]] = {
@@ -155,7 +168,7 @@ def _ingest() -> tuple[list[str], list[str]]:
     changed: list[str] = []
     failed: list[str] = []
     for name, sheets in SOURCE_WORKBOOKS.items():
-        path = settings.raw_dir / name
+        path = source_workbook_path(settings.raw_dir, name)
         if not path.exists():
             failed.append(f"{name}: missing")
             continue
@@ -330,7 +343,7 @@ def _snapshot() -> dict[str, tuple[int, int]]:
     raw = get_settings().raw_dir
     snap: dict[str, tuple[int, int]] = {}
     for name in SOURCE_WORKBOOKS:
-        path: Path = raw / name
+        path = source_workbook_path(raw, name)
         try:
             stat = path.stat()
             snap[name] = (stat.st_mtime_ns, stat.st_size)

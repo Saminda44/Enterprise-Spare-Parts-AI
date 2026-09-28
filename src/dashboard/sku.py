@@ -386,6 +386,68 @@ def build(ctx: PlanningContext, result: StageResult) -> pd.DataFrame:
     return out
 
 
+def build_part_master_analysis(
+    sku: pd.DataFrame, sales_abc: pd.DataFrame | None = None
+) -> pd.DataFrame:
+    """Publish every resolved Part Master SKU with any available planning and stock data.
+
+    Business meaning: a part absent from demand classification is still in the master;
+    its missing planning measures must not be mistaken for measured zero demand.
+    """
+    master = read_table("facts", "part_master_enriched")
+    stock = read_table("facts", "stock_position")
+    heads = master.sort_values("chain_depth").drop_duplicates("active_sku_id", keep="first")
+    heads = heads[
+        [
+            "active_sku_id",
+            "description",
+            "material_type",
+            "material_group",
+            "brand",
+            "compatible_models",
+            "part_kind",
+        ]
+    ].copy()
+    aliases = master.groupby("active_sku_id").size().rename("alias_count")
+    heads = heads.join(aliases, on="active_sku_id")
+    old_numbers = master[master["material"] != master["active_sku_id"]]
+    old_numbers = (
+        old_numbers.groupby("active_sku_id")["material"]
+        .agg(lambda values: ", ".join(sorted(set(values.astype(str)))))
+        .rename("superseded_numbers")
+    )
+    heads = heads.join(old_numbers, on="active_sku_id")
+    heads["superseded_numbers"] = heads["superseded_numbers"].fillna("")
+    planned = sku.drop(
+        columns=[
+            "material_9",
+            "description",
+            "material_group",
+            "brand",
+            "compatible_models",
+            "part_type",
+        ]
+    ).copy()
+    planned["has_planning"] = True
+    out = heads.merge(planned, on="active_sku_id", how="left", validate="one_to_one")
+    snapshot = stock[["active_sku_id", "on_hand"]].rename(columns={"on_hand": "snapshot_on_hand"})
+    out = out.merge(snapshot, on="active_sku_id", how="left", validate="one_to_one")
+    out["has_planning"] = out["has_planning"].eq(True)
+    out["has_stock_snapshot"] = out["snapshot_on_hand"].notna()
+    out["stock_on_hand"] = out["snapshot_on_hand"].combine_first(out["stock_on_hand"])
+    out["part_type"] = out["part_kind"]
+    out["material_9"] = out["active_sku_id"]
+    out["stock_status"] = out["stock_status"].fillna("NOT_ASSESSED")
+    if sales_abc is None:
+        out["sales_abc"] = None
+        out["sales_net_lkr"] = float("nan")
+        out["billed_lines"] = float("nan")
+    else:
+        out = out.merge(sales_abc, on="active_sku_id", how="left", validate="one_to_one")
+    out["sales_activity_12m"] = out["sales_abc"].notna().map({True: "ACTIVE", False: "INACTIVE"})
+    return out.drop(columns=["snapshot_on_hand", "part_kind"])
+
+
 def overview(sku: pd.DataFrame, result: StageResult) -> pd.DataFrame:
     """The single KPI row behind the dashboard's Overview cards."""
     master = read_table("facts", "part_master_enriched")

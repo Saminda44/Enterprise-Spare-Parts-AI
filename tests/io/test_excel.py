@@ -41,6 +41,8 @@ def test_converts_then_skips_when_unchanged(workspace: Path) -> None:
     assert first.rows == 1
     assert first.columns == 2
     assert first.parquet.exists()
+    assert first.parquet.parent == get_settings().source_parquet_dir
+    assert not (source.parent / "orders.parquet").exists()
 
     second = workbook_to_parquet(source)
     assert second.converted is False, "unchanged hash means no re-read"

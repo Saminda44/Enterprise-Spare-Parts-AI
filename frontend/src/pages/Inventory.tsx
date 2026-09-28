@@ -26,33 +26,36 @@ type Tab = "all" | "at-risk" | "excess";
 
 export function Inventory() {
   const [searchParams] = useSearchParams();
-  const [data, setData]       = useState<{ total: number; rows: InventoryRow[]; status_counts: Record<string, number>; total_value_lkr: number; excess_value_lkr: number } | null>(null);
+  const [data, setData]       = useState<{ total: number; rows: InventoryRow[]; classified_count: number; stock_snapshot_count: number; unassessed_count: number; status_counts: Record<string, number>; total_value_lkr: number; excess_value_lkr: number } | null>(null);
   const [hist, setHist]       = useState<{ bin_start: number; bin_end: number; count: number }[]>([]);
   const [atRisk, setAtRisk]   = useState<AtRiskRow[]>([]);
   const [excess, setExcess]   = useState<ExcessRow[]>([]);
   const [locations, setLocations] = useState<LocationRow[]>([]);
   const [status, setStatus]   = useState(searchParams.get("status") ?? "");
   const [search, setSearch]   = useState("");
+  const [page, setPage]       = useState(0);
   const [tab, setTab]         = useState<Tab>(searchParams.get("status") === "excess" ? "excess" : searchParams.get("status") === "stockout" ? "at-risk" : "all");
 
   useEffect(() => {
-    fetchInventory({ limit: 500 }).then(setData);
     fetchCoverageHistogram().then(setHist);
     fetchAtRisk(50).then(setAtRisk);
     fetchExcess(100).then(setExcess);
     fetchStockByLocation().then(setLocations).catch(() => setLocations([]));
   }, []);
 
-  useEffect(() => { fetchInventory({ status: status || undefined, limit: 500 }).then(setData); }, [status]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      fetchInventory({ status: status || undefined, search: search || undefined, limit: 100, offset: page * 100 }).then(setData);
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [status, search, page]);
+
+  useEffect(() => { setPage(0); }, [status, search]);
 
   if (!data) return <div className="flex-1 flex items-center justify-center text-slate-400">Loading…</div>;
 
-  const statusBar = Object.entries(data.status_counts).map(([k, v]) => ({ name: k, value: v }));
+  const statusBar = Object.entries(data.status_counts).filter(([k]) => k !== "not_assessed").map(([k, v]) => ({ name: k, value: v }));
   const histData  = hist.map(b => ({ name: b.bin_start.toFixed(1), count: b.count }));
-
-  const filtered = data.rows.filter(r =>
-    !search || r.material_9.toLowerCase().includes(search.toLowerCase()) || r.description.toLowerCase().includes(search.toLowerCase())
-  );
 
   const TABS: { key: Tab; label: string }[] = [
     { key: "all",     label: `All (${data.total.toLocaleString()})` },
@@ -65,8 +68,8 @@ export function Inventory() {
       <h2 className="text-xl font-bold text-slate-800">PDC Inventory Status</h2>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KpiCard label="Total SKUs"     value={fmt(data.total)}                         color="blue"/>
-        <KpiCard label="Stock Value"    value={`LKR ${fmt(data.total_value_lkr)}`}      color="green"/>
+        <KpiCard label="Part Master SKUs" value={fmt(data.total)} color="blue"/>
+        <KpiCard label="Valued Stock" value={`LKR ${fmt(data.total_value_lkr)}`} sub="Demand-classified SKUs" color="green"/>
         <KpiCard label="Stockout"       value={fmt(data.status_counts.stockout ?? 0)}   sub="Need immediate order" color="red"/>
         <KpiCard label="Excess Value"   value={`LKR ${fmt(data.excess_value_lkr)}`}     sub=">12 months coverage"   color="amber"/>
       </div>
@@ -145,7 +148,7 @@ export function Inventory() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white rounded-xl shadow-sm p-5">
-          <h3 className="text-sm font-semibold text-slate-700 mb-3">Status Breakdown</h3>
+          <h3 className="text-sm font-semibold text-slate-700 mb-3">Assessed Status Breakdown</h3>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={statusBar} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9"/>
@@ -172,13 +175,14 @@ export function Inventory() {
           </ResponsiveContainer>
           <div className="flex gap-4 mt-1 text-xs text-slate-400">
             <span>— 3 mo = lead time</span>
-            <span>— 6 mo = excess threshold</span>
+            <span>— 12 mo = excess threshold</span>
           </div>
         </div>
       </div>
 
       {/* Tabs */}
       <div className="bg-white rounded-xl shadow-sm p-5">
+        <p className="text-xs text-slate-500 mb-3">{data.classified_count.toLocaleString()} planned | {data.stock_snapshot_count.toLocaleString()} with stock snapshot | {data.unassessed_count.toLocaleString()} not assessed</p>
         <div className="flex gap-1 mb-4 border-b border-slate-100 pb-2">
           {TABS.map(t => (
             <button
@@ -200,58 +204,63 @@ export function Inventory() {
               />
               <select className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none" value={status} onChange={e => setStatus(e.target.value)}>
                 <option value="">All statuses</option>
-                {Object.keys(data.status_counts).map(s => <option key={s} value={s}>{s}</option>)}
+                {["stockout", "critical", "ok", "excess", "not_assessed"].map(s => <option key={s} value={s}>{s.replaceAll("_", " ")}</option>)}
               </select>
             </div>
-            <div className="overflow-x-auto">
+            <div className="max-h-[520px] overflow-auto">
               <table className="w-full text-sm">
-                <thead>
+                <thead className="sticky top-0 z-10 bg-white">
                   <tr className="border-b border-slate-100 text-left text-xs text-slate-500 uppercase">
                     <th className="py-2 pr-3">SKU</th>
                     <th className="py-2 pr-3">Description</th>
+                    <th className="py-2 pr-3">Brand</th>
+                    <th className="py-2 pr-3">Models</th>
                     <th className="py-2 pr-3">Policy</th>
                     <th className="py-2 pr-3">Method</th>
                     <th className="py-2 pr-3 text-right">Stock</th>
                     <th className="py-2 pr-3 text-right">Value (LKR)</th>
                     <th className="py-2 pr-3 text-right">Coverage (mo)</th>
                     <th className="py-2 pr-3 text-right">Post-Order Cov.</th>
-                    <th className="py-2 pr-3 text-right">Receipts</th>
                     <th className="py-2 pr-3 text-right">Issues</th>
                     <th className="py-2">Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.slice(0, 100).map(r => (
-                    <tr key={r.material_9} className="border-b border-slate-50 hover:bg-slate-50/50">
-                      <td className="py-2 pr-3 font-mono text-xs text-slate-700">{r.material_9}</td>
+                  {data.rows.map(r => (
+                    <tr key={r.active_sku_id} className="border-b border-slate-50 hover:bg-slate-50/50">
+                      <td className="py-2 pr-3 font-mono text-xs text-slate-700" title={r.superseded_numbers || undefined}>{r.active_sku_id}{r.alias_count > 1 && <span className="block text-[10px] text-slate-400">+{r.alias_count - 1} prior</span>}</td>
                       <td className="py-2 pr-3 text-slate-600 max-w-[160px] truncate" title={r.description}>{r.description}</td>
+                      <td className="py-2 pr-3 text-xs text-slate-500">{r.brand || "-"}</td>
+                      <td className="py-2 pr-3 text-xs text-slate-500 max-w-[180px] truncate" title={r.compatible_models}>{r.compatible_models || "-"}</td>
                       <td className="py-2 pr-3">
-                        <span className="text-xs px-1.5 py-0.5 rounded font-medium text-white" style={{ background: TIER_COLOR[r.policy_tier] ?? "#94A3B8" }}>{policyLabel(r.policy_tier)}</span>
+                        {r.has_planning ? <span className="text-xs px-1.5 py-0.5 rounded font-medium text-white" style={{ background: TIER_COLOR[r.policy_tier] ?? "#94A3B8" }}>{policyLabel(r.policy_tier)}</span> : "-"}
                       </td>
-                      <td className="py-2 pr-3 text-xs text-slate-400">{r.method}</td>
-                      <td className="py-2 pr-3 text-right">{r.stock_on_hand.toFixed(0)}</td>
-                      <td className="py-2 pr-3 text-right">{fmt(r.stock_value_lkr)}</td>
-                      <td className="py-2 pr-3 text-right">{r.coverage_months === 999 ? "∞" : r.coverage_months.toFixed(1)}</td>
+                      <td className="py-2 pr-3 text-xs text-slate-400">{r.has_planning ? r.method : "-"}</td>
+                      <td className="py-2 pr-3 text-right">{r.has_planning || r.has_stock_snapshot ? r.stock_on_hand?.toFixed(0) ?? "-" : "-"}</td>
+                      <td className="py-2 pr-3 text-right">{r.has_planning && r.stock_value_lkr != null ? fmt(r.stock_value_lkr) : "-"}</td>
+                      <td className="py-2 pr-3 text-right">{r.has_planning ? (r.coverage_months === 999 ? "∞" : r.coverage_months?.toFixed(1) ?? "-") : "-"}</td>
                       <td className="py-2 pr-3 text-right font-semibold" style={{
                         color: (() => {
-                          if (r.avg_monthly_demand <= 0) return "#94A3B8";
-                          const cov = (r.stock_on_hand + r.forecast_lt) / r.avg_monthly_demand;
+                          if ((r.avg_monthly_demand ?? 0) <= 0) return "#94A3B8";
+                          const cov = ((r.stock_on_hand ?? 0) + (r.forecast_lt ?? 0)) / (r.avg_monthly_demand ?? 1);
                           return cov < 3 ? "#EF4444" : cov < 6 ? "#F97316" : "#2CC56F";
                         })()
                       }}>
-                        {r.avg_monthly_demand <= 0 ? "—" :
-                          (() => { const c = (r.stock_on_hand + r.forecast_lt) / r.avg_monthly_demand; return c > 900 ? "∞" : c.toFixed(1); })()}
+                        {!r.has_planning || (r.avg_monthly_demand ?? 0) <= 0 ? "—" :
+                          (() => { const c = ((r.stock_on_hand ?? 0) + (r.forecast_lt ?? 0)) / (r.avg_monthly_demand ?? 1); return c > 900 ? "∞" : c.toFixed(1); })()}
                       </td>
-                      <td className="py-2 pr-3 text-right">{r.total_receipts.toFixed(0)}</td>
-                      <td className="py-2 pr-3 text-right">{r.total_issues.toFixed(0)}</td>
+                      <td className="py-2 pr-3 text-right">{r.has_planning ? r.total_issues?.toFixed(0) ?? "-" : "-"}</td>
                       <td className="py-2">
-                        <span className="text-xs px-2 py-0.5 rounded-full font-medium text-white" style={{ background: STATUS_COLOR[r.stock_status] ?? "#94A3B8" }}>{r.stock_status}</span>
+                        <span className="text-xs px-2 py-0.5 rounded-full font-medium text-white whitespace-nowrap" style={{ background: STATUS_COLOR[r.stock_status] ?? "#94A3B8" }}>{r.stock_status.replaceAll("_", " ")}</span>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              {filtered.length > 100 && <p className="text-xs text-slate-400 mt-2 text-center">Showing 100 of {filtered.length.toLocaleString()}</p>}
+            </div>
+            <div className="flex justify-between items-center pt-3 text-xs text-slate-500">
+              <span>{data.total ? `${page * 100 + 1}-${Math.min((page + 1) * 100, data.total)} of ${data.total.toLocaleString()}` : "No matching parts"}</span>
+              <div className="flex gap-2"><button className="px-2 py-1 border rounded disabled:opacity-40" disabled={page === 0} onClick={() => setPage(page - 1)}>Previous</button><button className="px-2 py-1 border rounded disabled:opacity-40" disabled={(page + 1) * 100 >= data.total} onClick={() => setPage(page + 1)}>Next</button></div>
             </div>
           </>
         )}

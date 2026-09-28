@@ -37,7 +37,7 @@ def mart(name: str) -> pd.DataFrame:
 @lru_cache(maxsize=128)
 def _cached_mart(name: str, path: str, modified: int, size: int) -> pd.DataFrame:
     frame = read_table("marts", name)
-    if name in {"mart_ui_sku", "mart_ui_service_plan"}:
+    if name in {"mart_ui_sku", "mart_ui_service_plan", "mart_ui_part_master_analysis"}:
         frame = frame.copy()
         if "stock_status" in frame:
             frame["stock_status"] = frame["stock_status"].str.lower().replace({"healthy": "ok"})

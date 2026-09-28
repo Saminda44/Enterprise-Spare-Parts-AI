@@ -115,6 +115,11 @@ class Settings(BaseSettings):
         return self.root / "data" / "staging"
 
     @property
+    def source_parquet_dir(self) -> Path:
+        """Generated workbook mirrors, kept separate from immutable source files."""
+        return self.staging_dir / "sources"
+
+    @property
     def facts_dir(self) -> Path:
         return self.root / "data" / "facts"
 
@@ -128,7 +133,13 @@ class Settings(BaseSettings):
 
     def ensure_dirs(self) -> None:
         """Create the writable layers. ``raw`` is never created or written here."""
-        for d in (self.staging_dir, self.facts_dir, self.marts_dir, self.reports_dir):
+        for d in (
+            self.staging_dir,
+            self.source_parquet_dir,
+            self.facts_dir,
+            self.marts_dir,
+            self.reports_dir,
+        ):
             d.mkdir(parents=True, exist_ok=True)
 
     def summary(self) -> dict[str, Any]:
