@@ -14,8 +14,9 @@ from src.core.registry import REGISTRY
 from src.core.result import StageResult, StageStatus
 from src.demand.orders import drop_empty, material_category
 from src.io.excel import read_source
-from src.io.parquet import write_table
+from src.io.parquet import read_table, table_exists, write_table
 from src.io.sap import split_code_label
+from src.parts.supersession import normalise
 
 #: Bill. Type codes that represent a return rather than a sale.
 RETURN_BILL_TYPES = {"RE", "ZRE", "ZRVT", "ZRSV"}
@@ -82,6 +83,62 @@ def parse_billing_date(series: pd.Series) -> pd.Series:
     return parsed.fillna(fallback)
 
 
+def drop_duplicate_billing_lines(frame: pd.DataFrame) -> tuple[pd.DataFrame, int, float]:
+    """Remove rows that are exact copies of an earlier row; return (rows, removed, value).
+
+    Business meaning: a billing document item is unique in SAP, so two rows identical in
+    every column — document, item, quantity, value — are the same sale exported twice, not
+    two sales. Keeping both doubles revenue and quantity for every affected month.
+    """
+    twins = frame.duplicated(keep="first")
+    removed = int(twins.sum())
+    # Net Sales_1 is the column verified as Sales Pric + Discount in this export.
+    value_column = next(
+        (c for c in ("Net Sales_1", *NET_SALES_CANDIDATES) if c in frame.columns), None
+    )
+    value = (
+        float(pd.to_numeric(frame.loc[twins, value_column], errors="coerce").fillna(0).sum())
+        if value_column and removed
+        else 0.0
+    )
+    return frame.loc[~twins].reset_index(drop=True), removed, value
+
+
+def material_code_and_description(
+    material: pd.Series, master_keys: set[str]
+) -> tuple[pd.Series, pd.Series]:
+    """Split sales.xlsx ``Material`` into (part number, description).
+
+    Business meaning: this export's ``Material`` is almost always a bare description, and
+    descriptions contain double spaces ("SEAL VALVE STEM  YAM 2GS2"). The generic SAP
+    splitter reads the text before a double space as a code, which here cuts the
+    description in two and invents a "code". A parsed code is kept only when it is a real
+    Part Master number; otherwise the whole text, whitespace collapsed, is the description.
+    """
+    codes: list[str | None] = []
+    descriptions: list[str | None] = []
+    for value in material:
+        code, label = split_code_label(value)
+        text = " ".join(str(value).split()) if value is not None and str(value).strip() else None
+        if code is not None and normalise(code) in master_keys:
+            codes.append(code)
+            descriptions.append(label or code)
+        else:
+            codes.append(None)
+            descriptions.append(text)
+    return (
+        pd.Series(codes, index=material.index, dtype="object"),
+        pd.Series(descriptions, index=material.index, dtype="object"),
+    )
+
+
+def _master_material_keys() -> set[str]:
+    """Normalised Part Master material numbers (every alias in every chain)."""
+    if not table_exists("facts", "part_master"):
+        return set()
+    return set(read_table("facts", "part_master")["material"].map(normalise))
+
+
 @REGISTRY.register(
     "04_sales",
     depends_on=["02_part_master"],
@@ -99,6 +156,16 @@ def run(ctx: PlanningContext) -> StageResult:  # noqa: ARG001 — contract requi
     if dropped_rows:
         result.reject("fully null row", dropped_rows)
 
+    frame, twins, twin_value = drop_duplicate_billing_lines(frame)
+    if twins:
+        result.reject("duplicate billing line (identical row repeated in the export)", twins)
+        result.warn(
+            f"DUPLICATE BILLING LINES: {twins:,} row(s) are exact copies of another row "
+            f"(same billing document, item, quantity and value) — removed; they carried "
+            f"{twin_value:,.0f} LKR of double-counted value. Ask whoever produced sales.xlsx "
+            f"to re-export; an SAP billing line cannot legitimately appear twice"
+        )
+
     required = {"SlsVolQty", "Payer", "Material"}
     if not required.issubset(frame.columns):
         result.status = StageStatus.FAILED
@@ -113,9 +180,9 @@ def run(ctx: PlanningContext) -> StageResult:  # noqa: ARG001 — contract requi
     payer_parsed = frame["Payer"].map(split_code_label)
     frame["payer_code"] = [p[0] for p in payer_parsed]
     frame["payer_name"] = [p[1] or p[0] for p in payer_parsed]
-    material_parsed = frame["Material"].map(split_code_label)
-    frame["material_code"] = [m[0] for m in material_parsed]
-    frame["material_description"] = [m[1] or m[0] for m in material_parsed]
+    frame["material_code"], frame["material_description"] = material_code_and_description(
+        frame["Material"], _master_material_keys()
+    )
 
     coded = int(frame["material_code"].notna().sum())
     result.warn(

@@ -127,7 +127,7 @@ export function UIO() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <Section title="Registrations by year" sub={`New bikes entering the fleet, by motorcycle type${banYears.length ? ` · ${banYears[0]}–${banYears[banYears.length - 1]}: import ban, genuinely zero` : ""}`}>
+        <Section title="Registrations by year" sub={`Sales Summery registrations (MC Analysis counts MCSI VINs; the two differ by under 0.2% a year) · new bikes entering the fleet, by motorcycle type${banYears.length ? ` · ${banYears[0]}–${banYears[banYears.length - 1]}: import ban, genuinely zero` : ""}`}>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={regData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9"/>

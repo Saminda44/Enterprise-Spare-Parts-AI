@@ -1432,6 +1432,9 @@ export function BikeSales() {
                     }
                   };
                   for (const r of actualMC ?? []) if (isClosed(r.period)) add(r.model, r.color, r.period, r.units);
+                  // Units of models no longer active: in the monthly Total (so it matches MC Analysis)
+                  // but without a row of their own.
+                  const otherUnits = (actualMC ?? []).filter(r => isClosed(r.period) && r.is_active === false).reduce((s, r) => s + r.units, 0);
                   for (const r of monthlyAlloc ?? []) if (!isClosed(r.period)) add(r.model, r.color, r.period, r.allocated_units);
                   const at = (model: string, color: string, p: string) => cell.get(`${model}|${color}|${p}`) ?? 0;
                   const sumOver = (model: string, color: string, ps: string[]) => ps.reduce((s, p) => s + at(model, color, p), 0);
@@ -1627,6 +1630,7 @@ export function BikeSales() {
                         split that month's target from the editor on the same mix, in whole units. <b>Year</b> = actual so far +
                         allocation for the rest. The last rows compare each month with its target — actual for closed months,
                         adjusted forecast for open ones (red = short).
+                        {otherUnits > 0 && <> The Total row includes {otherUnits.toLocaleString()} unit{otherUnits === 1 ? "" : "s"} of models no longer active, which have no row above.</>}
                       </p>
                     )}
                   </div>

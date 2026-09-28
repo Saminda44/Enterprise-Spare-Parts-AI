@@ -12,6 +12,7 @@ import {
 import { KpiCard } from "../components/KpiCard";
 import { SkuClassificationTab } from "../components/SkuClassificationTab";
 import { InventoryStatusTab } from "../components/InventoryStatusTab";
+import { SalesCheckTab } from "../components/SalesCheckTab";
 import { TimePicker, filterByRange, type TimeRange, YearPicker, filterByYear, getYears, monthLabel } from "../components/TimePicker";
 
 const CAT_COLORS = ["#EF4444","#F97316","#FFC107","#4361EE","#2CC56F","#7C3AED","#94A3B8"];
@@ -47,7 +48,7 @@ function ValueBar({ pct }: { pct: number }) {
   );
 }
 
-type Tab = "orders" | "sales" | "classification" | "inventory";
+type Tab = "orders" | "sales" | "salescheck" | "classification" | "inventory";
 type EdaSection = "overview" | "performance";
 type EdaPanel   = "parts" | "dealers" | "rm" | "ase" | "province" | "district";
 
@@ -110,7 +111,7 @@ export function EDA() {
   const [searchParams] = useSearchParams();
   const initialTab = searchParams.get("tab");
   const [tab,             setTab]             = useState<Tab>(
-    initialTab === "classification" || initialTab === "inventory" ? initialTab : "orders"
+    initialTab === "classification" || initialTab === "inventory" || initialTab === "salescheck" ? initialTab : "orders"
   );
   const [ordersDt,        setOrdersDt]        = useState<DealerType>("ALL");
   const [ordersMcCat,     setOrdersMcCat]     = useState<McCategoryType>("ALL");
@@ -166,6 +167,7 @@ export function EDA() {
   const TABS = [
     { key: "orders" as Tab, label: "Orders Analysis (Steps 03–05)" },
     { key: "sales"  as Tab, label: "Sales Analysis (Step 04)"  },
+    { key: "salescheck" as Tab, label: "Check vs Billed Sales" },
     { key: "classification" as Tab, label: "SKU Classification" },
     { key: "inventory"      as Tab, label: "Inventory Status"   },
   ];
@@ -1618,6 +1620,7 @@ export function EDA() {
           </div>
         )}
 
+        {tab === "salescheck"     && <SalesCheckTab/>}
         {tab === "classification" && <SkuClassificationTab/>}
         {tab === "inventory"      && <InventoryStatusTab/>}
 

@@ -16,6 +16,7 @@ from fastapi import APIRouter, Body, Query
 from src.api.compat.filters import apply_filters, f, i, mart, ratio, s, years_available
 from src.core.settings import get_settings
 from src.dashboard import unit_forecast
+from src.dashboard.vehicles import AGE_BANDS_BUYER, PRICE_BANDS, UNKNOWN_AGE
 
 router = APIRouter(prefix="/bikes", tags=["bikes"])
 
@@ -907,20 +908,150 @@ def target_breakdown_monthly(
     return rows
 
 
+@router.get("/buyer-age")
+def buyer_age() -> dict[str, Any]:
+    """Bikes sold by buyer age band, model and colour (counts only, no customer data)."""
+    cube = mart("mart_ui_mc_age_model_colour")
+    per_model = mart("mart_ui_mc_age_model")
+    if cube.empty:
+        return {"bands": [], "models": [], "cube": [], "totals": {}}
+    names = all_model_names()
+    label = lambda code: model_label(s(code), names)  # noqa: E731 - "Name (Code)"
+    num = lambda v: f(v) if pd.notna(v) else None  # noqa: E731 - nullable float
+    bands = [b[1] for b in AGE_BANDS_BUYER] + [UNKNOWN_AGE]
+    by_band = cube.groupby("age_band")["units"].sum()
+    known = float(by_band.drop(labels=[UNKNOWN_AGE], errors="ignore").sum())
+    return {
+        "bands": [
+            {
+                "band": band,
+                "units": f(by_band.get(band, 0.0)),
+                "share_pct": ratio(float(by_band.get(band, 0.0)), known, scale=100)
+                if band != UNKNOWN_AGE
+                else None,
+            }
+            for band in bands
+        ],
+        "totals": {
+            "units": f(cube["units"].sum()),
+            "units_with_age": known,
+            "median_age": num(per_model["overall_median_age"].iloc[0]),
+            "under_26_pct": ratio(
+                float(by_band.get("16–20", 0.0) + by_band.get("21–25", 0.0)), known, scale=100
+            ),
+        },
+        "models": [
+            {
+                "model": s(r["model_name"]),
+                "label": label(r["model_name"]),
+                "units": f(r["units"]),
+                "units_with_age": num(r["units_with_age"]),
+                "median_age": num(r["median_age"]),
+                "mean_age": num(r["mean_age"]),
+                "under_26_pct": num(r["under_26_pct"]),
+            }
+            for _, r in per_model.iterrows()
+        ],
+        "cube": [
+            {
+                "band": s(r["age_band"]),
+                "model": s(r["model_name"]),
+                "colour": s(r["colour"]),
+                "units": f(r["units"]),
+            }
+            for _, r in cube.iterrows()
+        ],
+    }
+
+
+@router.get("/model-price")
+def model_price() -> dict[str, Any]:
+    """Price against sales per model: list price, realised price, discounts, units, revenue."""
+    summary = mart("mart_ui_mc_model_price")
+    monthly = mart("mart_ui_mc_model_price_monthly")
+    if summary.empty:
+        return {"models": [], "monthly": [], "bands": [], "totals": {}}
+    names = all_model_names()
+    label = {
+        s(r["model_name"]): model_label(s(r["model_name"]), names) for _, r in summary.iterrows()
+    }
+    num = lambda v: f(v) if pd.notna(v) else None  # noqa: E731 - nullable float
+    bands = summary.groupby("price_band", as_index=False).agg(
+        models=("model_name", "size"), units=("units", "sum"), revenue_lkr=("revenue_lkr", "sum")
+    )
+    band_order = [b[1] for b in PRICE_BANDS]
+    bands["order"] = bands["price_band"].map({b: i for i, b in enumerate(band_order)})
+    total_units = float(summary["units"].sum())
+    return {
+        "totals": {
+            "units": total_units,
+            "revenue_lkr": f(summary["revenue_lkr"].sum()),
+            "discounted_units": f(summary["discounted_units"].sum()),
+            "avg_price": ratio(float(summary["revenue_lkr"].sum()), total_units),
+            "date_from": s(summary["first_month"].min()),
+            "date_to": s(summary["last_month"].max()),
+        },
+        "models": [
+            {
+                "model": s(r["model_name"]),
+                "label": label[s(r["model_name"])],
+                "motorcycle_type": s(r.get("motorcycle_type")) or None,
+                "segment": s(r.get("segment")) or None,
+                "cc": num(r.get("cc")),
+                "list_price": f(r["list_price"]),
+                "avg_price": f(r["avg_price"]),
+                "min_price": f(r["min_price"]),
+                "units": f(r["units"]),
+                "unit_share_pct": f(r["unit_share_pct"]),
+                "revenue_lkr": f(r["revenue_lkr"]),
+                "revenue_share_pct": f(r["revenue_share_pct"]),
+                "discounted_units": f(r["discounted_units"]),
+                "discounted_pct": f(r["discounted_pct"]),
+                "avg_discount": f(r["avg_discount"]),
+                "units_per_month": f(r["units_per_month"]),
+                "months_sold": i(r["months_sold"]),
+                "price_band": s(r["price_band"]),
+            }
+            for _, r in summary.iterrows()
+        ],
+        "monthly": [
+            {
+                "model": s(r["model_name"]),
+                "period": s(r["period"]),
+                "units": f(r["units"]),
+                "avg_price": f(r["avg_price"]),
+                "discounted_units": f(r["discounted_units"]),
+            }
+            for _, r in monthly.sort_values(["model_name", "period"]).iterrows()
+        ],
+        "bands": [
+            {
+                "band": s(r["price_band"]),
+                "models": i(r["models"]),
+                "units": f(r["units"]),
+                "unit_share_pct": ratio(float(r["units"]), total_units, scale=100),
+                "revenue_lkr": f(r["revenue_lkr"]),
+            }
+            for _, r in bands.sort_values("order").iterrows()
+        ],
+    }
+
+
 @router.get("/actual-model-colour")
 def actual_model_colour(year: int) -> list[dict[str, Any]]:
-    """Sold units per active model, colour and month for one year.
+    """Sold units per model, colour and month for one year — every sold unit.
 
-    The closed months of the target allocation table show these actuals, so they are
-    labelled and filtered exactly like the allocation (active models, "Name (Code)").
+    The closed months of the target allocation table show these actuals. Every model is
+    returned, flagged ``is_active``, so the table's monthly total equals the units MC
+    Analysis and MC Sales Forecast report; only active models get their own rows.
     """
     frame = _year_filter(mart("mart_ui_mc_model_colour_monthly"), year)
     if frame.empty:
         return []
     forecast = _forecast_rows()
+    active: set[str] | None = None
     if not forecast.empty and "is_active" in forecast.columns:
         active = set(forecast.loc[forecast["is_active"].astype(bool), "model"].astype(str))
-        frame = frame[frame["model_name"].astype(str).isin(active)]
     names = all_model_names()
     return [
         {
@@ -928,6 +1059,7 @@ def actual_model_colour(year: int) -> list[dict[str, Any]]:
             "model": model_label(s(row["model_name"]), names),
             "color": s(row["colour"]),
             "units": i(row["units_sold"]),
+            "is_active": active is None or s(row["model_name"]) in active,
         }
         for _, row in frame.iterrows()
         if f(row["units_sold"]) > 0

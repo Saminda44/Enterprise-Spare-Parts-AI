@@ -75,3 +75,103 @@ def test_exposure_sums_only_the_parts_models() -> None:
     whole = exposure(fleet, ["*"])
     assert whole.loc[2026].sum() == 37
     assert exposure(fleet, ["ZZZZ"]).empty
+
+
+def test_stock_status_counts_stock_on_order() -> None:
+    from src.dashboard.sku import classify_stock
+
+    assert classify_stock(0.0, on_hand=0, demand=5, on_order=0) == "STOCKOUT"
+    assert classify_stock(4.0, on_hand=0, demand=5, on_order=20) == "AWAITING_STOCK"
+    assert classify_stock(0.5, on_hand=2, demand=5, on_order=0) == "CRITICAL"
+    assert classify_stock(6.0, on_hand=10, demand=5, on_order=20) == "HEALTHY"
+    assert classify_stock(20.0, on_hand=40, demand=5, on_order=60) == "EXCESS"
+    assert classify_stock(999.0, on_hand=0, demand=0, on_order=10) == "NO_DEMAND"
+    assert classify_stock(999.0, on_hand=0, demand=0, on_order=0) == "DORMANT"
+
+
+def test_planning_scope_is_yamaha_mc_and_obm_only() -> None:
+    from src.inventory.stock import in_scope_skus
+
+    master = pd.DataFrame({"active_sku_id": ["MC-1", "OB-1", "KT-1"], "brand": ["YM", "OB", "KT"]})
+    assert in_scope_skus(master) == {"MC-1", "OB-1"}
+
+
+def test_order_plan_joins_fleet_class_forecast_and_stock() -> None:
+    from src.dashboard import order_plan
+
+    base = {
+        "description": "Part",
+        "cycle_month": "2026-09",
+        "expected_arrival": "2026-12",
+        "policy": "RS",
+        "abc_class": "A",
+        "fsn": "F",
+        "fill_target": 0.98,
+        "ss": 10.0,
+        "S": 50.0,
+        "s": 30.0,
+        "on_hand": 5.0,
+        "on_order": 5.0,
+        "ip": 10.0,
+        "q_raw": 40.0,
+        "eoq": 8.0,
+        "unit_cost": 2.0,
+        "recent_demand_6m": 60.0,
+        "trigger_reason": "r",
+    }
+    proposal = pd.DataFrame(
+        [
+            {
+                **base,
+                "active_sku_id": "ORDER",
+                "q_proposed": 40.0,
+                "q_final": 40.0,
+                "q_review": 0.0,
+                "value": 80.0,
+                "value_review": 0.0,
+                "flags": "",
+            },
+            {
+                **base,
+                "active_sku_id": "HELD",
+                "q_proposed": 40.0,
+                "q_final": 0.0,
+                "q_review": 40.0,
+                "value": 0.0,
+                "value_review": 80.0,
+                "flags": "REVIEW",
+            },
+            {
+                **base,
+                "active_sku_id": "NONE",
+                "q_proposed": 0.0,
+                "q_final": 0.0,
+                "q_review": 0.0,
+                "value": 0.0,
+                "value_review": 0.0,
+                "flags": "",
+            },
+        ]
+    )
+    sku = pd.DataFrame(
+        {
+            "active_sku_id": ["ORDER", "HELD", "NONE"],
+            "abc_source": "sales",
+            "demand_category": "smooth",
+            "mu_month_baseline": 10.0,
+            "mu_month_parc": [6.0, None, None],
+            "baseline_weight": [0.5, 1.0, 1.0],
+            "forecast_m1": [8.0, 10.0, 10.0],
+            "mu_p": 40.0,
+        }
+    )
+    plan = order_plan.build(proposal, sku, None).set_index("active_sku_id")
+    assert set(plan.index) == {"ORDER", "HELD"}  # nothing proposed, nothing listed
+    assert plan.at["ORDER", "status"] == order_plan.STATUS_ORDER
+    assert plan.at["HELD", "status"] == order_plan.STATUS_REVIEW
+    assert plan.at["ORDER", "fleet_share"] == pytest.approx(0.5 * 6.0 / 8.0)
+    assert plan.at["HELD", "fleet_share"] == 0.0
+    assert (
+        plan.at["ORDER", "target_level"] - plan.at["ORDER", "position"]
+        == plan.at["ORDER", "gap_to_target"]
+    )

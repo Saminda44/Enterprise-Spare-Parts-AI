@@ -9,6 +9,8 @@ import {
   type GeoModelData, type GeoMatrixLevel,
 } from "../api/client";
 import { KpiCard } from "../components/KpiCard";
+import { ModelPriceTab } from "../components/ModelPriceTab";
+import { BuyerAgeTab } from "../components/BuyerAgeTab";
 import { TrendingUp, Users, RotateCcw, DollarSign } from "lucide-react";
 
 const MODEL_COLORS  = ["#4361EE","#EF4444","#2CC56F","#FFC107","#7C3AED","#06B6D4","#F97316","#10B981","#EC4899","#94A3B8"];
@@ -102,7 +104,7 @@ function fmt(n: number) {
   return n.toLocaleString();
 }
 
-type Tab = "trend" | "model" | "color" | "year" | "geo" | "dealer";
+type Tab = "trend" | "model" | "price" | "age" | "color" | "year" | "geo" | "dealer";
 
 export function McsiEDA() {
   const [data,     setData]     = useState<McsiEdaData | null>(null);
@@ -139,6 +141,8 @@ export function McsiEDA() {
   const TABS: { key: Tab; label: string }[] = [
     { key: "trend",  label: "Monthly Trend"        },
     { key: "model",  label: "By Model"              },
+    { key: "price",  label: "Price vs Sales"        },
+    { key: "age",    label: "Buyer Age × Model × Colour" },
     { key: "color",  label: "By Color"              },
     { key: "year",   label: "By Year"               },
     { key: "geo",    label: "RM / ASE / Geography" },
@@ -387,6 +391,9 @@ export function McsiEDA() {
         )}
 
         {/* ── By Color ── */}
+        {tab === "price" && <ModelPriceTab/>}
+        {tab === "age"   && <BuyerAgeTab/>}
+
         {tab === "color" && (
           <div className="flex gap-1 border-b border-slate-100 pb-2 mb-5">
             {(["colour", "family"] as const).map(v => (

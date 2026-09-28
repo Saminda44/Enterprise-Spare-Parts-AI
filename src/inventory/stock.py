@@ -24,6 +24,22 @@ from src.parts.supersession import normalise
 MONTH_ABBR = {name.upper(): number for number, name in enumerate(calendar.month_abbr) if name}
 
 
+#: PN_Yamaha brands in planning scope: YM = Yamaha motorcycle parts, OB = Yamaha outboard
+#: (OBM) parts. Anything else PN_Yamaha carries (KT = Katana tyres) is not planned here.
+PLANNING_BRANDS = ("YM", "OB")
+
+
+def in_scope_skus(part_master: pd.DataFrame) -> set[str]:
+    """Active SKUs whose PN_Yamaha brand is Yamaha MC or OBM.
+
+    Business meaning: inventory status and the order plan cover Yamaha motorcycle and
+    outboard parts only; other brands in the master, and any material not in PN_Yamaha at
+    all (lubricants, other makes), are excluded from stock and from the pipeline alike.
+    """
+    brand = part_master["brand"].astype(str).str.strip().str.upper()
+    return set(part_master.loc[brand.isin(PLANNING_BRANDS), "active_sku_id"].astype(str))
+
+
 @REGISTRY.register(
     "12_stock",
     depends_on=["02_part_master"],
@@ -80,6 +96,20 @@ def run(ctx: PlanningContext) -> StageResult:
         )
         pdc = pdc.loc[~unknown].copy()
 
+    scope = in_scope_skus(part_master)
+    other_brand = ~pdc["active_sku_id"].astype(str).isin(scope)
+    if other_brand.any():
+        result.reject(
+            f"not a Yamaha MC/OBM part (PN_Yamaha brand outside {PLANNING_BRANDS})",
+            int(other_brand.sum()),
+        )
+        result.warn(
+            f"removed {int(other_brand.sum()):,} PDC row(s) / "
+            f"{float(pdc.loc[other_brand, 'Unrestricted'].sum()):,.0f} units of other brands "
+            f"in PN_Yamaha — only Yamaha MC (YM) and OBM (OB) parts are planned"
+        )
+        pdc = pdc.loc[~other_brand].copy()
+
     on_hand = pdc.groupby("active_sku_id", as_index=False).agg(
         on_hand=("Unrestricted", "sum"),
         storage_locations=("Storage Location", "nunique"),
@@ -87,6 +117,13 @@ def run(ctx: PlanningContext) -> StageResult:
     )
 
     on_order = _on_order(ctx, result, index)
+    outside = ~on_order["active_sku_id"].astype(str).isin(scope)
+    if outside.any():
+        result.warn(
+            f"removed {int(outside.sum()):,} on-order part(s) / "
+            f"{float(on_order.loc[outside, 'on_order'].sum()):,.0f} units outside Yamaha MC/OBM"
+        )
+        on_order = on_order.loc[~outside]
     position = on_hand.merge(on_order, on="active_sku_id", how="outer")
     position[["on_hand", "on_order"]] = position[["on_hand", "on_order"]].fillna(0.0)
 
@@ -105,7 +142,11 @@ def run(ctx: PlanningContext) -> StageResult:
             "collapses to on_hand"
         )
     else:
-        result.warn(f"on_order is {on_order_share:.1%} of total inventory position")
+        result.warn(
+            f"on_order is {on_order_share:.1%} of total inventory position: "
+            f"{float(position['on_hand'].sum()):,.0f} on hand + "
+            f"{float(position['on_order'].sum()):,.0f} on order across {len(position):,} parts"
+        )
 
     result.rows_out = len(position)
     result.artifact("stock_position", write_table(position, "facts", "stock_position"))

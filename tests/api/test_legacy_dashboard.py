@@ -154,11 +154,13 @@ def test_forecast_and_order_reconcile_to_new_pipeline(published_sku: pd.DataFram
     client = TestClient(app)
     overview = client.get("/api/v1/overview/kpis").json()
     assert overview["kpis"]["total_order_value_lkr"] == 250.0
-    assert overview["stock_status"] == {"stockout": 1}
+    # Empty shelf but 20 units on order: awaiting stock, not a stockout.
+    assert overview["stock_status"] == {"awaiting_stock": 1}
     policy = client.get("/api/v1/policy?urgency=soon").json()
     assert policy["rows"][0]["order_urgency"] == "soon"
     assert policy["rows"][0]["net_requirement"] == 25.0
-    assert client.get("/api/v1/inventory?status=stockout").json()["total"] == 1
+    assert client.get("/api/v1/inventory?status=awaiting_stock").json()["total"] == 1
+    assert client.get("/api/v1/inventory?status=stockout").json()["total"] == 0
     assert client.get("/api/v1/classification?tier=R_S&part_type=shared").json()["total"] == 1
     assert client.get("/api/v1/classification?part_type=absent").json()["total"] == 0
 
@@ -473,3 +475,61 @@ def test_location_unknown_values_are_not_reported_as_zero(workspace: Path) -> No
     assert row["qty"] == 20.0
     assert row["value_lkr"] is None
     assert row["sku_count"] is None
+
+
+def test_blank_descriptions_are_filled_from_the_chain_or_labelled(
+    published_sku: pd.DataFrame,
+) -> None:
+    master = read_table("facts", "part_master_enriched")
+    rows = [
+        # Current number blank, older number described: take the older description.
+        ("CHAIN-SYN", "CHAIN-SYN", None, 0),
+        ("CHAIN-SYN", "CHAIN-OLD", "Described on the old number", 1),
+        # No number in the chain has a description: label it, never drop it.
+        ("BLANK-SYN", "BLANK-SYN", "  ", 0),
+    ]
+    extra = pd.DataFrame(
+        [
+            {
+                "active_sku_id": sku_id,
+                "material": material,
+                "description": description,
+                "chain_depth": depth,
+                "compatible_models": "",
+                "part_kind": "shared",
+                "material_group": "test-group",
+                "material_type": "part",
+                "brand": "YM",
+            }
+            for sku_id, material, description, depth in rows
+        ]
+    )
+    write_table(pd.concat([master, extra], ignore_index=True), "facts", "part_master_enriched")
+    analysis = sku.build_part_master_analysis(published_sku)
+    validate_output(analysis, "mart_ui_part_master_analysis")
+    described = analysis.set_index("active_sku_id")["description"]
+    assert described["CHAIN-SYN"] == "Described on the old number"
+    assert described["BLANK-SYN"] == sku.MISSING_DESCRIPTION
+
+
+def test_classification_download_matches_the_filtered_list(
+    published_sku: pd.DataFrame,
+) -> None:
+    from io import BytesIO
+
+    analysis = sku.build_part_master_analysis(published_sku)
+    analysis["behaviour_class"] = ["wear part"] + ["engine part"] * (len(analysis) - 1)
+    write_table(analysis, "marts", "mart_ui_part_master_analysis")
+    clear_cache()
+    client = TestClient(app)
+    listed = client.get("/api/v1/classification?behaviour=wear%20part").json()
+    assert listed["total"] == 1
+    response = client.get("/api/v1/classification/export.xlsx?behaviour=wear%20part")
+    assert response.status_code == 200
+    parts = pd.read_excel(BytesIO(response.content), sheet_name="Parts", dtype=str)
+    meta = pd.read_excel(BytesIO(response.content), sheet_name="Metadata", dtype=str)
+    assert len(parts) == listed["total"]
+    assert set(parts["Behaviour class"]) == {"wear part"}
+    assert {"source_file_hashes", "code_commit_sha", "generated_at_utc", "filters"} <= set(
+        meta["field"]
+    )

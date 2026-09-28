@@ -167,7 +167,7 @@ export function Overview() {
         ) : (
           <>
             <KpiRow items={[
-              { label: "Total SKUs",    value: fmt(inv.kpis.total_skus),       sub: `${fmt(inv.kpis.active_skus)} active` },
+              { label: "Part Master SKUs", value: fmt(inv.kpis.total_skus),     sub: `${inv.kpis.active_skus.toLocaleString()} forecast (ordered by dealers)` },
               { label: "Stockout SKUs", value: fmt(inv.kpis.stockout_skus),    sub: `${fmt(inv.kpis.critical_skus)} critical`, badge: "danger" },
               { label: "Excess SKUs",   value: fmt(inv.kpis.excess_skus),      sub: `LKR ${fmt(inv.kpis.excess_stock_value_lkr)} tied up`, badge: "warn" },
               { label: "Avg Coverage",  value: `${inv.kpis.avg_coverage_months.toFixed(1)} mo`, sub: "active SKUs" },

@@ -78,6 +78,9 @@ export interface ForecastData {
   method_counts: Record<string, number>;
   parc_skus: number;
   zero_demand_skus: number;
+  all_skus?: number;               // parts forecast, before filters
+  monthly_forecast_units?: number; // forecast demand per month, all parts
+  fleet_share_pct?: number;        // share of that demand from the fleet term
   planning: PlanningInfo;
 }
 
@@ -105,6 +108,16 @@ export interface ClassificationRow {
   abc: string;
   sales_activity_12m: "ACTIVE" | "INACTIVE";
   order_abc: string;
+  planning_abc?: string;                 // the ABC that sets the fill target
+  behaviour_source?: string | null;      // what decided the behaviour class
+  system?: string | null;                // assembly system (Engine, Electrical, Body, ...)
+  catalogue_section?: string | null;     // PDF catalogue section the part sits in
+  abc_source?: "sales" | "orders" | null; // sales value, or order value where no sale linked
+  sales_xyz?: string | null;
+  sales_fsn?: string | null;
+  sales_link?: string | null;            // code | description | demand_resolved | demand_split
+  sales_qty?: number | null;
+  last_sale_month?: string | null;
   sales_net_lkr: number | null;
   billed_lines: number | null;
   xyz: string;
@@ -145,6 +158,12 @@ export interface ForecastRow {
   cv_hist: number;
   total_issue_value_lkr: number;
   active_months: number;
+  demand_category?: string;
+  history_forecast?: number;       // own-history forecast per month
+  fleet_forecast?: number | null;  // fleet (UIO) forecast per month
+  history_weight?: number;         // share of the blend from own history
+  protection_demand?: number;      // expected demand over the 4-month protection interval
+  protection_p90?: number;         // 90th percentile of that demand
 }
 
 export interface MonthlyPoint {
@@ -183,6 +202,12 @@ export interface InventoryRow {
   total_issues: number | null;
   total_returns: number | null;
   last_movement_date: string | null;
+  on_order?: number;                 // units on order (On_Orders.xlsx), in scope
+  position_qty?: number;             // on hand + on order
+  on_hand_coverage_months?: number | null;
+  cover_demand_monthly?: number | null; // demand the cover is measured against
+  on_order_value_lkr?: number | null;
+  order_qty?: number | null;          // this month's placeable order
 }
 
 export interface LocationRow {
@@ -352,6 +377,50 @@ export interface ReviewData { total: number; total_value_lkr: number; no_demand:
 export const fetchOrderReview = (limit = 500) =>
   api.get<ReviewData>("/policy/review", { params: { limit } }).then(r => r.data);
 
+export interface SalesCheckRow {
+  part_no: string; description: string; check: string;
+  ordered: number; confirmed: number; lost: number; billed: number;
+  billed_to_confirmed: number | null; forecast_month: number | null;
+  billed_per_month: number; ordered_per_month: number; sales_link: string | null;
+}
+export interface SalesCheckData {
+  total: number; counts: Record<string, number>;
+  totals: { ordered?: number; confirmed?: number; billed?: number };
+  window: { start: string | null; end: string | null } | null;
+  rows: SalesCheckRow[];
+}
+/** Per part: billed sales vs the orders the forecast is built on, over the overlap window. */
+export const fetchSalesCheck = (params?: { check?: string; search?: string; limit?: number }) =>
+  api.get<SalesCheckData>("/forecast/sales-check", { params }).then(r => r.data);
+
+export interface OrderPlanRow {
+  part_no: string; description: string; status: "to order" | "held for review";
+  abc: string; abc_source: string | null; fsn: string; demand_category: string | null;
+  behaviour_class: string | null; system: string | null; policy: string; fill_target: number;
+  forecast_month: number; history_forecast: number | null; fleet_forecast: number | null;
+  history_weight: number; fleet_share: number; protection_demand: number | null;
+  safety_stock: number; target_level: number; on_hand: number; on_order: number; position: number;
+  gap_to_target: number; eoq: number; q_final: number; q_review: number; unit_cost: number;
+  value: number; value_review: number; recent_demand_6m: number; trigger_reason: string; flags: string | null;
+}
+export interface OrderPlanGroup { name: string; lines: number; value: number; }
+export interface OrderPlanData {
+  total: number; cycle_month: string; expected_arrival: string;
+  summary: {
+    lines: number; value: number; units: number; held_lines: number; held_value: number;
+    fleet_linked_lines: number; fleet_value_share_pct: number; stock_on_hand: number; stock_on_order: number;
+  };
+  by_abc: OrderPlanGroup[]; by_system: OrderPlanGroup[]; by_behaviour: OrderPlanGroup[];
+  assumptions: {
+    fill_targets: Record<string, number>; holding_rate: number; order_cost: number; moq: number;
+    pack_size: number; lead_time_months: number; protection_interval_months: number; on_order_interpretation: string;
+  };
+  rows: OrderPlanRow[];
+}
+/** The next order: every proposed line with the fleet, class, forecast and stock behind it. */
+export const fetchOrderPlan = (params?: Record<string, unknown>) =>
+  api.get<OrderPlanData>("/order-plan", { params }).then(r => r.data);
+
 export const fetchSanity = (limit = 200) =>
   api.get<SanityRow[]>("/policy/sanity", { params: { limit } }).then(r => r.data);
 
@@ -496,6 +565,30 @@ export interface McsiEdaData {
   by_ase: McsiAseRow[];
   by_district: McsiDistrictRow[];
 }
+export interface ModelPriceRow {
+  model: string; label: string; motorcycle_type: string | null; segment: string | null; cc: number | null;
+  list_price: number; avg_price: number; min_price: number; units: number; unit_share_pct: number;
+  revenue_lkr: number; revenue_share_pct: number; discounted_units: number; discounted_pct: number;
+  avg_discount: number; units_per_month: number; months_sold: number; price_band: string;
+}
+export interface ModelPriceData {
+  totals: { units: number; revenue_lkr: number; discounted_units: number; avg_price: number; date_from: string; date_to: string };
+  models: ModelPriceRow[];
+  monthly: { model: string; period: string; units: number; avg_price: number; discounted_units: number }[];
+  bands: { band: string; models: number; units: number; unit_share_pct: number; revenue_lkr: number }[];
+}
+/** Model list price against bikes sold, discounts and price bands (MCSI). */
+export const fetchModelPrice = () => api.get<ModelPriceData>("/bikes/model-price").then(r => r.data);
+
+export interface BuyerAgeData {
+  bands: { band: string; units: number; share_pct: number | null }[];
+  totals: { units: number; units_with_age: number; median_age: number | null; under_26_pct: number };
+  models: { model: string; label: string; units: number; units_with_age: number | null; median_age: number | null; mean_age: number | null; under_26_pct: number | null }[];
+  cube: { band: string; model: string; colour: string; units: number }[];
+}
+/** Bikes sold by buyer age band, model and colour (MCSI; counts only). */
+export const fetchBuyerAge = () => api.get<BuyerAgeData>("/bikes/buyer-age").then(r => r.data);
+
 export const fetchMcsiEda = () => api.get<McsiEdaData>("/bikes/mcsi-eda").then(r => r.data);
 
 export interface ModelForecastRow {
@@ -638,7 +731,7 @@ export interface MonthlyAllocationRow extends TargetBreakdownRow { period: strin
 export const fetchMonthlyAllocation = (targets: Record<string, number>) =>
   api.post<MonthlyAllocationRow[]>("/bikes/target-breakdown/monthly", { targets }).then(r => r.data);
 
-export interface ActualModelColourRow { period: string; model: string; color: string; units: number; }
+export interface ActualModelColourRow { period: string; model: string; color: string; units: number; is_active?: boolean; }
 /** Sold units per active model, colour and month for one year. */
 export const fetchActualModelColour = (year: number) =>
   api.get<ActualModelColourRow[]>("/bikes/actual-model-colour", { params: { year } }).then(r => r.data);

@@ -58,6 +58,7 @@ def source_workbook_path(raw_dir: Path, name: str) -> Path:
             return path
     return raw_dir / name
 
+
 #: The stages that read each workbook; everything downstream of them goes stale when it
 #: changes. Declared from each stage's ``read_source`` calls.
 SOURCE_STAGES: dict[str, tuple[str, ...]] = {

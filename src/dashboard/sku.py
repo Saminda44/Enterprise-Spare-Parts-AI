@@ -35,17 +35,18 @@ COVER_CAP_MONTHS = 999.0
 SANITY_MULTIPLE = 3.0
 
 
-def classify_stock(coverage: float, on_hand: float, demand: float) -> str:
-    """Bucket a SKU's stock position.
+def classify_stock(coverage: float, on_hand: float, demand: float, on_order: float = 0.0) -> str:
+    """Bucket a SKU's stock position — stock on hand plus stock on order.
 
     Business meaning: what a planner should do about this part today. STOCKOUT means the
-    shelf is empty against live demand; EXCESS means capital is tied up in cover nobody
-    has asked for.
+    shelf is empty and nothing is coming; AWAITING_STOCK means the shelf is empty but an
+    order is already on its way; EXCESS means stock plus orders cover more than a year of
+    demand. ``coverage`` is (on hand + on order) in months of demand.
     """
     if demand <= 0:
-        return "NO_DEMAND" if on_hand > 0 else "DORMANT"
+        return "NO_DEMAND" if on_hand + on_order > 0 else "DORMANT"
     if on_hand <= 0:
-        return "STOCKOUT"
+        return "AWAITING_STOCK" if on_order > 0 else "STOCKOUT"
     if coverage < CRITICAL_COVER_MONTHS:
         return "CRITICAL"
     if coverage > EXCESS_COVER_MONTHS:
@@ -108,6 +109,10 @@ def build(ctx: PlanningContext, result: StageResult) -> pd.DataFrame:
     master = read_table("facts", "part_master_enriched")
 
     frame = classification.rename(columns={"quadrant": "demand_category"})
+    # The blend weight arrived with the live forecast; an older forecast table without it
+    # means every part was forecast from its own history alone (weight 1).
+    if "baseline_weight" not in forecast.columns:
+        forecast = forecast.assign(baseline_weight=1.0)
     frame = frame.merge(
         forecast[
             [
@@ -116,6 +121,7 @@ def build(ctx: PlanningContext, result: StageResult) -> pd.DataFrame:
                 "mu_month",
                 "mu_month_baseline",
                 "mu_month_parc",
+                "baseline_weight",
                 "mu_p",
                 "sigma_p",
                 "p50",
@@ -274,20 +280,34 @@ def build(ctx: PlanningContext, result: StageResult) -> pd.DataFrame:
 
     frame["stock_on_hand"] = frame["on_hand"]
     frame["stock_value_lkr"] = frame["on_hand"] * frame["unit_value_lkr"]
-    frame["coverage_months"] = np.where(
-        frame["avg_monthly_demand"] > 0,
-        np.minimum(
-            frame["on_hand"] / frame["avg_monthly_demand"].replace(0, np.nan), COVER_CAP_MONTHS
-        ),
-        COVER_CAP_MONTHS,
-    )
-    frame["coverage_months"] = frame["coverage_months"].fillna(COVER_CAP_MONTHS)
+    frame["on_order_value_lkr"] = frame["on_order"] * frame["unit_value_lkr"]
+    frame["position_qty"] = frame["on_hand"] + frame["on_order"]
+    # Cover is measured against exactly the demand the order plan uses — the live monthly
+    # forecast — so a part's demand reads the same on the Inventory, Forecast and Order Plan
+    # pages. A part forecast at zero has no demand behind its stock, whatever its history.
+    frame["cover_demand_monthly"] = pd.to_numeric(frame["forecast_m1"], errors="coerce").fillna(0.0)
+    demand = frame["cover_demand_monthly"].replace(0, np.nan)
+
+    def cover(quantity: pd.Series) -> pd.Series:
+        months = np.where(
+            frame["cover_demand_monthly"] > 0,
+            np.minimum(quantity / demand, COVER_CAP_MONTHS),
+            COVER_CAP_MONTHS,
+        )
+        return pd.Series(months, index=frame.index).fillna(COVER_CAP_MONTHS)
+
+    frame["on_hand_coverage_months"] = cover(frame["on_hand"])
+    frame["coverage_months"] = cover(frame["position_qty"])  # stock + on order
     frame["days_of_stock"] = frame["coverage_months"] * DAYS_PER_MONTH
 
     frame["stock_status"] = [
-        classify_stock(cov, hand, dem)
-        for cov, hand, dem in zip(
-            frame["coverage_months"], frame["on_hand"], frame["avg_monthly_demand"], strict=True
+        classify_stock(cov, hand, dem, order)
+        for cov, hand, dem, order in zip(
+            frame["coverage_months"],
+            frame["on_hand"],
+            frame["cover_demand_monthly"],
+            frame["on_order"],
+            strict=True,
         )
     ]
     frame["order_urgency"] = [
@@ -309,6 +329,8 @@ def build(ctx: PlanningContext, result: StageResult) -> pd.DataFrame:
         "active_sku_id",
         "description",
         "abc",
+        "abc_orders",
+        "abc_source",
         "xyz",
         "fsn",
         "abc_xyz_fsn",
@@ -325,6 +347,8 @@ def build(ctx: PlanningContext, result: StageResult) -> pd.DataFrame:
         "forecast_month",
         "mu_month_baseline",
         "mu_month_parc",
+        "baseline_weight",
+        "mu_p",
         "value",
         "cycle_month",
         "forecast_m1",
@@ -353,6 +377,10 @@ def build(ctx: PlanningContext, result: StageResult) -> pd.DataFrame:
         "ip",
         "storage_locations",
         "coverage_months",
+        "on_hand_coverage_months",
+        "position_qty",
+        "on_order_value_lkr",
+        "cover_demand_monthly",
         "days_of_stock",
         "stock_status",
         "service_level",
@@ -386,6 +414,10 @@ def build(ctx: PlanningContext, result: StageResult) -> pd.DataFrame:
     return out
 
 
+#: Shown for a Part Master SKU whose every number has a blank PN_Yamaha description.
+MISSING_DESCRIPTION = "(no description in PN_Yamaha)"
+
+
 def build_part_master_analysis(
     sku: pd.DataFrame, sales_abc: pd.DataFrame | None = None
 ) -> pd.DataFrame:
@@ -408,6 +440,24 @@ def build_part_master_analysis(
             "part_kind",
         ]
     ].copy()
+    # PN_Yamaha leaves some descriptions blank. Take one from another number in the same
+    # supersession chain where one exists; otherwise label the gap instead of dropping the part.
+    described = master["description"].where(
+        master["description"].astype(str).str.strip().ne("") & master["description"].notna()
+    )
+    chain_description = (
+        master.assign(description=described)
+        .dropna(subset=["description"])
+        .sort_values("chain_depth")
+        .drop_duplicates("active_sku_id")
+        .set_index("active_sku_id")["description"]
+    )
+    heads["description"] = (
+        heads["description"]
+        .where(heads["description"].astype(str).str.strip().ne("") & heads["description"].notna())
+        .fillna(heads["active_sku_id"].map(chain_description))
+        .fillna(MISSING_DESCRIPTION)
+    )
     aliases = master.groupby("active_sku_id").size().rename("alias_count")
     heads = heads.join(aliases, on="active_sku_id")
     old_numbers = master[master["material"] != master["active_sku_id"]]
@@ -430,13 +480,20 @@ def build_part_master_analysis(
     ).copy()
     planned["has_planning"] = True
     out = heads.merge(planned, on="active_sku_id", how="left", validate="one_to_one")
-    snapshot = stock[["active_sku_id", "on_hand"]].rename(columns={"on_hand": "snapshot_on_hand"})
+    snapshot = stock[["active_sku_id", "on_hand", "on_order"]].rename(
+        columns={"on_hand": "snapshot_on_hand", "on_order": "snapshot_on_order"}
+    )
     out = out.merge(snapshot, on="active_sku_id", how="left", validate="one_to_one")
     out["has_planning"] = out["has_planning"].eq(True)
     out["has_stock_snapshot"] = out["snapshot_on_hand"].notna()
     out["stock_on_hand"] = out["snapshot_on_hand"].combine_first(out["stock_on_hand"])
     out["part_type"] = out["part_kind"]
     out["material_9"] = out["active_sku_id"]
+    # Stock (or an order) for a part dealers have never ordered: visible as NO_DEMAND, not
+    # hidden as "not assessed" — it is capital with no demand behind it.
+    out["on_order"] = out["snapshot_on_order"].combine_first(out.get("on_order"))
+    stocked = (out["stock_on_hand"].fillna(0) + out["on_order"].fillna(0)) > 0
+    out.loc[out["stock_status"].isna() & stocked, "stock_status"] = "NO_DEMAND"
     out["stock_status"] = out["stock_status"].fillna("NOT_ASSESSED")
     if sales_abc is None:
         out["sales_abc"] = None
@@ -445,7 +502,18 @@ def build_part_master_analysis(
     else:
         out = out.merge(sales_abc, on="active_sku_id", how="left", validate="one_to_one")
     out["sales_activity_12m"] = out["sales_abc"].notna().map({True: "ACTIVE", False: "INACTIVE"})
-    return out.drop(columns=["snapshot_on_hand", "part_kind"])
+    # Behaviour class for every part (Step 06 classifies the whole Part Master, helped by
+    # the catalogues), not only the parts that carry a demand history.
+    if table_exists("facts", "part_behaviour"):
+        behaviour = read_table("facts", "part_behaviour")
+        out = out.drop(
+            columns=[
+                c
+                for c in ("behaviour_class", "behaviour_source", "system", "catalogue_section")
+                if c in out.columns
+            ]
+        ).merge(behaviour, on="active_sku_id", how="left", validate="one_to_one")
+    return out.drop(columns=["snapshot_on_hand", "snapshot_on_order", "part_kind"])
 
 
 def overview(sku: pd.DataFrame, result: StageResult) -> pd.DataFrame:
@@ -460,6 +528,7 @@ def overview(sku: pd.DataFrame, result: StageResult) -> pd.DataFrame:
     )
     selected = gate[gate["arm"] == "selected"] if not gate.empty else pd.DataFrame()
 
+    position = read_table("facts", "stock_position")
     row = {
         "total_skus": int(master["active_sku_id"].nunique()),
         "active_skus": int(len(sku)),
@@ -486,9 +555,11 @@ def overview(sku: pd.DataFrame, result: StageResult) -> pd.DataFrame:
         "m6_weighted_fill_rate_pct": (
             float(selected["fill_rate"].iloc[0]) * 100.0 if not selected.empty else 0.0
         ),
-        "m3_total_stock_qty": float(sku["stock_on_hand"].sum()),
-        "m3_total_pipeline_qty": float(sku["on_order"].sum()),
-        "m3_total_net_position": float(sku["ip"].sum()),
+        # The whole in-scope PDC position (Step 12), the same total the Inventory Status
+        # tab shows — including stock held for parts dealers have never ordered.
+        "m3_total_stock_qty": float(position["on_hand"].sum()),
+        "m3_total_pipeline_qty": float(position["on_order"].sum()),
+        "m3_total_net_position": float(position["ip"].sum()),
     }
     result.warn(
         f"overview KPIs: {row['active_skus']:,} active SKUs, "

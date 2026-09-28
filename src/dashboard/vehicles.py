@@ -209,6 +209,219 @@ def build_mcsi(result: StageResult) -> dict[str, pd.DataFrame]:
 ACTIVE_STATUS = "active"
 
 
+#: A bike sold more than this below its model's list price counts as discounted (LKR).
+DISCOUNT_TOLERANCE_LKR = 1.0
+#: Price bands for the sales-by-price view, in LKR (upper bounds; the last is open).
+PRICE_BANDS = (
+    (600_000, "Under 600K"),
+    (800_000, "600K–800K"),
+    (1_000_000, "800K–1M"),
+    (1_200_000, "1M–1.2M"),
+    (float("inf"), "Over 1.2M"),
+)
+
+
+def price_band(price: float) -> str:
+    """The price band a list price falls in."""
+    for upper, label in PRICE_BANDS:
+        if price < upper:
+            return label
+    return PRICE_BANDS[-1][1]
+
+
+def build_model_price(result: StageResult) -> dict[str, pd.DataFrame]:
+    """Price against sales, per model: list price, realised price, discounts and units.
+
+    Business meaning: MCSI records each bike's net sales value, so a model's **list price**
+    is the price most of its bikes sold at, and anything below it is a discount. Prices are
+    set centrally and barely move month to month, so price-versus-sales is mainly a
+    comparison across models — which price points sell — plus how often each is discounted.
+
+    Returns:
+        ``mart_ui_mc_model_price`` (one row per model) and
+        ``mart_ui_mc_model_price_monthly`` (model × month units and average price).
+    """
+    frame = _unit_sales()
+    sold = frame[frame["status"] == "sold"].copy()
+    if sold.empty:
+        return {
+            "mart_ui_mc_model_price": pd.DataFrame(),
+            "mart_ui_mc_model_price_monthly": pd.DataFrame(),
+        }
+
+    # List price: the modal net sales value of the model's bikes.
+    list_price = sold.groupby("model_name")["net_sales"].agg(lambda s: s.round(0).mode().iat[0])
+    sold["list_price"] = sold["model_name"].map(list_price)
+    sold["discount"] = (sold["list_price"] - sold["net_sales"]).clip(lower=0)
+    sold["discounted"] = sold["discount"] > DISCOUNT_TOLERANCE_LKR
+
+    names = model_names(frame).set_index("model_name")["model_description"].to_dict()
+    classification = read_source("sales_summery__model_classification").rename(
+        columns=lambda c: str(c).strip()
+    )
+    attrs = (
+        classification.assign(code=classification["Model"].astype(str).str.strip())
+        .drop_duplicates("code")
+        .set_index("code")
+    )
+    total_units = float(len(sold))
+    total_revenue = float(sold["net_sales"].sum())
+    grouped = sold.groupby("model_name")
+    summary = pd.DataFrame(
+        {
+            "units": grouped.size().astype(float),
+            "revenue_lkr": grouped["net_sales"].sum(),
+            "list_price": list_price,
+            "avg_price": grouped["net_sales"].mean(),
+            "min_price": grouped["net_sales"].min(),
+            "discounted_units": grouped["discounted"].sum().astype(float),
+            "avg_discount": grouped.apply(
+                lambda g: (
+                    float(g.loc[g["discounted"], "discount"].mean())
+                    if g["discounted"].any()
+                    else 0.0
+                ),
+                include_groups=False,
+            ),
+            "first_month": grouped["month"].min(),
+            "last_month": grouped["month"].max(),
+            "months_sold": grouped["month"].nunique().astype(float),
+        }
+    ).reset_index()
+    summary["model_description"] = summary["model_name"].map(names)
+    summary["unit_share_pct"] = summary["units"] / total_units * 100.0
+    summary["revenue_share_pct"] = (
+        summary["revenue_lkr"] / total_revenue * 100.0 if total_revenue else 0.0
+    )
+    summary["discounted_pct"] = summary["discounted_units"] / summary["units"] * 100.0
+    summary["units_per_month"] = summary["units"] / summary["months_sold"]
+    summary["price_band"] = summary["list_price"].map(price_band)
+    for column, source in (
+        ("motorcycle_type", "Motorcycle Type"),
+        ("segment", "Segment"),
+        ("cc", "cc"),
+    ):
+        summary[column] = (
+            summary["model_name"].map(attrs[source]) if source in attrs.columns else None
+        )
+    summary = summary.sort_values("units", ascending=False).reset_index(drop=True)
+
+    monthly = (
+        sold.groupby(["model_name", "month"], as_index=False)
+        .agg(
+            units=("net_sales", "size"),
+            avg_price=("net_sales", "mean"),
+            discounted_units=("discounted", "sum"),
+        )
+        .rename(columns={"month": "period"})
+    )
+    monthly["units"] = monthly["units"].astype(float)
+    monthly["discounted_units"] = monthly["discounted_units"].astype(float)
+
+    result.warn(
+        f"model price vs sales: {len(summary)} models, list prices "
+        f"{summary['list_price'].min():,.0f}–{summary['list_price'].max():,.0f} LKR; "
+        f"{int(summary['discounted_units'].sum()):,} of {int(total_units):,} bikes sold below list"
+    )
+    return {"mart_ui_mc_model_price": summary, "mart_ui_mc_model_price_monthly": monthly}
+
+
+#: Buyer age bands (inclusive lower bound, label). Ages above ``MAX_BUYER_AGE`` are recording
+#: errors, not buyers, and count as unknown.
+AGE_BANDS_BUYER = (
+    (16, "16–20"),
+    (21, "21–25"),
+    (26, "26–30"),
+    (31, "31–35"),
+    (36, "36–45"),
+    (46, "46–55"),
+    (56, "56–65"),
+    (66, "66+"),
+)
+MAX_BUYER_AGE = 90
+UNKNOWN_AGE = "Unknown age"
+
+
+def buyer_age_band(age: float) -> str:
+    """The band a buyer's age at purchase falls in; implausible or missing ages are unknown."""
+    if pd.isna(age) or age < AGE_BANDS_BUYER[0][0] or age > MAX_BUYER_AGE:
+        return UNKNOWN_AGE
+    label = AGE_BANDS_BUYER[0][1]
+    for lower, band in AGE_BANDS_BUYER:
+        if age >= lower:
+            label = band
+    return label
+
+
+def build_buyer_age(result: StageResult) -> dict[str, pd.DataFrame]:
+    """Bikes sold by buyer age band, model and colour.
+
+    Business meaning: MCSI records the customer's age at purchase for each VIN. Crossing it
+    with model and colour shows who buys what — which models and colours each age group
+    chooses. Only counts by band are published; no customer identifier leaves this step.
+
+    Returns:
+        ``mart_ui_mc_age_model_colour`` (age band × model × colour units) and
+        ``mart_ui_mc_age_model`` (per model: bikes, bikes with a known age, median and mean
+        age, share under 26).
+    """
+    sold = _unit_sales()
+    sold = sold[sold["status"] == "sold"].copy()
+    mcsi = read_source("mcsi")
+    mcsi.columns = [str(c).strip() for c in mcsi.columns]
+    if "Age At Purchase" not in mcsi.columns or sold.empty:
+        result.warn("buyer age: MCSI carries no 'Age At Purchase' column — tab left empty")
+        return {
+            "mart_ui_mc_age_model_colour": pd.DataFrame(),
+            "mart_ui_mc_age_model": pd.DataFrame(),
+        }
+    ages = (
+        mcsi.assign(
+            vin=mcsi["VIN"].astype(str).str.strip().str.upper(),
+            age=pd.to_numeric(mcsi["Age At Purchase"], errors="coerce"),
+        )
+        .dropna(subset=["age"])
+        .groupby("vin")["age"]
+        .first()
+    )
+    sold["age"] = sold["vin"].astype(str).str.strip().str.upper().map(ages)
+    implausible = int((sold["age"] > MAX_BUYER_AGE).sum())
+    sold.loc[sold["age"] > MAX_BUYER_AGE, "age"] = float("nan")
+    sold["age_band"] = sold["age"].map(buyer_age_band)
+
+    cube = (
+        sold.groupby(["age_band", "model_name", "colour"], as_index=False)
+        .size()
+        .rename(columns={"size": "units"})
+    )
+    cube["units"] = cube["units"].astype(float)
+    known = sold[sold["age"].notna()]
+    per_model = (
+        sold.groupby("model_name")
+        .agg(units=("vin", "size"))
+        .join(
+            known.groupby("model_name").agg(
+                units_with_age=("age", "size"),
+                median_age=("age", "median"),
+                mean_age=("age", "mean"),
+                under_26=("age", lambda a: float((a < 26).sum())),
+            ),
+            how="left",
+        )
+    )
+    per_model["under_26_pct"] = per_model["under_26"] / per_model["units_with_age"] * 100.0
+    per_model["overall_median_age"] = float(known["age"].median()) if len(known) else float("nan")
+    per_model = per_model.reset_index().sort_values("units", ascending=False)
+    per_model["units"] = per_model["units"].astype(float)
+
+    result.warn(
+        f"buyer age: {len(known):,} of {len(sold):,} bikes carry an age at purchase "
+        f"(median {known['age'].median():.0f}); {implausible:,} age(s) over {MAX_BUYER_AGE} "
+        f"treated as unknown"
+    )
+    return {"mart_ui_mc_age_model_colour": cube, "mart_ui_mc_age_model": per_model}
+
+
 def active_model_codes(classification: pd.DataFrame) -> set[str]:
     """Model codes Sales Summery's Model Classification sheet marks Active.
 
@@ -311,9 +524,11 @@ def build_sales_forecast(result: StageResult) -> dict[str, pd.DataFrame]:
     out["history_months"] = out["model"].map(history).fillna(0).astype(int)
     out["method"] = unit_forecast.GROWTH_METHOD[1]
 
-    # The total: active models summed; its band comes from total-level backtest misses,
-    # which are narrower than adding up every model's band would suggest.
-    live = out[out["is_active"]]
+    # The total: every model's actual sales in past months (a unit sold is sold, whatever
+    # its model's status — MC Analysis counts it too), active models' forecast in future
+    # months. The band comes from total-level backtest misses, which are narrower than
+    # adding up every model's band would suggest.
+    live = out[out["is_active"] | ~out["is_forecast"]]
     total = live.groupby(["period", "is_forecast"], as_index=False).agg(
         actual_units=("actual_units", "sum"), forecast_units=("forecast_units", "sum")
     )

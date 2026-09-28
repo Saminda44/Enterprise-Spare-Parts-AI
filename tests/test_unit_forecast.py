@@ -163,3 +163,56 @@ def test_age_bucket_sort_key() -> None:
 
     buckets = ["15+", "0-1", "10-11", "2-3"]
     assert sorted(buckets, key=_age_start) == ["0-1", "2-3", "10-11", "15+"]
+
+
+def test_behaviour_layers_nature_then_catalogue_then_keywords() -> None:
+    from src.parts import behaviour as bh
+
+    skus = pd.DataFrame(
+        {
+            "active_sku_id": ["BOLT-1", "CAT-1", "DESC-1", "KEY-1", "NONE-1", "OB-1", "MARK-1"],
+            "description": [
+                "BOLT, FLANGE",
+                "REED VALVE ASSY",
+                "LEVER 1",
+                "C.D.I. UNIT ASSY",
+                "MOLE 1",
+                "SHAFT",
+                "TUNING FORK MARK",
+            ],
+            "brand": ["YM", "YM", "YM", "YM", "YM", "OB", "YM"],
+        }
+    )
+    sku_sections = pd.Series({"BOLT-1": "CYLINDER", "CAT-1": "CYLINDER", "MARK-1": "LEG SHIELD"})
+    desc_sections = pd.Series({"LEVER 1": "STAND & FOOTREST"})
+    out = bh.classify_all(skus, sku_sections, desc_sections).set_index("active_sku_id")
+    assert out.at["BOLT-1", "behaviour_class"] == "service part"  # nature beats section
+    assert out.at["BOLT-1", "system"] == "Engine"  # but the section still names the system
+    assert out.at["CAT-1", "behaviour_class"] == "engine part"
+    assert out.at["CAT-1", "behaviour_source"] == bh.SOURCE_SECTION
+    assert out.at["DESC-1", "behaviour_source"] == bh.SOURCE_SECTION_BY_DESCRIPTION
+    assert out.at["KEY-1", "behaviour_class"] == "electrical part"
+    assert out.at["NONE-1", "behaviour_class"] == bh.UNCLASSIFIED
+    assert out.at["OB-1", "system"] == "Outboard"
+    assert out.at["MARK-1", "behaviour_class"] == "cosmetic part"
+
+
+def test_price_bands_cover_every_price() -> None:
+    from src.dashboard.vehicles import price_band
+
+    assert price_band(584_661) == "Under 600K"
+    assert price_band(699_068) == "600K–800K"
+    assert price_band(906_695) == "800K–1M"
+    assert price_band(1_042_288) == "1M–1.2M"
+    assert price_band(1_402_458) == "Over 1.2M"
+
+
+def test_buyer_age_bands_and_implausible_ages() -> None:
+    from src.dashboard.vehicles import UNKNOWN_AGE, buyer_age_band
+
+    assert buyer_age_band(16) == "16–20"
+    assert buyer_age_band(25) == "21–25"
+    assert buyer_age_band(40) == "36–45"
+    assert buyer_age_band(70) == "66+"
+    assert buyer_age_band(116) == UNKNOWN_AGE  # a recording error, not a buyer
+    assert buyer_age_band(float("nan")) == UNKNOWN_AGE
