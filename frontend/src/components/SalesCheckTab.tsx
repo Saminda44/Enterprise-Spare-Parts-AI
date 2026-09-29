@@ -7,7 +7,7 @@ function fmt(n: number) {
   return n.toLocaleString();
 }
 
-/** Billed sales (sales.xlsx) checked against the dealer orders the forecast is built on. */
+/** Compare linked billed sales with the dealer orders used by the forecast. */
 export function SalesCheckTab() {
   const [checkData,   setCheckData]   = useState<SalesCheckData | null>(null);
   const [checkFilter, setCheckFilter] = useState("");
@@ -23,10 +23,10 @@ export function SalesCheckTab() {
 
   if (!checkData) return <div className="py-10 text-center text-slate-400">Loading…</div>;
 
-  const order = ["consistent", "billed above orders", "billed well below confirmed", "ordered, no linked billing",
+  const order = ["consistent", "billed >1.5x confirmed", "billed well below confirmed", "ordered, no linked billing",
     "sold, never ordered", "service tool, sold not ordered", "no overlap in window"];
   const tone: Record<string, string> = {
-    "consistent": "bg-green-100 text-green-700", "billed above orders": "bg-amber-100 text-amber-700",
+    "consistent": "bg-green-100 text-green-700", "billed >1.5x confirmed": "bg-amber-100 text-amber-700",
     "billed well below confirmed": "bg-slate-100 text-slate-600", "ordered, no linked billing": "bg-slate-100 text-slate-500",
     "sold, never ordered": "bg-red-100 text-red-700", "service tool, sold not ordered": "bg-violet-100 text-violet-700",
     "no overlap in window": "bg-slate-50 text-slate-400",
@@ -35,13 +35,13 @@ export function SalesCheckTab() {
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-xl shadow-sm p-5 space-y-2">
-        <h3 className="text-sm font-semibold text-slate-700">Forecast inputs checked against billed sales</h3>
+        <h3 className="text-sm font-semibold text-slate-700">Order history vs linked billing</h3>
         <p className="text-xs text-slate-500">
-          The forecast runs on dealer <b>orders</b> (ordered quantity — lost sales included — to the latest month) plus the
-          fleet (UIO) term. sales.xlsx records the <b>billed</b> part of the same orders and ends earlier, so it is used here
-          as a check, not as the demand series. Over {checkData.window?.start} to {checkData.window?.end}: ordered
+          The forecast uses dealer <b>orders</b> (including lost sales) and the fleet (UIO) term. This comparison counts only
+          billing lines linked to a part; invoices are not matched to individual orders, and the exports may cover different
+          customers or months. Over {checkData.window?.start} to {checkData.window?.end}: ordered
           {" "}{fmt(t.ordered ?? 0)}, confirmed {fmt(t.confirmed ?? 0)}, billed {fmt(t.billed ?? 0)} units.
-          {" "}Parts whose billing is 0.5–1.5× their confirmed orders are consistent.
+          {" "}A billed-to-confirmed ratio of 0.5–1.5× falls within the comparison band; it does not prove the transactions match.
         </p>
         <div className="flex flex-wrap gap-1.5 pt-1">
           <button onClick={() => setCheckFilter("")}
@@ -87,9 +87,8 @@ export function SalesCheckTab() {
           </table>
         </div>
         <p className="text-[11px] text-slate-400">
-          Sorted by the gap between billed and confirmed units. "Billed above orders" suggests the order file missed some of
-          that part's demand, so its forecast may be low. Parts sold but never ordered are not forecast from their sales —
-          the service-tool lines are a one-off dealer kit rollout.
+          Sorted by the gap between billed and confirmed units. A high ratio may reflect export scope, timing or a
+          description-based part match. Check the source records before changing a forecast.
         </p>
       </div>
     </div>

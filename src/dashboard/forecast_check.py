@@ -2,9 +2,9 @@
 forecast is built on?
 
 The forecast runs on dealer **orders** (ordered quantity, lost sales included, to the
-latest month). sales.xlsx records the **billed** part of the same orders and ends earlier.
-Where both exist the two should broadly agree; where they don't, the part is flagged so a
-planner can see which source to question before trusting its forecast.
+latest month). The billing export is linked to Part Master SKUs separately and cannot
+be matched to individual orders. This is a cross-export quantity comparison, not a
+fulfilment reconciliation.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ AGREEMENT_BAND = (0.5, 1.5)
 SERVICE_TOOL_PREFIX = "90890-"
 
 CONSISTENT = "consistent"
-BILLED_ABOVE = "billed above orders"
+BILLED_ABOVE_CONFIRMED = "billed >1.5x confirmed"
 BILLED_BELOW = "billed well below confirmed"
 ORDERED_NOT_BILLED = "ordered, no linked billing"
 SOLD_NOT_ORDERED = "sold, never ordered"
@@ -35,12 +35,10 @@ def build(
 ) -> pd.DataFrame:
     """One row per part that has a forecast or a linked sale in the window.
 
-    Business meaning: orders and billing describe the same dealer demand, so a large gap
-    means one source is incomplete for that part — billing above orders suggests demand
-    the order file missed (the forecast may be low); billing far below confirmed suggests
-    a billing gap or a description that splits across parts. A part sold but never
-    ordered is not forecast from its sales: those are one-off sales (the service-tool
-    kit rollout) or demand the order file does not carry, and either needs a person.
+    Business meaning: compare net billed units attributed to a SKU with confirmed
+    order units in the same months. A large gap flags the extracts for investigation;
+    it does not prove that an order was missed or that its forecast is low. Billing
+    lines without a matching SKU order are not used as forecast demand.
     """
     in_window = history["month"].astype(str).between(window_start, window_end)
     orders = (
@@ -66,7 +64,13 @@ def build(
             ratio > AGREEMENT_BAND[1],
             ratio < AGREEMENT_BAND[0],
         ],
-        [SERVICE_TOOL, SOLD_NOT_ORDERED, ORDERED_NOT_BILLED, BILLED_ABOVE, BILLED_BELOW],
+        [
+            SERVICE_TOOL,
+            SOLD_NOT_ORDERED,
+            ORDERED_NOT_BILLED,
+            BILLED_ABOVE_CONFIRMED,
+            BILLED_BELOW,
+        ],
         default=CONSISTENT,
     )
     # No confirmed quantity and no billing in the window: nothing to compare.

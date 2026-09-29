@@ -190,6 +190,7 @@ def test_forecast_sales_check_flags_disagreement() -> None:
         [
             ("AGREE", "2025-06", 10.0, 10.0, 0.0),
             ("ABOVE", "2025-06", 10.0, 10.0, 0.0),
+            ("ABOVE_CONFIRMED_ONLY", "2025-06", 30.0, 10.0, 20.0),
             ("NOBILL", "2025-06", 10.0, 10.0, 0.0),
         ],
         columns=[
@@ -202,7 +203,7 @@ def test_forecast_sales_check_flags_disagreement() -> None:
     )
     forecast = pd.DataFrame(
         {
-            "active_sku_id": ["AGREE", "ABOVE", "NOBILL"],
+            "active_sku_id": ["AGREE", "ABOVE", "ABOVE_CONFIRMED_ONLY", "NOBILL"],
             "mu_month": 1.0,
             "mu_month_baseline": 1.0,
             "mu_month_parc": None,
@@ -212,6 +213,7 @@ def test_forecast_sales_check_flags_disagreement() -> None:
         [
             ("AGREE", 9.0, 90.0, "description"),
             ("ABOVE", 30.0, 300.0, "description"),
+            ("ABOVE_CONFIRMED_ONLY", 20.0, 200.0, "description"),
             ("90890-TOOL", 5.0, 50.0, "description"),
             ("OTHER-1", 4.0, 40.0, "description"),
         ],
@@ -219,7 +221,11 @@ def test_forecast_sales_check_flags_disagreement() -> None:
     )
     out = fc.build(forecast, history, sales, "2025-01", "2025-12").set_index("active_sku_id")
     assert out.at["AGREE", "check"] == fc.CONSISTENT
-    assert out.at["ABOVE", "check"] == fc.BILLED_ABOVE
+    assert out.at["ABOVE", "check"] == fc.BILLED_ABOVE_CONFIRMED
+    assert out.at["ABOVE_CONFIRMED_ONLY", "check"] == fc.BILLED_ABOVE_CONFIRMED
+    assert out.at["ABOVE_CONFIRMED_ONLY", "sales_qty"] < out.at[
+        "ABOVE_CONFIRMED_ONLY", "ordered_quantity"
+    ]
     assert out.at["NOBILL", "check"] == fc.ORDERED_NOT_BILLED
     assert out.at["90890-TOOL", "check"] == fc.SERVICE_TOOL
     assert out.at["OTHER-1", "check"] == fc.SOLD_NOT_ORDERED

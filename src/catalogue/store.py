@@ -845,7 +845,7 @@ DO $$ BEGIN
         DROP VIEW pn_yamaha_compatibility;
     END IF;
     IF EXISTS (SELECT 1 FROM pg_matviews WHERE matviewname = 'pn_yamaha_compatibility')
-       AND coalesce(obj_description('pn_yamaha_compatibility'::regclass, 'pg_class'), '')
+       AND coalesce(obj_description(to_regclass('pn_yamaha_compatibility'), 'pg_class'), '')
            <> 'chain-v3' THEN
         DROP MATERIALIZED VIEW pn_yamaha_compatibility;
     END IF;

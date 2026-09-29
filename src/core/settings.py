@@ -78,7 +78,7 @@ class Settings(BaseSettings):
     # .env already carries; the password is only ever held as a secret.
     postgres_host: str = Field(default="localhost", validation_alias=AliasChoices("POSTGRES_HOST"))
     postgres_port: int = Field(default=5432, validation_alias=AliasChoices("POSTGRES_PORT"))
-    postgres_db: str = Field(default="YamahaDB", validation_alias=AliasChoices("POSTGRES_DB"))
+    postgres_db: str = Field(default="spare_parts", validation_alias=AliasChoices("POSTGRES_DB"))
     postgres_user: str = Field(default="postgres", validation_alias=AliasChoices("POSTGRES_USER"))
     postgres_password: SecretStr = Field(
         default=SecretStr(""), validation_alias=AliasChoices("POSTGRES_PASSWORD")
