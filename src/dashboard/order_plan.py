@@ -63,8 +63,8 @@ def build(
 ) -> pd.DataFrame:
     """Every proposed line — placeable or held for review — with its inputs.
 
-    Business meaning: the order quantity is the gap between the target level (4-month
-    demand plus safety stock for the part's fill target) and the stock position (on hand
+    Business meaning: the order quantity is the gap between the target level (lead-time
+    plus review-period demand and safety stock) and the stock position (on hand
     plus on order), floored at an economic quantity. A line above 3x recent demand is held
     for a buyer rather than ordered; both are shown so the buyer sees the whole proposal.
     """

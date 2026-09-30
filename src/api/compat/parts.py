@@ -6,7 +6,7 @@ from typing import Any
 
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Query
-from src.api.compat.context import planning_context
+from src.api.compat.context import planning_context, published_order_hold_reason
 from src.api.compat.filters import (
     REQUEST_CATEGORY,
     f,
@@ -411,12 +411,17 @@ def order_plan(
         ]
 
     settings = get_settings()
+    planning = planning_context()
+    hold_reason = published_order_hold_reason()
+    published = mart("mart_monthly_order")
     page = frame.iloc[offset : offset + limit]
     number = lambda v: f(v) if pd.notna(v) else None  # noqa: E731 - nullable float
     return {
         "total": int(len(frame)),
         "cycle_month": s(whole["cycle_month"].iloc[0]),
         "expected_arrival": s(whole["expected_arrival"].iloc[0]),
+        "buyer_ready": hold_reason is None,
+        "hold_reason": hold_reason,
         "summary": {
             "lines": int(len(to_order)),
             "value": f(to_order["value"].sum()),
@@ -441,9 +446,13 @@ def order_plan(
             "order_cost": settings.order_cost,
             "moq": settings.default_moq,
             "pack_size": settings.default_pack_size,
-            "lead_time_months": planning_context()["lead_time_months"],
-            "protection_interval_months": planning_context()["protection_interval_months"],
-            "on_order_interpretation": settings.on_order_interpretation,
+            "lead_time_months": planning["lead_time_months"],
+            "protection_interval_months": planning["protection_interval_months"],
+            "on_order_interpretation": (
+                s(published["on_order_interpretation"].iloc[0])
+                if not published.empty and "on_order_interpretation" in published
+                else "unrecorded"
+            ),
         },
         "rows": [
             {

@@ -9,7 +9,7 @@ graph and step diagrams. Open the relevant step file before working on that step
 ## 1. What this project is
 
 A demand-forecasting and inventory-policy system for a **Yamaha motorcycle spare parts
-distributor in Sri Lanka (AMW)**, importing from India on a **3-month lead time** with a
+distributor in Sri Lanka (AMW)**, importing from India on a **4-month lead time** with a
 **monthly** order cycle. It sets safety stock, reorder level and reorder quantity per part,
 driven by both the vehicle parc (units in operation, by age) and the parts' own demand history.
 
@@ -38,7 +38,7 @@ executes the DAG; `--skip` reuses an expensive upstream stage's artifacts unchan
 | 09 Unit Sales | ✅ 22,087 VINs; geography unusable on 3.5% (office leak) |
 | 10 UIO Cohorts | ✅ import-ban hole survives into the age histogram |
 | 11 Targets | ✅ lag test passes: +10% units → **+1.24%** parts demand in year one |
-| 12 Stock | ✅ PDC position, **Yamaha MC (YM) and OBM (OB) parts only** — non-PN_Yamaha rows and other brands (KT) rejected, for stock and on-order alike. Inventory status runs on **on hand + on order** against the monthly forecast (Stockout / Awaiting stock / Critical / OK / Excess / No demand); On_Orders months read as the month the PO was **raised** (owner, 2026-09-28): 95,603 units in transit, 31.5% of IP. Year still assumed |
+| 12 Stock | ✅ PDC position, **Yamaha MC (YM) and OBM (OB) parts only** — non-PN_Yamaha rows and other brands (KT) rejected, for stock and on-order alike. Inventory status runs on **on hand + on order** against the monthly forecast (Stockout / Awaiting stock / Critical / OK / Excess / No demand). Owner correction 2026-09-30: On_Orders months are **expected arrivals**, not PO dates; Jan–Aug 2026 arrivals are included in the Aug 31 stock snapshot. Later arrivals are unknown until the file is updated. |
 | 13 Policy | ⚠️ gate **FRONTIER** (fill 0.607 vs 0.376 baseline; inventory 379M vs 184M LKR). FSN=N parts now ON_DEMAND/NO_STOCK unless the fleet supports ≥1/month; published s/S use the live forecast |
 | 14 Monthly Order | ✅ 915 placeable lines, ~287M LKR; lines above 3x recent demand are **held for buyer review** (1,169 lines, ~104M LKR, `mart_order_review`) |
 | 15 FastAPI | ✅ all endpoints serve marts; `uvicorn src.api.main:app --port 8090`. Serves the original dashboard at `/` from `frontend/dist`, using `/api/v1` compatibility routes over the new pipeline. Spare parts are split into **MC** and **OBM** sections by the part's PN_Yamaha brand (OB → OBM, else MC; `src/dashboard/segments.py`): every spare-parts mart carries `segment`, and a request's `?segment=mc|obm` narrows every mart in `mart()` (`src/api/compat/filters.py`). OBM routes live under `/obm/*`; the Overview stays combined. Within MC, `part_category` (Lubricant / Battery / Tyre / Spare Parts, the material-category rule on the part's description; billed sales also count `AWL…` oils as Lubricant) narrows every mart the same way via `?category=` |
@@ -48,13 +48,15 @@ executes the DAG; `--skip` reuses an expensive upstream stage's artifacts unchan
    lines / 644k units / 278 dealers from one sales office (`W1B1`); billed sales is 79,408
    lines / 2.76M units / 427 payers (`Seeduwa - PDC`). Billed value is ~9x ordered value, so
    the two cannot be divided into a fulfilment rate. What `orders.xlsx` is scoped to is unknown.
-1. `On_Orders` months carry no year. The owner decided (2026-09-28) they are the month the PO
-   was **raised**, so the last `lead_time_months` of POs count as in transit; the **year** (2026) is
-   still assumed — confirm with procurement.
+1. `On_Orders` months carry no year. The owner corrected their interpretation on 2026-09-30:
+   they are **expected arrival months**, not when POs were raised. The 2026 year is still assumed;
+   arrivals after August are unknown, not confirmed zero. A December 2026 proposal using the Aug 31
+   stock snapshot is provisional and must not be sent to purchasing until actual stock and open POs
+   are updated.
 2. Fill-rate targets, holding rate, order cost, MOQ and pack size are **assumed** defaults
    in `Settings`. Step 13's numbers move with them.
 3. No de-registration records, so survival is assumed; three Weibull scenarios are run.
-4. `Delivery − Document` measures **dealer dispatch (2.5 days)**, not the 3-month import
+4. `Delivery − Document` measures **dealer dispatch (2.5 days)**, not the 4-month import
    lead, so σ_L for replenishment is unknown and safety stock understates it.
 
 `legacy/` holds the previous 14-stage build, archived intact.
@@ -121,9 +123,9 @@ models, never silently swallow a data-quality issue.
 - **Negative `SlsVolQty` is a return.** Net it; do not filter it out.
 - **Stock scope is the PDC only** — `Plant == "W1B4"` (86.5% of network units). Branch stock is
   visibility, never inventory position.
-- **`IP = on_hand + on_order − backorders`.** Never compare against on-hand alone: with a 3-month
-  lead and monthly review there can be three orders in flight.
-- **Protection interval `P = L + R = 4` months.**
+- **`IP = on_hand + on_order − backorders`.** Never compare against on-hand alone: with a 4-month
+  lead and monthly review there can be four orders in flight.
+- **Protection interval `P = L + R = 5` months.**
 - **The final 12 months are sealed** in Step 07, opened once in Step 13, never re-opened.
 - **Glued SAP columns** pack code and label into one string. Split with `src/io/sap.py`, join on
   the code, never on the raw string. Applied per column from a declared map — never blanket.
@@ -143,8 +145,8 @@ the published cycle moved to as_of **2026-09-01**, so On_Orders months are now a
 | `orders.xlsx` | 108,910 × 102 | 2024-01 → 2025-12 | fill rate **0.744**; C 107,155 / H 1,755 |
 | `sales.xlsx` | 113,231 × 41 | 2024-01 → 2025-12 | no missing month; ~93k trailing blank rows |
 | `MCSI.xlsx` | 23,415 × 56 | Apr–Dec, one year | sheet `MCSI`; 22,087 VINs; 9 models |
-| `current_stock.xlsx` | 26,288 × 8 | snapshot | W1B4 = 86.5%; only an `Unrestricted` column |
-| `On_Orders.xlsx` | 2,820 × 10 | `Jan`…`Aug` | **no year in the columns** — see below |
+| `current_stock.xlsx` | 26,288 × 8 | Aug 31, 2026 snapshot (owner-confirmed) | W1B4 = 86.5%; only an `Unrestricted` column |
+| `On_Orders.xlsx` | 2,820 × 10 | `Jan`…`Aug` expected arrivals | **no year in the columns**; August receipts are already in the stock snapshot |
 | `PN_Yamaha.xlsx` | 30,218 × 16 | — | `Latest SS` pre-resolved; verify, don't recompute |
 | `dealers.xlsx` | 414 × 12 | — | Type MC/OBM, RM, ASE, Province, District |
 | `Sales_Summery.xlsx` | 20 sheets | 2014–21, 2025–26 | 113 models classified |
@@ -156,9 +158,11 @@ from `current_stock.xlsx` and supersession from `PN_Yamaha.xlsx`.
 **Never hard-code a date window.** A newer export is expected; everything derives its window from
 `ctx.as_of` and reports the min/max month it actually observed.
 
-**Open and blocking:** the `On_Orders` month columns carry no year, and it is unconfirmed whether
-they mean expected arrival or the month the PO was raised. This shifts the whole pipeline by a
-quarter. Config flag `on_order_interpretation` (default `arrival`) is printed in every run report.
+**Open and blocking:** the `On_Orders` month columns carry no year and end in August; later incoming
+orders are unknown. The owner confirmed they mean expected arrival (default `arrival`). A provisional
+December scenario projects September–November demand from Aug 31 stock, uses a four-month lead and
+five-month protection interval, and arrives April 2027. It lives under `data/scenarios/`, not the
+buyer-ready live marts. Policy assignments in that scenario are reused, not revalidated.
 
 ---
 
@@ -168,7 +172,7 @@ quarter. Config flag `on_order_interpretation` (default `arrival`) is printed in
 |---|---|
 | Output | Python modules under `src/`. **Never notebooks.** |
 | Delivery | **FastAPI only** — no Streamlit |
-| Timing | Lead 3 months, review 1 month, `P = 4` |
+| Timing | Lead 4 months, review 1 month, `P = 5` |
 | Policies | (R,S), (R,s,S), on-demand, no-stock. **No VMI, JIT or continuous review** |
 | Supply inflation | `q ÷ β̂` is **off by default** — it is a feedback loop |
 | Excluded | RL agent and market-basket analysis are not part of this design |
@@ -215,6 +219,7 @@ uv run python -m src.cli run --as-of 2025-12-01
 uv run python -m src.cli run --only 03_orders
 uv run python -m src.cli catalogue-load     # PDF catalogues -> PostgreSQL (manual; --file for one)
 uv run python -m src.cli pn-yamaha-load     # PN_Yamaha Brand YM -> PostgreSQL (after ingest)
+uv run python -m src.cli run-provisional --as-of 2026-12-01 --stock-snapshot-as-of 2026-08-31
 
 # The API watches data/raw: an edited workbook is re-ingested and the stages downstream of it
 # re-run automatically (src/refresh.py); the cycle as_of follows the order history. Manual:

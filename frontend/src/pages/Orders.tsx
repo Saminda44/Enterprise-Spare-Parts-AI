@@ -87,11 +87,14 @@ export function Orders() {
             {segment === "mc" && " Yamaha motorcycle parts only (PN_Yamaha brand YM, with Katana tyres)."}
           </p>
         </div>
-        <a href={withSegment("/api/v1/policy/export.xlsx")} download
+        {data.buyer_ready && <a href={withSegment("/api/v1/policy/export.xlsx")} download
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-green-600 text-white hover:bg-green-700 font-medium">
           <Download size={13}/> Export order (Excel)
-        </a>
+        </a>}
       </div>
+      {!data.buyer_ready && <div role="alert" className="border border-amber-400 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <strong>Do not place this order.</strong> {data.hold_reason} The published quantities below remain on hold; the December projection is a separate provisional scenario.
+      </div>}
 
       {/* How the order is built */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -99,7 +102,7 @@ export function Orders() {
           ["1 · Forecast", "Each part's demand from its own order history, blended with the fleet (UIO) of the models it fits."],
           ["2 · Classification", `ABC sets the fill target (A ${fill("A")}, B ${fill("B")}, C ${fill("C")}); movement and demand pattern pick the stock policy.`],
           ["3 · Stock", "Current stock at the PDC plus stock already on order (Yamaha MC and OBM parts only)."],
-          ["4 · Order", "Target level (4-month demand + safety stock) minus stock. Lines above 3× recent demand are held for a buyer."],
+          ["4 · Order", `Target level (${a.protection_interval_months}-month demand + safety stock) minus stock. Lines above 3× recent demand are held for a buyer.`],
         ].map(([t, d]) => (
           <div key={t} className="bg-white rounded-xl shadow-sm p-4">
             <p className="text-xs font-bold text-brand-blue">{t}</p>
@@ -109,8 +112,8 @@ export function Orders() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <KpiCard label="Lines to order" value={s.lines.toLocaleString()} sub={`${fmt(s.units)} units`} color="blue"/>
-        <KpiCard label="Order value" value={`LKR ${fmt(s.value)}`} sub="placeable now" color="green"/>
+        <KpiCard label={data.buyer_ready ? "Lines to order" : "Candidate lines"} value={s.lines.toLocaleString()} sub={`${fmt(s.units)} units`} color="blue"/>
+        <KpiCard label={data.buyer_ready ? "Order value" : "Candidate value"} value={`LKR ${fmt(s.value)}`} sub={data.buyer_ready ? "buyer review" : "on hold"} color="green"/>
         <KpiCard label="Held for review" value={`LKR ${fmt(s.held_value)}`} sub={`${s.held_lines.toLocaleString()} lines above 3× recent demand`} color="amber"/>
         <KpiCard label="Fleet-linked lines" value={s.fleet_linked_lines.toLocaleString()} sub={`${s.fleet_value_share_pct.toFixed(1)}% of order value from the fleet term`} color="purple"/>
         <KpiCard label="Stock on these lines" value={fmt(s.stock_on_hand + s.stock_on_order)} sub={`${fmt(s.stock_on_hand)} on hand + ${fmt(s.stock_on_order)} on order, for the parts being ordered`} color="teal"/>
@@ -217,7 +220,7 @@ export function Orders() {
                             </div>
                             <div>
                               <p className="font-semibold text-slate-700 mb-1">4 · Order</p>
-                              <p className="text-slate-600">4-month demand {qty(r.protection_demand)} + safety stock {qty(r.safety_stock)} = target <b>{qty(r.target_level)}</b></p>
+                              <p className="text-slate-600">{a.protection_interval_months}-month demand {qty(r.protection_demand)} + safety stock {qty(r.safety_stock)} = target <b>{qty(r.target_level)}</b></p>
                               <p className="text-slate-600">Target − position = {qty(r.gap_to_target)}{r.eoq > r.gap_to_target ? `, raised to the economic quantity ${qty(r.eoq)}` : ""}</p>
                               <p className="text-slate-600">Order <b>{qty(q)}</b> × LKR {qty(r.unit_cost)} = LKR {fmt(val)}</p>
                               {held && <p className="text-amber-700 mt-1">Held: {r.flags}. A buyer confirms, trims or drops it.</p>}
@@ -241,8 +244,8 @@ export function Orders() {
         </div>
         <p className="text-[11px] text-slate-400">
           Assumed until supplied: fill targets A {fill("A")} / B {fill("B")} / C {fill("C")}, holding cost {Math.round(a.holding_rate * 100)}% a year,
-          order cost LKR {a.order_cost.toLocaleString()} per line, MOQ {a.moq} and pack size {a.pack_size}. On_Orders months are read as the
-          month the PO was raised ({a.on_order_interpretation}). Every quantity moves with these.
+          order cost LKR {a.order_cost.toLocaleString()} per line, MOQ {a.moq} and pack size {a.pack_size}. Published On_Orders month interpretation:
+          {" "}{a.on_order_interpretation === "arrival" ? "expected arrival" : a.on_order_interpretation}. Every quantity moves with these.
         </p>
       </div>
     </div>

@@ -11,6 +11,8 @@ import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 from openpyxl import load_workbook
+from src.api.compat import parts as compat_parts
+from src.api.compat.context import planning_context, published_order_hold_reason
 from src.api.compat.exports import order_workbook
 from src.api.compat.filters import clear_cache, mart
 from src.api.main import app
@@ -91,7 +93,9 @@ def published_sku(workspace: Path) -> pd.DataFrame:
             "unit_cost": 10.0,
             "value": 250.0,
             "cycle_month": "2025-12",
-            "lead_time_months": 3,
+            "lead_time_months": 4,
+            "on_order_interpretation": "arrival",
+            "incoming_orders_status": "VERIFIED",
             "trigger_reason": "review",
         },
         "orders_by_material": {
@@ -147,7 +151,7 @@ def published_sku(workspace: Path) -> pd.DataFrame:
 
 def test_forecast_and_order_reconcile_to_new_pipeline(published_sku: pd.DataFrame) -> None:
     row = published_sku.iloc[0]
-    assert row["forecast_lt"] == 30.0  # Three months, not the four-month protection demand.
+    assert row["forecast_lt"] == 40.0  # Four-month lead, not five-month protection demand.
     assert row["forecast_month"] == "2026-01"
     assert row["net_requirement"] == row["roq"] == 25.0  # Pack-rounded, not raw 22.
     assert row["unit_value_lkr"] == 10.0
@@ -329,6 +333,26 @@ def test_export_has_final_quantities_metadata_and_literal_cells(
     assert book["Order Plan"]["B2"].data_type == "s"
 
 
+def test_old_published_order_cannot_be_exported(published_sku: pd.DataFrame) -> None:
+    proposal = read_table("marts", "mart_monthly_order")
+    proposal["lead_time_months"] = 3
+    write_table(proposal, "marts", "mart_monthly_order")
+    clear_cache()
+    assert planning_context()["lead_time_months"] == 3
+    assert "outdated import lead time" in (published_order_hold_reason() or "")
+    response = TestClient(app).get("/api/v1/policy/export.xlsx")
+    assert response.status_code == 409
+
+
+def test_unverified_incoming_orders_cannot_be_exported(published_sku: pd.DataFrame) -> None:
+    proposal = read_table("marts", "mart_monthly_order")
+    proposal["incoming_orders_status"] = "UNVERIFIED"
+    write_table(proposal, "marts", "mart_monthly_order")
+    clear_cache()
+    assert "Incoming orders" in (published_order_hold_reason() or "")
+    assert TestClient(app).get("/api/v1/policy/export.xlsx").status_code == 409
+
+
 def test_missing_api_does_not_serve_html(workspace: Path) -> None:
     client = TestClient(app)
     response = client.get("/api/v1/does-not-exist")
@@ -393,12 +417,12 @@ def test_default_service_plan_uses_protection_interval(published_sku: pd.DataFra
     )
     client = TestClient(app)
     data = client.get("/api/v1/policy/uio-service-plan").json()
-    assert data["horizon_months"] == 4
-    assert data["rows"][0]["service_plan_qty"] == 48.0
+    assert data["horizon_months"] == 5
+    assert data["rows"][0]["service_plan_qty"] == 60.0
     assert data["rows"][0]["avg_monthly"] == 12.0
     overview = client.get("/api/v1/overview/kpis").json()
     assert overview["planning"]["policy_verdict"] == "FRONTIER"
-    assert overview["planning"]["protection_interval_months"] == 4
+    assert overview["planning"]["protection_interval_months"] == 5
 
 
 def test_uio_comparison_does_not_copy_fleet_into_recent_sales(workspace: Path) -> None:
@@ -439,7 +463,10 @@ def test_uio_comparison_does_not_copy_fleet_into_recent_sales(workspace: Path) -
     assert data["mcsi"][0]["uio_pct"] == 100.0
 
 
-def test_master_view_uses_resolved_identity_without_catalogue(published_sku: pd.DataFrame) -> None:
+def test_master_view_uses_resolved_identity_without_catalogue(
+    published_sku: pd.DataFrame, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(compat_parts, "_pn_yamaha_master_view", lambda *args: None)
     master = pd.DataFrame(
         [
             {

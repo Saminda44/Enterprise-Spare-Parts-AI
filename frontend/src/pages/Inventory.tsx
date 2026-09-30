@@ -26,7 +26,7 @@ type Tab = "all" | "at-risk" | "excess";
 
 export function Inventory() {
   const [searchParams] = useSearchParams();
-  const [data, setData]       = useState<{ total: number; rows: InventoryRow[]; classified_count: number; stock_snapshot_count: number; unassessed_count: number; status_counts: Record<string, number>; total_value_lkr: number; excess_value_lkr: number } | null>(null);
+  const [data, setData]       = useState<{ total: number; rows: InventoryRow[]; classified_count: number; stock_snapshot_count: number; unassessed_count: number; status_counts: Record<string, number>; total_value_lkr: number; excess_value_lkr: number; planning: { lead_time_months: number } } | null>(null);
   const [hist, setHist]       = useState<{ bin_start: number; bin_end: number; count: number }[]>([]);
   const [atRisk, setAtRisk]   = useState<AtRiskRow[]>([]);
   const [excess, setExcess]   = useState<ExcessRow[]>([]);
@@ -174,7 +174,7 @@ export function Inventory() {
             </BarChart>
           </ResponsiveContainer>
           <div className="flex gap-4 mt-1 text-xs text-slate-400">
-            <span>— 3 mo = lead time</span>
+            <span>— {data.planning.lead_time_months} mo = lead time</span>
             <span>— 12 mo = excess threshold</span>
           </div>
         </div>

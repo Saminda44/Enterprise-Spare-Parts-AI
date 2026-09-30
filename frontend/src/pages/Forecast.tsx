@@ -154,7 +154,7 @@ export function Forecast() {
                 <th className="py-2.5 pr-3 text-right">From the fleet<span className="block normal-case font-normal">per month</span></th>
                 <th className="py-2.5 pr-3">Blend</th>
                 <th className="py-2.5 pr-3 text-right text-slate-700">Forecast<span className="block normal-case font-normal">per month</span></th>
-                <th className="py-2.5 pr-3 text-right" title="Demand over the 4-month protection interval (lead time + review); up to = 90% likely not to exceed">Next 4 months<span className="block normal-case font-normal">expected · up to</span></th>
+                <th className="py-2.5 pr-3 text-right" title={`Demand over the ${data.planning.protection_interval_months}-month protection interval (lead time + review); up to = 90% likely not to exceed`}>Next {data.planning.protection_interval_months} months<span className="block normal-case font-normal">expected · up to</span></th>
               </tr>
             </thead>
             <tbody>
@@ -200,8 +200,8 @@ export function Forecast() {
         </div>
         <p className="text-[11px] text-slate-400">
           Blend: the share given to the part's own history rises with the months it has been ordered (from 20% to 80%); the rest
-          comes from its fleet. A part with no model link is forecast from its history alone. "Next 4 months" is the
-          protection interval — the 3-month import lead time plus the monthly review — that safety stock and the order cover.
+          comes from its fleet. A part with no model link is forecast from its history alone. "Next {data.planning.protection_interval_months} months" is the
+          protection interval — the {data.planning.lead_time_months}-month import lead time plus the monthly review — that safety stock and the order cover.
         </p>
       </div>
     </div>

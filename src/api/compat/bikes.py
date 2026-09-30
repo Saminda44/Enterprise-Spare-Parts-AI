@@ -1334,7 +1334,7 @@ def uio_demand(min_demand: float = Query(0.0)) -> dict[str, Any]:
             "parts_with_demand": 0,
             "projected_uio": 0.0,
             "supply_pct": 100.0,
-            "lead_time_months": 3,
+            "lead_time_months": get_settings().lead_time_months,
             "sum_uio_demand_monthly": 0.0,
             "sum_uio_demand_leadtime": 0.0,
             "rows": [],
@@ -1347,7 +1347,11 @@ def uio_demand(min_demand: float = Query(0.0)) -> dict[str, Any]:
     rows = sku[
         sku["mu_month_parc"].notna() & (sku["mu_month_parc"] > float(min_demand))
     ].sort_values("avg_monthly_demand", ascending=False)
-    lead = int(sku["lead_time_months"].max()) if "lead_time_months" in sku.columns else 3
+    lead = (
+        int(sku["lead_time_months"].max())
+        if "lead_time_months" in sku.columns
+        else get_settings().lead_time_months
+    )
     return {
         "total_parts": int(len(sku)),
         "parts_with_demand": int(len(rows)),

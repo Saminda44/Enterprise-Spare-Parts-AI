@@ -12,14 +12,14 @@ from src.core.context import PlanningContext
 def test_defaults_match_the_locked_scope() -> None:
     ctx = PlanningContext(as_of=date(2025, 12, 1))
 
-    assert ctx.lead_time_months == 3
+    assert ctx.lead_time_months == 4
     assert ctx.review_period_months == 1
     assert ctx.plant == "W1B4"
     assert ctx.currency == "LKR"
 
 
 def test_protection_interval_is_lead_plus_review() -> None:
-    assert PlanningContext(as_of=date(2025, 12, 1)).protection_interval_months == 4
+    assert PlanningContext(as_of=date(2025, 12, 1)).protection_interval_months == 5
     assert (
         PlanningContext(as_of=date(2025, 12, 1), lead_time_months=2).protection_interval_months == 3
     )
@@ -66,5 +66,5 @@ def test_summary_carries_what_the_run_report_prints() -> None:
     summary = PlanningContext(as_of=date(2025, 12, 1)).summary()
 
     assert summary["as_of"] == "2025-12-01"
-    assert summary["protection_interval_months"] == 4
+    assert summary["protection_interval_months"] == 5
     assert summary["plant"] == "W1B4"

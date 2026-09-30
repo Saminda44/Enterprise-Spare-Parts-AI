@@ -15,6 +15,7 @@ from scipy.optimize import brentq
 from scipy.stats import norm
 
 from src.core.context import PlanningContext
+from src.core.errors import SourceDataError
 from src.core.registry import REGISTRY
 from src.core.result import StageResult
 from src.core.settings import get_settings
@@ -213,7 +214,7 @@ def simulate(
 
     The loop order is fixed: receive, then demand, then review-and-order. Reviewing
     before demand would let the same month's order serve the same month's demand, which
-    no replenishment system can do against a three-month lead.
+    no replenishment system can do against a multi-month import lead.
     """
     outcome = SimulationOutcome(policy=policy)
     on_hand = float(opening_stock)
@@ -340,9 +341,35 @@ def run(ctx: PlanningContext) -> StageResult:
     frame["max_monthly_demand"] = (
         frame["active_sku_id"].map(panel[selection_cols].max(axis=1)).fillna(0.0)
     )
+    live_frame["max_monthly_demand"] = (
+        live_frame["active_sku_id"].map(panel[months].max(axis=1)).fillna(0.0)
+    )
 
     targets = settings.fill_rate_targets
     protection = ctx.protection_interval_months
+
+    if ctx.option("provisional", False):
+        prior = read_table("facts", "policy_selection")
+        missing = set(live_frame["active_sku_id"]) - set(prior["active_sku_id"])
+        if missing:
+            raise SourceDataError(
+                f"provisional policy has no prior assignment for {len(missing):,} SKU(s)"
+            )
+        policy_params = pd.DataFrame(
+            [
+                _parameters(r._asdict(), targets, protection, sigma_lead_months)
+                for r in live_frame.itertuples(index=False)
+            ]
+        ).assign(basis="live_provisional")
+        result.artifact("policy_params", write_table(policy_params, "facts", "policy_params"))
+        result.warn(
+            "PROVISIONAL: recomputed five-month s/S and safety stock from the live forecast; "
+            "policy assignments are reused from the previous published run and are NOT "
+            "validated for the four-month lead. Historical holdout is not rerun against "
+            "projected December stock."
+        )
+        result.rows_out = len(policy_params)
+        return result
 
     params: list[dict[str, object]] = []
     selections: list[dict[str, object]] = []

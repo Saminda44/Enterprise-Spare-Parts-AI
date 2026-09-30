@@ -162,7 +162,7 @@ export interface ForecastRow {
   history_forecast?: number;       // own-history forecast per month
   fleet_forecast?: number | null;  // fleet (UIO) forecast per month
   history_weight?: number;         // share of the blend from own history
-  protection_demand?: number;      // expected demand over the 4-month protection interval
+  protection_demand?: number;      // expected demand over lead time plus review period
   protection_p90?: number;         // 90th percentile of that demand
 }
 
@@ -350,7 +350,7 @@ export const fetchTrend = (sku?: string) =>
   api.get<MonthlyPoint[]>("/forecast/trend", { params: sku ? { sku } : {} }).then(r => r.data);
 
 export const fetchInventory = (params?: Record<string, unknown>) =>
-  api.get<{ total: number; rows: InventoryRow[]; classified_count: number; stock_snapshot_count: number; unassessed_count: number; status_counts: Record<string, number>; total_value_lkr: number; excess_value_lkr: number; stockout_regular?: number }>("/inventory", { params }).then(r => r.data);
+  api.get<{ total: number; rows: InventoryRow[]; classified_count: number; stock_snapshot_count: number; unassessed_count: number; status_counts: Record<string, number>; total_value_lkr: number; excess_value_lkr: number; stockout_regular?: number; on_order_units?: number; on_hand_units?: number; planning: PlanningInfo }>("/inventory", { params }).then(r => r.data);
 
 export const fetchCoverageHistogram = () =>
   api.get<{ bin_start: number; bin_end: number; count: number }[]>("/inventory/coverage-histogram").then(r => r.data);
@@ -406,6 +406,7 @@ export interface OrderPlanRow {
 export interface OrderPlanGroup { name: string; lines: number; value: number; }
 export interface OrderPlanData {
   total: number; cycle_month: string; expected_arrival: string;
+  buyer_ready: boolean; hold_reason: string | null;
   summary: {
     lines: number; value: number; units: number; held_lines: number; held_value: number;
     fleet_linked_lines: number; fleet_value_share_pct: number; stock_on_hand: number; stock_on_order: number;

@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import calendar
+import os
+import shutil
+import subprocess
 import sys
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import typer
@@ -25,16 +29,24 @@ def _console_safe(value: str, encoding: str | None = None) -> str:
     return value.encode(codec, errors="backslashreplace").decode(codec)
 
 
-def _context(as_of: str | None) -> PlanningContext:
+def _context(
+    as_of: str | None, *, stock_snapshot_as_of: str | None = None, provisional: bool = False
+) -> PlanningContext:
     settings = get_settings()
     when = datetime.strptime(as_of, "%Y-%m-%d").date() if as_of else date.today()
+    config: dict[str, object] = {"on_order_interpretation": settings.on_order_interpretation}
+    if stock_snapshot_as_of:
+        datetime.strptime(stock_snapshot_as_of, "%Y-%m-%d")
+        config["stock_snapshot_as_of"] = stock_snapshot_as_of
+    if provisional:
+        config["provisional"] = True
     return PlanningContext(
         as_of=when,
         lead_time_months=settings.lead_time_months,
         review_period_months=settings.review_period_months,
         plant=settings.plant,
         currency=settings.currency,
-        config={"on_order_interpretation": settings.on_order_interpretation},
+        config=config,
     )
 
 
@@ -92,6 +104,12 @@ def ingest(force: bool = typer.Option(False, help="Re-convert even if the hash m
 @app.command()
 def run(
     as_of: str = typer.Option(None, help="Cycle date, YYYY-MM-DD. Defaults to today."),
+    stock_snapshot_as_of: str = typer.Option(
+        None, help="Month-end stock snapshot date, YYYY-MM-DD, for a provisional projection."
+    ),
+    provisional: bool = typer.Option(
+        False, help="Keep projected quantities out of buyer-ready marts."
+    ),
     only: list[str] = typer.Option(None, help="Run these stages and their dependencies."),
     skip: list[str] = typer.Option(
         None, help="Treat these stages as done and reuse their artifacts on disk."
@@ -101,7 +119,7 @@ def run(
     """Execute the pipeline in dependency order and print the run report."""
     settings = get_settings()
     settings.ensure_dirs()
-    ctx = _context(as_of)
+    ctx = _context(as_of, stock_snapshot_as_of=stock_snapshot_as_of, provisional=provisional)
     report_path = report or (settings.reports_dir / f"run_{ctx.as_of:%Y%m%d}.json")
     run_report = REGISTRY.run(
         ctx,
@@ -113,6 +131,57 @@ def run(
     typer.echo(_console_safe(run_report.render()))
     typer.echo(f"report: {report_path}")
     raise typer.Exit(0 if run_report.ok else 1)
+
+
+@app.command("run-provisional")
+def run_provisional(
+    as_of: str = typer.Option(..., help="Future order cycle, YYYY-MM-DD."),
+    stock_snapshot_as_of: str = typer.Option(..., help="Actual month-end stock snapshot date."),
+) -> None:
+    """Run a future order scenario without replacing the published live marts.
+
+    Business meaning: an incomplete incoming-order schedule cannot authorize a
+    purchase order. The scenario is useful for planning, but its output is held.
+    """
+    cycle = datetime.strptime(as_of, "%Y-%m-%d").date()
+    snapshot = datetime.strptime(stock_snapshot_as_of, "%Y-%m-%d").date()
+    if snapshot.day != calendar.monthrange(snapshot.year, snapshot.month)[1] or snapshot >= cycle:
+        raise typer.BadParameter("stock snapshot must be a month-end before the cycle")
+
+    settings = get_settings()
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    scenario_root = (
+        settings.root / "data" / "scenarios" / f"{cycle:%Y%m%d}_from_{snapshot:%Y%m%d}_{stamp}"
+    )
+    shutil.copytree(settings.facts_dir, scenario_root / "data" / "facts")
+    shutil.copytree(settings.source_parquet_dir, scenario_root / "data" / "staging" / "sources")
+
+    rerun = {"08_forecast", "12_stock", "13_policy", "14_monthly_order"}
+    stage_order = REGISTRY.order(["14_monthly_order"])
+    if stage_order.index("08_forecast") > stage_order.index("12_stock"):
+        raise typer.BadParameter("scenario requires the forecast before stock projection")
+    skipped = [name for name in stage_order if name not in rerun]
+    command = [
+        sys.executable,
+        "-m",
+        "src.cli",
+        "run",
+        "--as-of",
+        as_of,
+        "--stock-snapshot-as-of",
+        stock_snapshot_as_of,
+        "--provisional",
+        "--only",
+        "14_monthly_order",
+    ]
+    for name in skipped:
+        command.extend(["--skip", name])
+    env = os.environ.copy()
+    env["SPI_ROOT"] = str(scenario_root)
+    env["SPI_SOURCE_DIR"] = str(settings.raw_dir)
+    completed = subprocess.run(command, cwd=settings.root, env=env, check=False)
+    typer.echo(f"scenario: {scenario_root}")
+    raise typer.Exit(completed.returncode)
 
 
 @app.command("catalogue-load")

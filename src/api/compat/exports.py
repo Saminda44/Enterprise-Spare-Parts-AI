@@ -67,6 +67,11 @@ def export_policy(
     search: str | None = None,
 ) -> Response:
     """Download the same final order shown on the existing Order Plan screen."""
+    from src.api.compat.context import published_order_hold_reason  # noqa: PLC0415
+
+    hold_reason = published_order_hold_reason()
+    if hold_reason:
+        raise HTTPException(409, hold_reason)
     if not table_exists("marts", "mart_monthly_order"):
         raise HTTPException(503, "monthly order mart unavailable")
     proposal = read_table("marts", "mart_monthly_order")

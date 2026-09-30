@@ -131,10 +131,14 @@ def review_hold(
 def run(ctx: PlanningContext) -> StageResult:
     result = StageResult(stage="14_monthly_order")
     settings = get_settings()
+    provisional = bool(ctx.option("provisional", False))
 
     params = read_table("facts", "policy_params")
     selection = read_table("facts", "policy_selection")
     stock = read_table("facts", "stock_position")
+    incoming_verified = (
+        bool(stock["on_order_complete"].all()) if "on_order_complete" in stock else False
+    )
     master = read_table("facts", "part_master")
     classification = read_table("facts", "sku_classification")
     history = read_table("facts", "demand_history")
@@ -175,10 +179,14 @@ def run(ctx: PlanningContext) -> StageResult:
         f"{settings.default_moq:g} and {settings.default_pack_size:g}. A silent pack default of 1 "
         f"on a part that ships in cartons of 24 produces orders that cannot be placed."
     )
+    inflation_note = (
+        "policy assignments were reused without revalidation"
+        if provisional
+        else "the simulator in Step 13 used the same setting as the executed policy"
+    )
     result.warn(
         f"supply inflation q/beta_hat is {'ON' if settings.use_supply_inflation else 'OFF'} "
-        f"(cap {settings.supply_inflation_cap:g}x) — the simulator in Step 13 used the same "
-        f"setting, so the policy executed is the policy that was validated"
+        f"(cap {settings.supply_inflation_cap:g}x) — {inflation_note}"
     )
     result.warn(
         f"EOQ floor is {'ON' if settings.use_eoq else 'OFF'}; order cost "
@@ -234,6 +242,7 @@ def run(ctx: PlanningContext) -> StageResult:
                 "recent_demand_6m": recent_6m,
                 "flags": flags,
                 "lead_time_months": ctx.lead_time_months,
+                "on_order_interpretation": settings.on_order_interpretation,
                 "expected_arrival": (
                     pd.Timestamp(ctx.as_of) + pd.DateOffset(months=ctx.lead_time_months)
                 ).strftime("%Y-%m"),
@@ -246,6 +255,12 @@ def run(ctx: PlanningContext) -> StageResult:
                 "fill_target": row.fill_target,
                 "z": row.z,
                 "beta_hat": row.beta_hat,
+                "release_status": (
+                    "PROVISIONAL_DO_NOT_PLACE"
+                    if provisional
+                    else ("BUYER_REVIEW" if incoming_verified else "HOLD_UNVERIFIED_INCOMING")
+                ),
+                "incoming_orders_status": "VERIFIED" if incoming_verified else "UNVERIFIED",
             }
         )
 
@@ -256,9 +271,24 @@ def run(ctx: PlanningContext) -> StageResult:
     result.artifact(
         "monthly_order_proposal", write_table(proposal, "facts", "monthly_order_proposal")
     )
-    result.artifact("mart_monthly_order", write_table(triggered, "marts", "mart_monthly_order"))
     review = proposal[proposal["q_review"] > 0]
-    result.artifact("mart_order_review", write_table(review, "marts", "mart_order_review"))
+    if provisional:
+        result.artifact(
+            "mart_monthly_order_scenario",
+            write_table(triggered, "marts", "mart_monthly_order_scenario"),
+        )
+        result.artifact(
+            "mart_order_review_scenario",
+            write_table(review, "marts", "mart_order_review_scenario"),
+        )
+        result.warn(
+            "PROVISIONAL / DO NOT PLACE: stock was projected and incoming orders after the "
+            "last supplied arrival month are unverified; refresh actual stock and open orders "
+            "before releasing purchase quantities"
+        )
+    else:
+        result.artifact("mart_monthly_order", write_table(triggered, "marts", "mart_monthly_order"))
+        result.artifact("mart_order_review", write_table(review, "marts", "mart_order_review"))
 
     policy_summary = proposal.groupby(["policy", "abc_class"], as_index=False).agg(
         skus=("active_sku_id", "nunique"),
@@ -270,11 +300,12 @@ def run(ctx: PlanningContext) -> StageResult:
         "mart_policy_summary", write_table(policy_summary, "marts", "mart_policy_summary")
     )
 
-    service = read_table("facts", "holdout_validation")
-    if not service.empty:
-        result.artifact(
-            "mart_service_and_stock", write_table(service, "marts", "mart_service_and_stock")
-        )
+    if not provisional:
+        service = read_table("facts", "holdout_validation")
+        if not service.empty:
+            result.artifact(
+                "mart_service_and_stock", write_table(service, "marts", "mart_service_and_stock")
+            )
 
     backtest_available = True
     try:

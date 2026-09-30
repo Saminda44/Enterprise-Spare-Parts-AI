@@ -18,7 +18,7 @@ class PlanningContext:
     """
 
     as_of: date
-    lead_time_months: int = 3
+    lead_time_months: int = 4
     review_period_months: int = 1
     plant: str = "W1B4"
     currency: str = "LKR"

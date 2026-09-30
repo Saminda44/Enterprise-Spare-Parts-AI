@@ -30,6 +30,7 @@ type InventoryData = {
   classified_count: number; stock_snapshot_count: number; unassessed_count: number;
   total_value_lkr: number; excess_value_lkr: number;
   on_order_units?: number; on_hand_units?: number;
+  planning: { lead_time_months: number };
   stockout_regular?: number;   // zero stock and ≥1 unit/month of demand
 };
 
@@ -100,7 +101,7 @@ export function InventoryStatusTab() {
             </BarChart>
           </ResponsiveContainer>
           <div className="flex gap-4 mt-1 text-xs text-slate-400">
-            <span>— 3 mo = lead time</span>
+            <span>— {invData.planning.lead_time_months} mo = lead time</span>
             <span>— 12 mo = excess threshold</span>
           </div>
         </div>

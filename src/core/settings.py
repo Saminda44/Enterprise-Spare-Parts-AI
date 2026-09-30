@@ -35,12 +35,11 @@ class Settings(BaseSettings):
     # Step 12: are On_Orders month columns the expected arrival month, or when the PO
     # was raised? This single assumption shifts the pipeline by a quarter, so it is
     # printed in every run report.
-    # On_Orders month columns are the month the PO was RAISED (owner decision 2026-09-28):
-    # arrival = month + lead time, so the last `lead_time_months` of POs are still in transit.
-    on_order_interpretation: Literal["arrival", "raised"] = "raised"
+    # Owner confirmed 2026-09-30: these are expected arrival months, not PO dates.
+    on_order_interpretation: Literal["arrival", "raised"] = "arrival"
 
     plant: str = "W1B4"
-    lead_time_months: int = 3
+    lead_time_months: int = 4
     review_period_months: int = 1
     currency: str = "LKR"
 

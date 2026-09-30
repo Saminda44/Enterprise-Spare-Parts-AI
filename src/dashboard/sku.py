@@ -19,8 +19,8 @@ from src.io.parquet import read_table, table_exists
 #: A month, in days. Used only to express coverage in the "days of stock" the UI shows.
 DAYS_PER_MONTH = 30.4
 
-#: Coverage above this is excess. Twelve months of cover on a three-month lead is four
-#: replenishment cycles of stock sitting still — money that is not buying service.
+#: Coverage above this is excess. Twelve months of cover on a four-month lead is
+#: roughly three replenishment cycles of stock sitting still.
 EXCESS_COVER_MONTHS = 12.0
 
 #: Below one month of cover a part cannot survive even the review period, let alone the
