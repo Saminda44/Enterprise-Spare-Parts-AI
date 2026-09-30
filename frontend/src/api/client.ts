@@ -589,6 +589,28 @@ export interface BuyerAgeData {
 /** Bikes sold by buyer age band, model and colour (MCSI; counts only). */
 export const fetchBuyerAge = () => api.get<BuyerAgeData>("/bikes/buyer-age").then(r => r.data);
 
+export interface VehicleSearch {
+  query: string; total: number; min_chars: number;
+  rows: { vin: string; batch: string; model: string; colour: string; first_billed: string; dealer_name: string; status: string }[];
+}
+export interface VehicleDetail {
+  vin: string;
+  identity: { batch: string; model_code: string; model: string; colour: string; motorcycle_type: string; cc: number | null; segment: string | null; status: string; age_months: number | null };
+  sale: {
+    first_billed: string; last_billed: string; net_sales: number; list_price: number | null; discount_vs_list: number | null;
+    dealer_code: string; dealer_name: string; province: string; district: string; rm: string; ase: string;
+    customer_id: string; age_at_purchase: number | null; age_today: number | null;
+  };
+  billing: { date: string; document: string; bill_type: string; quantity: number; sales_price: number; discount: number; net_sales: number; dealer_name: string }[];
+  model_context: { bikes_sold: number; same_colour_sold: number; dealer_bikes_of_model: number; fleet_in_operation: number | null; fleet_registered: number | null; fleet_surviving_pct: number | null };
+}
+/** Bikes whose chassis (VIN) or batch number contains the query. */
+export const fetchVehicleSearch = (q: string) =>
+  api.get<VehicleSearch>("/bikes/vehicle-search", { params: { q } }).then(r => r.data);
+/** Everything recorded about one chassis number. */
+export const fetchVehicleDetail = (vin: string) =>
+  api.get<VehicleDetail>(`/bikes/vehicle/${encodeURIComponent(vin)}`, { timeout: 60_000 }).then(r => r.data);
+
 export const fetchMcsiEda = () => api.get<McsiEdaData>("/bikes/mcsi-eda").then(r => r.data);
 
 export interface ModelForecastRow {
@@ -1120,8 +1142,10 @@ export interface SparePartsEdaData {
 }
 
 export interface CatalogFile  { filename: string; rel_path: string; size_kb: number; }
-export interface CatalogModel { model: string; pdf_count: number; files: CatalogFile[]; }
-export interface CatalogData  { models: CatalogModel[]; total_pdfs: number; }
+/** Catalogue product type: the top folder under pdf_catalogues (MC motorcycles, OBM outboards). */
+export type CatalogProductType = "MC" | "OBM";
+export interface CatalogModel { model: string; product_type: CatalogProductType; pdf_count: number; files: CatalogFile[]; }
+export interface CatalogData  { models: CatalogModel[]; total_pdfs: number; product_types: CatalogProductType[]; }
 export const fetchCatalog = () => api.get<CatalogData>("/catalog").then(r => r.data);
 export const catalogFileUrl = (rel_path: string) =>
   `/api/v1/catalog/file/${rel_path.split("/").map(encodeURIComponent).join("/")}`;
@@ -1315,14 +1339,15 @@ export const loadAllCataloguesToDb = (force = false) =>
     `/catalog/db/load-all?force=${force}`,
   ).then(r => r.data);
 
-export const fetchCatalogFolders = () =>
-  api.get<string[]>("/catalog/folders").then(r => r.data);
+export const fetchCatalogFolders = (productType: CatalogProductType) =>
+  api.get<string[]>("/catalog/folders", { params: { product_type: productType } }).then(r => r.data);
 
-export const uploadCatalogPdf = (file: File, folder: string) => {
+export const uploadCatalogPdf = (file: File, folder: string, productType: CatalogProductType) => {
   const form = new FormData();
   form.append("file", file);
   form.append("folder", folder);
-  return api.post<{ rel_path: string; filename: string; folder: string }>(
+  form.append("product_type", productType);
+  return api.post<{ rel_path: string; filename: string; folder: string; product_type: CatalogProductType }>(
     "/catalog/upload", form,
     { headers: { "Content-Type": "multipart/form-data" }, timeout: 60_000 },
   ).then(r => r.data);

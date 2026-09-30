@@ -118,7 +118,9 @@ def run(
 @app.command("catalogue-load")
 def catalogue_load(
     file: list[str] = typer.Option(
-        None, "--file", help="Load only these, as <folder>/<file>.pdf. Default: every PDF."
+        None,
+        "--file",
+        help="Load only these, as <MC|OBM>/<model folder>/<file>.pdf. Default: every PDF.",
     ),
     force: bool = typer.Option(False, help="Reload even when the stored copy is current."),
     workers: int = typer.Option(4, help="PDFs read in parallel."),

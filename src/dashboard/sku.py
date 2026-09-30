@@ -13,6 +13,7 @@ import pandas as pd
 
 from src.core.context import PlanningContext
 from src.core.result import StageResult
+from src.dashboard.segments import SEGMENT_MC, part_category, sku_segments
 from src.io.parquet import read_table, table_exists
 
 #: A month, in days. Used only to express coverage in the "days of stock" the UI shows.
@@ -320,6 +321,8 @@ def build(ctx: PlanningContext, result: StageResult) -> pd.DataFrame:
     frame["sanity_note"] = note
 
     frame["description"] = frame["description"].fillna("").astype(str)
+    frame["segment"] = frame["active_sku_id"].map(sku_segments(master)).fillna(SEGMENT_MC)
+    frame["part_category"] = part_category(frame["description"], frame["segment"])
     frame["review_flags"] = (
         frame["flags"].fillna("").astype(str) if "flags" in frame.columns else ""
     )
@@ -397,6 +400,8 @@ def build(ctx: PlanningContext, result: StageResult) -> pd.DataFrame:
         "sanity_flag",
         "sanity_note",
         "fill_rate",
+        "segment",
+        "part_category",
         "q_proposed",
         "q_review",
         "value_review",
@@ -460,6 +465,8 @@ def build_part_master_analysis(
     )
     aliases = master.groupby("active_sku_id").size().rename("alias_count")
     heads = heads.join(aliases, on="active_sku_id")
+    heads["segment"] = heads["active_sku_id"].map(sku_segments(master)).fillna(SEGMENT_MC)
+    heads["part_category"] = part_category(heads["description"], heads["segment"])
     old_numbers = master[master["material"] != master["active_sku_id"]]
     old_numbers = (
         old_numbers.groupby("active_sku_id")["material"]
@@ -470,6 +477,8 @@ def build_part_master_analysis(
     heads["superseded_numbers"] = heads["superseded_numbers"].fillna("")
     planned = sku.drop(
         columns=[
+            "segment",
+            "part_category",
             "material_9",
             "description",
             "material_group",

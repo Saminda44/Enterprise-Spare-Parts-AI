@@ -2,7 +2,7 @@ import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard, TrendingUp, Package, ShoppingCart,
   BookOpen, FileText,
-  Activity, Search, Terminal,
+  Activity, Search, Terminal, ScanSearch,
 } from "lucide-react";
 // ── Overview ──────────────────────────────────────────────────────────────
 const NAV_OVERVIEW = [
@@ -14,20 +14,25 @@ const NAV_MOTO = [
   { to: "/mcsi-eda", label: "MC Analysis",            Icon: Search     },
   { to: "/bikes",    label: "MC Sales Forecast",      Icon: TrendingUp },
   { to: "/uio",      label: "UIO Snapshot",           Icon: Activity   },
+  { to: "/vehicle",  label: "Vehicle Lookup",         Icon: ScanSearch },
 ];
 
-// ── Spare Parts ───────────────────────────────────────────────────────────
-const NAV_PARTS_ANALYSIS = [
-  { to: "/eda",                     label: "Spare Parts Analysis",     Icon: Package       },
-  { to: "/forecast",                label: "Demand Forecast",          Icon: TrendingUp    },
-  { to: "/orders",                  label: "Order Plan",               Icon: ShoppingCart  },
+// ── Spare parts: one section per PN_Yamaha brand (YM → MC, OB → OBM) ──────
+const NAV_MC_PARTS = [
+  { to: "/eda",      label: "MC Spare Parts Analysis", Icon: Package      },
+  { to: "/forecast", label: "Demand Forecast",         Icon: TrendingUp   },
+  { to: "/orders",   label: "Order Plan",              Icon: ShoppingCart },
+  { to: "/parts",    label: "MC Part Master",          Icon: BookOpen     },
 ];
 
-const NAV_PARTS_DATA = [
-  { to: "/parts",         label: "Part Master",          Icon: BookOpen   },
+const NAV_OBM_PARTS = [
+  { to: "/obm/eda",      label: "OBM Spare Parts Analysis", Icon: Package      },
+  { to: "/obm/forecast", label: "Demand Forecast",          Icon: TrendingUp   },
+  { to: "/obm/orders",   label: "Order Plan",               Icon: ShoppingCart },
+  { to: "/obm/parts",    label: "OBM Part Master",          Icon: BookOpen     },
 ];
 
-const NAV_PARTS_CATALOG = [
+const NAV_TOOLS = [
   { to: "/catalog",   label: "Catalogues",      Icon: FileText  },
   { to: "/pipeline",  label: "Pipeline Runner",  Icon: Terminal  },
 ];
@@ -36,7 +41,7 @@ function NavItem({ to, label, Icon }: { to: string; label: string; Icon: React.E
   return (
     <NavLink
       to={to}
-      end={to === "/"}
+      end
       className={({ isActive }) =>
         `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
           isActive ? "bg-brand-blue text-white" : "text-slate-300 hover:bg-white/10 hover:text-white"
@@ -84,12 +89,21 @@ export function Sidebar() {
 
         <Divider/>
 
-        {/* ── 3. Spare Parts ── */}
-        <SectionLabel>Spare Parts</SectionLabel>
+        {/* ── 3. MC spare parts ── */}
+        <SectionLabel>MC Spare Parts</SectionLabel>
+        {NAV_MC_PARTS.map(n => <NavItem key={n.to} {...n}/>)}
 
-        {NAV_PARTS_ANALYSIS.map(n => <NavItem key={n.to} {...n}/>)}
-        {NAV_PARTS_DATA.map(n => <NavItem key={n.to} {...n}/>)}
-        {NAV_PARTS_CATALOG.map(n => <NavItem key={n.to} {...n}/>)}
+        <Divider/>
+
+        {/* ── 4. OBM spare parts ── */}
+        <SectionLabel>OBM Spare Parts</SectionLabel>
+        {NAV_OBM_PARTS.map(n => <NavItem key={n.to} {...n}/>)}
+
+        <Divider/>
+
+        {/* ── 5. Tools ── */}
+        <SectionLabel>Data &amp; Tools</SectionLabel>
+        {NAV_TOOLS.map(n => <NavItem key={n.to} {...n}/>)}
 
       </nav>
     </aside>

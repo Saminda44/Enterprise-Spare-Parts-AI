@@ -584,7 +584,7 @@ class YamahaCatalogueExtractor:
 
         ex = YamahaCatalogueExtractor()
         result = ex.extract(
-            Path("data/raw/pdf_catalogues/FZ & FZS/FZ16 21C1.pdf"), model="FZ & FZS"
+            Path("data/raw/pdf_catalogues/MC/FZ & FZS/FZ16 21C1.pdf"), model="FZ & FZS"
         )
         df = result.df  # pandas DataFrame with COLUMNS
 

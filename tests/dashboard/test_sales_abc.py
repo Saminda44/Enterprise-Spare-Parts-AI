@@ -223,9 +223,10 @@ def test_forecast_sales_check_flags_disagreement() -> None:
     assert out.at["AGREE", "check"] == fc.CONSISTENT
     assert out.at["ABOVE", "check"] == fc.BILLED_ABOVE_CONFIRMED
     assert out.at["ABOVE_CONFIRMED_ONLY", "check"] == fc.BILLED_ABOVE_CONFIRMED
-    assert out.at["ABOVE_CONFIRMED_ONLY", "sales_qty"] < out.at[
-        "ABOVE_CONFIRMED_ONLY", "ordered_quantity"
-    ]
+    assert (
+        out.at["ABOVE_CONFIRMED_ONLY", "sales_qty"]
+        < out.at["ABOVE_CONFIRMED_ONLY", "ordered_quantity"]
+    )
     assert out.at["NOBILL", "check"] == fc.ORDERED_NOT_BILLED
     assert out.at["90890-TOOL", "check"] == fc.SERVICE_TOOL
     assert out.at["OTHER-1", "check"] == fc.SOLD_NOT_ORDERED

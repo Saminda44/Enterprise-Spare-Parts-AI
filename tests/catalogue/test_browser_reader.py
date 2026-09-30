@@ -147,12 +147,34 @@ def test_colour_name_glossing_a_code_is_the_code() -> None:
 def test_declared_overrides() -> None:
     from pathlib import Path
 
-    ybx = override_for(Path("x/YBX/YBX125.pdf"))
+    ybx = override_for(Path("x/MC/YBX/YBX125.pdf"))
     assert [c.abbreviation for c in ybx.colour_table] == ["BG", "DPRC3", "DPBMC"]
-    crux = override_for(Path("x/CRUX/Crux_ Crux R Parts Catalogue_New 5ka1.pdf"))
+    crux = override_for(Path("x/MC/CRUX/Crux_ Crux R Parts Catalogue_New 5ka1.pdf"))
     assert crux.excluded_sections[0][0] == "PARTS EXCLUSIVE TO CRUX (5KA2)"
-    assert override_for(Path("x/LIBERO/LIBERO  G5.pdf")).drop_kit_rows
-    assert override_for(Path("x/R 15/R15 1CK5.pdf")).excluded_reason
+    assert override_for(Path("x/MC/LIBERO/LIBERO  G5.pdf")).drop_kit_rows
+    assert override_for(Path("x/MC/R 15/R15 1CK5.pdf")).excluded_reason
+
+
+def test_product_folder_layout(tmp_path) -> None:
+    from pathlib import Path
+
+    from src.catalogue.browser.overrides import (
+        model_folder_of,
+        model_folders,
+        product_type_of,
+        relative_key,
+    )
+
+    assert relative_key(Path("root/MC/AEROX/B65L.pdf")) == "MC/AEROX/B65L.pdf"
+    assert relative_key(Path("root/OBM/F40/F40FETL.pdf")) == "OBM/F40/F40FETL.pdf"
+    assert product_type_of("OBM/F40/F40FETL.pdf") == "OBM"
+    assert product_type_of("MC/FZ & FZS/x.pdf") == "MC"
+    assert model_folder_of("OBM/F40/F40FETL.pdf") == "F40"
+    assert model_folder_of("MC/FZ & FZS/x.pdf") == "FZ & FZS"
+    for rel in ("MC/AEROX", "MC/FZ & FZS", "OBM/F40"):
+        (tmp_path / rel).mkdir(parents=True)
+    found = [(p, f.name) for p, f in model_folders(tmp_path)]
+    assert found == [("MC", "AEROX"), ("MC", "FZ & FZS"), ("OBM", "F40")]
 
 
 @pytest.mark.parametrize(

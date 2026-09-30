@@ -16,6 +16,7 @@ from src.core.registry import REGISTRY
 from src.core.result import StageResult
 from src.dashboard import eda, forecast_check, order_plan, sales_abc, sku, vehicles
 from src.dashboard.compatibility import service_plan, validate_output
+from src.dashboard.segments import SEGMENT_MC, part_category, sku_segments
 from src.io.parquet import read_table, table_exists, write_table
 
 
@@ -48,6 +49,26 @@ def run(ctx: PlanningContext) -> StageResult:
             billed_abc,
             str(billed_audit.at[0, "window_start"]),
             str(billed_audit.at[0, "window_end"]),
+        )
+        check["segment"] = (
+            check["active_sku_id"]
+            .map(sku_segments(read_table("facts", "part_master")))
+            .fillna(SEGMENT_MC)
+        )
+        categories = per_sku.set_index("active_sku_id")["part_category"]
+        check["part_category"] = (
+            check["active_sku_id"]
+            .map(categories)
+            .fillna(
+                part_category(
+                    check["active_sku_id"].map(
+                        read_table("facts", "part_master")
+                        .drop_duplicates("active_sku_id")
+                        .set_index("active_sku_id")["description"]
+                    ),
+                    check["segment"],
+                )
+            )
         )
         written["mart_ui_forecast_sales_check"] = check
         result.warn(
@@ -90,6 +111,7 @@ def run(ctx: PlanningContext) -> StageResult:
     written.update(vehicles.build_sales_forecast(result))
     written.update(vehicles.build_model_price(result))
     written.update(vehicles.build_buyer_age(result))
+    written.update(vehicles.build_vehicle_lookup(result))
     written.update(vehicles.build_parc(result))
     written.update(vehicles.build_uio_snapshot(result))
 

@@ -18,6 +18,8 @@ COLUMNS = [
     "active_sku_id",
     "description",
     "status",
+    "segment",
+    "part_category",
     "abc",
     "abc_source",
     "fsn",
@@ -76,6 +78,8 @@ def build(
         "baseline_weight",
         "forecast_m1",
         "mu_p",
+        "segment",
+        "part_category",
     ]
     lines = lines.merge(sku[[c for c in extra if c in sku.columns]], on="active_sku_id", how="left")
     if behaviour is not None and not behaviour.empty:
@@ -96,6 +100,8 @@ def build(
             "active_sku_id": lines["active_sku_id"],
             "description": lines["description"],
             "status": np.where(lines["q_final"] > 0, STATUS_ORDER, STATUS_REVIEW),
+            "segment": lines.get("segment"),
+            "part_category": lines.get("part_category"),
             "abc": lines["abc_class"],
             "abc_source": lines.get("abc_source"),
             "fsn": lines["fsn"],

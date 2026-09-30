@@ -30,6 +30,7 @@ from src.api.schemas import (
     CatalogResponse,
 )
 from src.catalogue.browser.agent import CatalogueAgent
+from src.catalogue.browser.overrides import PRODUCT_TYPES, model_folder_of, model_folders
 from src.catalogue.browser.overrides import excluded as excluded_catalogues
 from src.catalogue.browser.part_master import build_part_master
 from src.catalogue.browser.pdf_extractor import DISPLAY_HEADERS, YamahaCatalogueExtractor
@@ -96,9 +97,8 @@ def list_catalog() -> CatalogResponse:
         return CatalogResponse(models=[], total_pdfs=0)
     hidden = _identical_copies()
 
-    for folder in sorted(PDF_ROOT.iterdir(), key=lambda p: p.name.upper()):
-        if not folder.is_dir():
-            continue
+    # Model folders sit inside a product folder: pdf_catalogues/MC/AEROX, OBM/F40.
+    for product_type, folder in model_folders(PDF_ROOT):
         files: list[CatalogFile] = []
         for pdf in sorted(folder.rglob("*"), key=lambda p: p.name.upper()):
             if pdf.suffix in PDF_EXTS and pdf.is_file():
@@ -114,9 +114,16 @@ def list_catalog() -> CatalogResponse:
                 )
         if files:
             total += len(files)
-            models.append(CatalogModel(model=folder.name, pdf_count=len(files), files=files))
+            models.append(
+                CatalogModel(
+                    model=folder.name,
+                    product_type=product_type,
+                    pdf_count=len(files),
+                    files=files,
+                )
+            )
 
-    return CatalogResponse(models=models, total_pdfs=total)
+    return CatalogResponse(models=models, total_pdfs=total, product_types=list(PRODUCT_TYPES))
 
 
 @router.get("/file/{file_path:path}")
@@ -133,19 +140,22 @@ def serve_pdf(file_path: str) -> FileResponse:
 
 
 @router.get("/folders")
-def list_folders() -> list[str]:
-    """Return all folder names inside pdf_catalogues (for the upload folder picker)."""
-    if not PDF_ROOT.exists():
-        return []
-    return sorted(f.name for f in PDF_ROOT.iterdir() if f.is_dir())
+def list_folders(product_type: str = Query("MC")) -> list[str]:
+    """Model folders of one product type (for the upload folder picker)."""
+    product = product_type.strip().upper()
+    return [f.name for p, f in model_folders(PDF_ROOT) if p == product]
 
 
 @router.post("/upload")
 async def upload_pdf(
     file: UploadFile = File(...),  # noqa: B008
     folder: str = Form(...),
+    product_type: str = Form("MC"),
 ) -> dict[str, str]:
-    """Upload a PDF catalogue into pdf_catalogues/{folder}/. Creates the folder if needed.
+    """Upload a PDF catalogue into pdf_catalogues/{product_type}/{folder}/.
+
+    The model folder is created if needed; the product type (MC or OBM) must be one of
+    the product folders.
 
     Two guards the previous build did not have, because ``data/raw`` is immutable and
     PDFs are untrusted input: an upload only ever *adds* — a name that already exists is
@@ -159,7 +169,11 @@ async def upload_pdf(
     if not folder_clean or ".." in folder_clean or "/" in folder_clean or "\\" in folder_clean:
         raise HTTPException(status_code=400, detail="Invalid folder name")
 
-    target_dir = (PDF_ROOT / folder_clean).resolve()
+    product = product_type.strip().upper()
+    if product not in PRODUCT_TYPES:
+        raise HTTPException(status_code=400, detail=f"product_type must be one of {PRODUCT_TYPES}")
+
+    target_dir = (PDF_ROOT / product / folder_clean).resolve()
     if not str(target_dir).startswith(str(PDF_ROOT)):
         raise HTTPException(status_code=403, detail="Forbidden")
 
@@ -183,6 +197,7 @@ async def upload_pdf(
         "rel_path": dest.relative_to(PDF_ROOT).as_posix(),
         "filename": dest.name,
         "folder": folder_clean,
+        "product_type": product,
     }
 
 
@@ -455,10 +470,10 @@ def get_catalog_coverage() -> CatalogCoverageResponse:
 
     # Count PDFs per model from the live file system (for pdf_count)
     pdf_counts: dict[str, int] = {}
-    if PDF_ROOT.exists():
-        for folder in PDF_ROOT.iterdir():
-            if folder.is_dir():
-                pdf_counts[folder.name] = sum(1 for f in folder.rglob("*") if f.suffix in PDF_EXTS)
+    for _product, folder in model_folders(PDF_ROOT):
+        pdf_counts[folder.name] = pdf_counts.get(folder.name, 0) + sum(
+            1 for f in folder.rglob("*") if f.suffix in PDF_EXTS
+        )
 
     pn_col = "part_no" if "part_no" in df.columns else "part_number"
     rows: list[CatalogCoverageRow] = []
@@ -648,7 +663,7 @@ def run_agent(
         data = json.loads(cache.read_text(encoding="utf-8"))
         # Backfill model from the relative path when the cache was built without it.
         if not data.get("model"):
-            data["model"] = file_path.split("/")[0]
+            data["model"] = model_folder_of(file_path)
         # Backfill model_no from the PDF cover page when the cache predates this field.
         if "model_no" not in data:
             data["model_no"] = YamahaCatalogueExtractor._extract_model_no(target)

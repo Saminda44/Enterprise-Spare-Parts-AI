@@ -17,11 +17,13 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
 from src.api.compat import router as compatibility_router
+from src.api.compat.filters import REQUEST_CATEGORY, REQUEST_SEGMENT
 from src.api.deps import freshness
 from src.api.routers import parts, runs, tables
 from src.api.routers.planning import demand, inventory, orders, parc
 from src.api.schemas import Health, TableFreshness
 from src.core.settings import get_settings
+from src.dashboard.segments import CATEGORY_KEYS, SEGMENTS
 from src.stages import load_stages
 
 #: Serve the original dashboard against the current planning API on one origin.
@@ -67,8 +69,18 @@ app.include_router(runs.router)
 async def attach_run_id(request: Request, call_next):  # noqa: ANN001, ANN201 - ASGI signature
     """A request id threaded through every log line."""
     request_id = uuid.uuid4().hex[:8]
-    with logger.contextualize(request_id=request_id):
-        response = await call_next(request)
+    # The MC / OBM spare-parts section the page belongs to; every mart with a segment column
+    # is narrowed to it for this request (src/api/compat/filters.py).
+    segment = (request.query_params.get("segment") or "").strip().upper()
+    token = REQUEST_SEGMENT.set(segment if segment in SEGMENTS else None)
+    category = CATEGORY_KEYS.get((request.query_params.get("category") or "").strip().lower())
+    category_token = REQUEST_CATEGORY.set(category)
+    try:
+        with logger.contextualize(request_id=request_id):
+            response = await call_next(request)
+    finally:
+        REQUEST_SEGMENT.reset(token)
+        REQUEST_CATEGORY.reset(category_token)
     response.headers["X-Request-ID"] = request_id
     return response
 

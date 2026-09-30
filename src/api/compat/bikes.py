@@ -908,6 +908,138 @@ def target_breakdown_monthly(
     return rows
 
 
+#: A search needs this many characters of a chassis or batch number, so a stray keystroke
+#: does not list half the fleet.
+VEHICLE_SEARCH_MIN_CHARS = 4
+VEHICLE_SEARCH_LIMIT = 25
+
+
+def _clean_id(value: str) -> str:
+    return "".join(ch for ch in str(value).upper() if ch.isalnum())
+
+
+@router.get("/vehicle-search")
+def vehicle_search(q: str = "") -> dict[str, Any]:
+    """Bikes whose chassis (VIN) or batch number contains ``q`` (letters and digits only)."""
+    needle = _clean_id(q)
+    if len(needle) < VEHICLE_SEARCH_MIN_CHARS:
+        return {"query": q, "total": 0, "rows": [], "min_chars": VEHICLE_SEARCH_MIN_CHARS}
+    frame = mart("mart_ui_vehicle")
+    if frame.empty:
+        return {"query": q, "total": 0, "rows": [], "min_chars": VEHICLE_SEARCH_MIN_CHARS}
+    vin = frame["vin"].astype(str).str.upper()
+    batch = frame["batch"].astype(str).str.upper()
+    hits = frame[vin.str.contains(needle, regex=False) | batch.str.contains(needle, regex=False)]
+    # Exact matches first, then by chassis number.
+    exact = (hits["vin"].astype(str).str.upper() == needle) | (hits["batch"].astype(str) == needle)
+    hits = hits.assign(_exact=exact).sort_values(["_exact", "vin"], ascending=[False, True])
+    names = all_model_names()
+    return {
+        "query": q,
+        "total": int(len(hits)),
+        "min_chars": VEHICLE_SEARCH_MIN_CHARS,
+        "rows": [
+            {
+                "vin": s(r["vin"]),
+                "batch": s(r["batch"]),
+                "model": model_label(s(r["model_code"]), names),
+                "colour": s(r["colour"]),
+                "first_billed": s(r["first_billed"]),
+                "dealer_name": s(r["dealer_name"]),
+                "status": s(r["status"]),
+            }
+            for _, r in hits.head(VEHICLE_SEARCH_LIMIT).iterrows()
+        ],
+    }
+
+
+@router.get("/vehicle/{vin}")
+def vehicle_detail(vin: str) -> dict[str, Any]:
+    """Everything recorded about one bike: identity, sale, billing history and its model
+    in context."""
+    from fastapi import HTTPException  # noqa: PLC0415
+
+    key = _clean_id(vin)
+    frame = mart("mart_ui_vehicle")
+    row = frame[frame["vin"].astype(str).str.upper() == key]
+    if row.empty:
+        raise HTTPException(404, f"no bike with chassis number {vin}")
+    v = row.iloc[0]
+    names = all_model_names()
+    code = s(v["model_code"])
+    num = lambda x: f(x) if pd.notna(x) else None  # noqa: E731 - nullable float
+
+    lines = mart("mart_ui_vehicle_billing")
+    lines = lines[lines["vin"].astype(str).str.upper() == key].sort_values("billing_date")
+
+    price = mart("mart_ui_mc_model_price")
+    price_row = price[price["model_name"].astype(str) == code]
+    list_price = f(price_row["list_price"].iloc[0]) if not price_row.empty else None
+    uio = mart("mart_ui_uio_models")
+    uio_row = uio[uio["model_code"].astype(str) == code] if not uio.empty else uio
+    same_model = frame[frame["model_code"].astype(str) == code]
+    first = pd.to_datetime(v["first_billed"], errors="coerce")
+    age_months = (
+        int((pd.Timestamp.now().normalize() - first).days // 30.44) if pd.notna(first) else None
+    )
+
+    return {
+        "vin": s(v["vin"]),
+        "identity": {
+            "batch": s(v["batch"]),
+            "model_code": code,
+            "model": model_label(code, names),
+            "colour": s(v["colour"]),
+            "motorcycle_type": s(v["motorcycle_type"]),
+            "cc": num(price_row["cc"].iloc[0]) if not price_row.empty else None,
+            "segment": s(price_row["segment"].iloc[0]) if not price_row.empty else None,
+            "status": s(v["status"]),
+            "age_months": age_months,
+        },
+        "sale": {
+            "first_billed": s(v["first_billed"]),
+            "last_billed": s(v["last_billed"]),
+            "net_sales": f(v["net_sales"]),
+            "list_price": list_price,
+            "discount_vs_list": (list_price - f(v["net_sales"])) if list_price else None,
+            "dealer_code": s(v["dealer_code"]),
+            "dealer_name": s(v["dealer_name"]),
+            "province": s(v["province"]),
+            "district": s(v["district"]),
+            "rm": s(v["rm"]),
+            "ase": s(v["ase"]),
+            "customer_id": s(v["customer_id"]),
+            "age_at_purchase": num(v["age_at_purchase"]),
+            "age_today": num(v["age_today"]),
+        },
+        "billing": [
+            {
+                "date": s(r["billing_date"]),
+                "document": s(r["billing_document"]),
+                "bill_type": s(r["bill_type"]),
+                "quantity": f(r["quantity"]),
+                "sales_price": f(r["sales_price"]),
+                "discount": f(r["discount"]),
+                "net_sales": f(r["net_sales"]),
+                "dealer_name": s(r["dealer_name"]),
+            }
+            for _, r in lines.iterrows()
+        ],
+        "model_context": {
+            "bikes_sold": int((same_model["status"] == "sold").sum()),
+            "same_colour_sold": int(
+                ((same_model["status"] == "sold") & (same_model["colour"] == v["colour"])).sum()
+            ),
+            "dealer_bikes_of_model": int(
+                (same_model["dealer_code"].astype(str) == s(v["dealer_code"])).sum()
+            ),
+            "fleet_in_operation": num(uio_row["uio_base"].iloc[0]) if len(uio_row) else None,
+            "fleet_registered": num(uio_row["registered"].iloc[0]) if len(uio_row) else None,
+            "fleet_surviving_pct": num(uio_row["surviving_pct"].iloc[0]) if len(uio_row) else None,
+        },
+    }
+
+
 @router.get("/buyer-age")
 def buyer_age() -> dict[str, Any]:
     """Bikes sold by buyer age band, model and colour (counts only, no customer data)."""

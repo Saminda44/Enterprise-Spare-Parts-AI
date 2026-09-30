@@ -9,7 +9,7 @@ import {
   fetchAgentBuilds, clearAllAgentCache,
   fetchCatalogueDbStatus, fetchCatalogueDbLoadStatus, loadAllCataloguesToDb,
   type CatalogueDbStatus, type CatalogueDbLoadStatus,
-  type CatalogData, type CatalogModel, type PdfTableResult, type ColourCode,
+  type CatalogData, type CatalogModel, type CatalogProductType, type PdfTableResult, type ColourCode,
   type AgentResult, type VariantColourEntry,
 } from "../api/client";
 
@@ -771,6 +771,7 @@ type UploadEntry = {
 };
 
 function UploadPanel({ onCatalogRefresh }: { onCatalogRefresh: () => void }) {
+  const [productType, setProductType] = useState<CatalogProductType>("MC");
   const [folders,    setFolders]    = useState<string[]>([]);
   const [entries,    setEntries]    = useState<UploadEntry[]>([]);
   const [folder,     setFolder]     = useState("");
@@ -781,11 +782,12 @@ function UploadPanel({ onCatalogRefresh }: { onCatalogRefresh: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetchCatalogFolders().then(fs => {
+    // Model folders live under their product folder, so the list follows the type.
+    fetchCatalogFolders(productType).then(fs => {
       setFolders(fs);
-      if (fs.length > 0) setFolder(fs[0]);
+      setFolder(fs.length > 0 ? fs[0] : "__new__");
     });
-  }, []);
+  }, [productType]);
 
   const effectiveFolder = folder === "__new__" ? newName.trim() : folder;
   const canUpload = entries.length > 0 && effectiveFolder.length > 0 && !uploading;
@@ -811,7 +813,7 @@ function UploadPanel({ onCatalogRefresh }: { onCatalogRefresh: () => void }) {
       if (entries[i].status === "done") continue;
       setEntries(prev => prev.map((e, idx) => idx === i ? { ...e, status: "uploading" } : e));
       try {
-        const res = await uploadCatalogPdf(entries[i].file, effectiveFolder);
+        const res = await uploadCatalogPdf(entries[i].file, effectiveFolder, productType);
         setEntries(prev => prev.map((e, idx) =>
           idx === i ? { ...e, status: "done", relPath: res.rel_path } : e));
       } catch (err: unknown) {
@@ -823,7 +825,7 @@ function UploadPanel({ onCatalogRefresh }: { onCatalogRefresh: () => void }) {
     setUploading(false);
     onCatalogRefresh();
     // refresh folder list in case a new folder was created
-    fetchCatalogFolders().then(setFolders);
+    fetchCatalogFolders(productType).then(setFolders);
   };
 
   return (
@@ -905,8 +907,19 @@ function UploadPanel({ onCatalogRefresh }: { onCatalogRefresh: () => void }) {
 
         {/* Folder selector + upload button */}
         <div className="flex flex-wrap items-end gap-4">
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1.5">Catalogue type</label>
+            <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+              {PRODUCT_TYPE_OPTIONS.map(o => (
+                <button key={o.value} type="button" onClick={() => setProductType(o.value)}
+                  className={`px-3 py-2 text-sm transition-colors ${productType === o.value ? "bg-brand-blue text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}>
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="flex-1 min-w-48">
-            <label className="block text-xs font-medium text-slate-500 mb-1.5">Save to folder</label>
+            <label className="block text-xs font-medium text-slate-500 mb-1.5">Save to model folder (pdf_catalogues/{productType}/…)</label>
             <select
               value={folder}
               onChange={e => setFolder(e.target.value)}
@@ -924,7 +937,7 @@ function UploadPanel({ onCatalogRefresh }: { onCatalogRefresh: () => void }) {
               <input
                 value={newName}
                 onChange={e => setNewName(e.target.value)}
-                placeholder="e.g. NMAX"
+                placeholder={productType === "OBM" ? "e.g. F40" : "e.g. NMAX"}
                 className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/30"
               />
             </div>
@@ -1013,24 +1026,50 @@ function ModelDetail({ model, onBack }: { model: CatalogModel; onBack: () => voi
 
 // ── PDF model list table ───────────────────────────────────────────────────────
 
+const PRODUCT_TYPE_OPTIONS: { value: CatalogProductType; label: string }[] = [
+  { value: "MC", label: "MC (motorcycle)" },
+  { value: "OBM", label: "OBM (outboard)" },
+];
+
 function ModelTable({ models, search, onSearch, onSelect }: {
   models: CatalogModel[]; search: string;
   onSearch: (v: string) => void; onSelect: (m: CatalogModel) => void;
 }) {
+  const [type, setType] = useState<CatalogProductType | "ALL">("ALL");
   const q = search.toLowerCase();
-  const filtered = q ? models.filter(m => m.model.toLowerCase().includes(q)) : models;
+  const filtered = models.filter(m =>
+    (type === "ALL" || m.product_type === type) && (!q || m.model.toLowerCase().includes(q)));
+  const count = (t: CatalogProductType) => models.filter(m => m.product_type === t).length;
   return (
     <div className="space-y-3">
-      <div className="relative max-w-sm">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input className="w-full pl-8 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-blue/30"
-          placeholder="Search model…" value={search} onChange={e => onSearch(e.target.value)} />
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative max-w-sm flex-1 min-w-48">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input className="w-full pl-8 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-blue/30"
+            placeholder="Search model…" value={search} onChange={e => onSearch(e.target.value)} />
+        </div>
+        <div className="flex rounded-lg border border-slate-200 overflow-hidden text-xs">
+          {([["ALL", `All (${models.length})`], ["MC", `MC (${count("MC")})`], ["OBM", `OBM (${count("OBM")})`]] as const).map(([v, label]) => (
+            <button key={v} onClick={() => setType(v)}
+              className={`px-3 py-2 transition-colors ${type === v ? "bg-brand-blue text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}>
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
+      {type === "OBM" && count("OBM") === 0 && (
+        <p className="text-xs text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
+          No outboard catalogues yet. Upload them with type <b>OBM</b> (or copy them into
+          <span className="font-mono"> data/raw/pdf_catalogues/OBM/&lt;model&gt;/</span>), then save them to the database —
+          the same reader extracts them and they are stored with product type OBM.
+        </p>
+      )}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-100 text-left text-xs text-slate-500 uppercase tracking-wide">
               <th className="py-2.5 pr-4">Model</th>
+              <th className="py-2.5 pr-4">Type</th>
               <th className="py-2.5 pr-4 text-right">PDFs</th>
               <th className="py-2.5 pr-4 text-right">Total Size</th>
               <th className="py-2.5 text-right">Action</th>
@@ -1041,7 +1080,7 @@ function ModelTable({ models, search, onSearch, onSelect }: {
               const totalKb = m.files.reduce((s, f) => s + f.size_kb, 0);
               const color = modelColor(m.model);
               return (
-                <tr key={m.model}
+                <tr key={`${m.product_type}/${m.model}`}
                   className="border-b border-slate-50 hover:bg-slate-50/70 cursor-pointer transition-colors"
                   onClick={() => onSelect(m)}>
                   <td className="py-3 pr-4">
@@ -1049,6 +1088,11 @@ function ModelTable({ models, search, onSearch, onSelect }: {
                       <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} />
                       <span className="font-medium text-slate-800">{m.model}</span>
                     </div>
+                  </td>
+                  <td className="py-3 pr-4">
+                    <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${m.product_type === "OBM" ? "bg-teal-50 text-teal-700" : "bg-blue-50 text-blue-700"}`}>
+                      {m.product_type}
+                    </span>
                   </td>
                   <td className="py-3 pr-4 text-right text-slate-600">{m.pdf_count}</td>
                   <td className="py-3 pr-4 text-right text-slate-400 text-xs">
@@ -1249,6 +1293,10 @@ export function Catalog() {
           <h2 className="text-xl font-bold text-slate-800">Parts Catalogues</h2>
           <p className="text-xs text-slate-500 mt-0.5">
             {pdfData?.total_pdfs ?? 0} PDFs across {pdfData?.models.length ?? 0} models
+            {pdfData && (["MC", "OBM"] as const).map(t => {
+              const ms = pdfData.models.filter(m => m.product_type === t);
+              return <span key={t}> · {t} {ms.length} model{ms.length === 1 ? "" : "s"} / {ms.reduce((s, m) => s + m.pdf_count, 0)} PDFs</span>;
+            })}
           </p>
         </div>
 

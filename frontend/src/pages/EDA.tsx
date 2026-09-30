@@ -10,6 +10,7 @@ import {
   type DealerType, type McCategoryType,
 } from "../api/client";
 import { KpiCard } from "../components/KpiCard";
+import { useSegment, useCategory, SEGMENT_TEXT, CATEGORY_TEXT } from "../api/segment";
 import { SkuClassificationTab } from "../components/SkuClassificationTab";
 import { InventoryStatusTab } from "../components/InventoryStatusTab";
 import { SalesCheckTab } from "../components/SalesCheckTab";
@@ -105,6 +106,8 @@ function PanelToggles({ selected, onToggle }: { selected: Set<EdaPanel>; onToggl
 }
 
 export function EDA() {
+  const segment = useSegment();
+  const category = useCategory();
   const [ordersData,       setOrdersData]       = useState<OrdersEdaData | null>(null);
   const [_ordersSalesData, setOrdersSalesData] = useState<SalesEdaData | null>(null);
   const [salesData,        setSalesData]        = useState<SalesEdaData | null>(null);
@@ -174,8 +177,17 @@ export function EDA() {
 
   return (
     <div className="flex-1 p-6 space-y-6 overflow-y-auto">
-      <h2 className="text-xl font-bold text-slate-800">Motorcycle Spare Parts EDA</h2>
-      <p className="text-xs text-slate-500 -mt-4">Steps 03-06 and 12 - dealer demand, billed sales, classification and PDC inventory</p>
+      <h2 className="text-xl font-bold text-slate-800">
+        {segment ? `${SEGMENT_TEXT[segment]} Spare Parts Analysis` : "Spare Parts Analysis"}
+        {category && <span className="text-brand-blue"> — {CATEGORY_TEXT[category]}</span>}
+      </h2>
+      <p className="text-xs text-slate-500 -mt-4">
+        {segment === "obm"
+          ? "Yamaha outboard parts (PN_Yamaha brand OB) — dealer demand, billed sales, classification and PDC inventory"
+          : segment === "mc"
+            ? "Yamaha motorcycle parts (PN_Yamaha brand YM, with Katana tyres) — dealer demand, billed sales, classification and PDC inventory"
+            : "Steps 03-06 and 12 - dealer demand, billed sales, classification and PDC inventory"}
+      </p>
 
       {/* Global KPIs — the selected orders period, against the same months a year earlier */}
       {(() => {
@@ -236,7 +248,8 @@ export function EDA() {
                   <PanelToggles selected={ordersPanels} onToggle={k => togglePanel(ordersPanels, setOrdersPanels, k)}/>
                   {ordersPanels.has("parts") && (
                     <div className="flex gap-2 flex-wrap items-center">
-                      <select
+                      {/* Inside a section the part's brand already decides MC / OBM. */}
+                      {!segment && <select
                         value={ordersDt}
                         onChange={e => { setOrdersDt(e.target.value as DealerType); setOrdersMcCat("ALL"); }}
                         className="border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-brand-blue/30 cursor-pointer"
@@ -244,9 +257,9 @@ export function EDA() {
                         <option value="ALL">All</option>
                         <option value="MC">MC</option>
                         <option value="OBM">OBM</option>
-                      </select>
+                      </select>}
 
-                      <select
+                      {!segment && <select
                         value={ordersMcCat}
                         onChange={e => setOrdersMcCat(e.target.value as McCategoryType)}
                         disabled={ordersDt === "OBM"}
@@ -263,7 +276,7 @@ export function EDA() {
                             <option value="SpareParts">Spare Parts</option>
                           </>
                         )}
-                      </select>
+                      </select>}
                     </div>
                   )}
                 </>
@@ -1100,7 +1113,7 @@ export function EDA() {
                   <PanelToggles selected={salesPanels} onToggle={k => togglePanel(salesPanels, setSalesPanels, k)}/>
                   {salesPanels.has("parts") && (
                     <div className="flex gap-2 flex-wrap items-center">
-                      <select
+                      {!segment && <select
                         value={salesDt}
                         onChange={e => { setSalesDt(e.target.value as DealerType); setSalesMcCat("ALL"); }}
                         className="border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-brand-blue/30 cursor-pointer"
@@ -1108,9 +1121,9 @@ export function EDA() {
                         <option value="ALL">All</option>
                         <option value="MC">MC</option>
                         <option value="OBM">OBM</option>
-                      </select>
+                      </select>}
 
-                      <select
+                      {!segment && <select
                         value={salesMcCat}
                         onChange={e => setSalesMcCat(e.target.value)}
                         disabled={salesDt === "OBM"}
@@ -1127,7 +1140,7 @@ export function EDA() {
                             <option value="Spare Parts">Spare Parts</option>
                           </>
                         )}
-                      </select>
+                      </select>}
                     </div>
                   )}
                 </>

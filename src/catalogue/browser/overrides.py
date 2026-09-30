@@ -13,7 +13,12 @@ Two rules apply to every catalogue and so are not listed per file:
 * A remarks column headed ``Remarks (9 Digit)`` holds a truncated part number, not a
   remark, and is discarded.
 
-Keys are paths relative to ``data/raw/pdf_catalogues``, with forward slashes.
+Keys are paths relative to ``data/raw/pdf_catalogues``, with forward slashes:
+``<product type>/<model folder>/<file name>``.
+
+Catalogues are filed by product type (owner, 2026-09-30): ``pdf_catalogues/MC/<model>/``
+for motorcycles and ``pdf_catalogues/OBM/<model>/`` for outboard motors. The same reader
+extracts both; the product type is the top folder.
 """
 
 from __future__ import annotations
@@ -67,7 +72,7 @@ CATALOGUE_OVERRIDES: dict[str, CatalogueOverride] = {
     # ENTICER 5US1's foreword (page 2, rotated image) names three colours and gives no
     # code or abbreviation. The body abbreviates them CNM (8 rows), LYNM9 (8) and BG
     # (6); the pairing below follows the initials and was confirmed by the owner.
-    "ENTICER/ENTICER 5US1.pdf": CatalogueOverride(
+    "MC/ENTICER/ENTICER 5US1.pdf": CatalogueOverride(
         drop_fields=frozenset({"remarks"}),
         colour_table=(
             DeclaredColour("", "CANDY MAROON", "CNM"),
@@ -76,7 +81,7 @@ CATALOGUE_OVERRIDES: dict[str, CatalogueOverride] = {
         ),
         colour_table_page=2,
     ),
-    "YBX/YBX125.pdf": CatalogueOverride(
+    "MC/YBX/YBX125.pdf": CatalogueOverride(
         drop_fields=frozenset({"remarks"}),
         colour_table=(
             DeclaredColour("00", "BLACK GOLD", "BG"),
@@ -88,15 +93,15 @@ CATALOGUE_OVERRIDES: dict[str, CatalogueOverride] = {
     # The owner's instructions, 2026-09-26.
     # Includes "TOOL KIT" and "* CHAIN PULLER ASSY. 2 (CONSISTING OF SR. NOS. 42, 43,
     # 44)", confirmed by the owner as kit rows to drop.
-    "LIBERO/LIBERO  G5.pdf": CatalogueOverride(drop_kit_rows=True),
-    "R 15/R15 1CK5.pdf": CatalogueOverride(
+    "MC/LIBERO/LIBERO  G5.pdf": CatalogueOverride(drop_kit_rows=True),
+    "MC/R 15/R15 1CK5.pdf": CatalogueOverride(
         excluded_reason=(
-            "byte-identical copy of R 15/YZF R15 1CK5 Catalogue.pdf; one is kept, by the "
+            "byte-identical copy of MC/R 15/YZF R15 1CK5 Catalogue.pdf; one is kept, by the "
             "owner's instruction"
         ),
     ),
     # Page 58 lists parts exclusive to CRUX 5KA2, a model this book does not cover.
-    "CRUX/Crux_ Crux R Parts Catalogue_New 5ka1.pdf": CatalogueOverride(
+    "MC/CRUX/Crux_ Crux R Parts Catalogue_New 5ka1.pdf": CatalogueOverride(
         excluded_sections=(
             (
                 "PARTS EXCLUSIVE TO CRUX (5KA2)",
@@ -106,11 +111,11 @@ CATALOGUE_OVERRIDES: dict[str, CatalogueOverride] = {
         ),
     ),
     # One model each; their quantity-column headers are colour codes, not models.
-    "FAZER/2WS3.pdf": CatalogueOverride(single_model=True),
-    "FZ & FZS/PC 2GS6.pdf": CatalogueOverride(single_model=True),
-    "SALUTO/Saluto RX B441.pdf": CatalogueOverride(single_model=True),
+    "MC/FAZER/2WS3.pdf": CatalogueOverride(single_model=True),
+    "MC/FZ & FZS/PC 2GS6.pdf": CatalogueOverride(single_model=True),
+    "MC/SALUTO/Saluto RX B441.pdf": CatalogueOverride(single_model=True),
     # Columns collapse into the description on this file; not recoverable.
-    "RAY/RAY 1GC1 WHITE.pdf": CatalogueOverride(
+    "MC/RAY/RAY 1GC1 WHITE.pdf": CatalogueOverride(
         excluded_reason=(
             "column boundaries collapse on this file: part name, colour, quantity and "
             "remark arrive as one field on 29 of its 108 rows; excluded by the owner"
@@ -131,13 +136,51 @@ NEVER_EXTRACTED_LABELS: frozenset[str] = frozenset(
 _NONE = CatalogueOverride()
 
 
-def relative_key(pdf_path: Path) -> str:
-    """The override key for a PDF: ``<model folder>/<file name>``.
+#: Product types, each a top-level folder under the catalogue root.
+PRODUCT_TYPES: tuple[str, ...] = ("MC", "OBM")
+#: Where a PDF sits directly in a model folder (the layout before product folders).
+DEFAULT_PRODUCT_TYPE = "MC"
 
-    Every catalogue sits exactly one folder below the catalogue root, so the folder and
-    file name identify it without needing to know where the root is.
+
+def relative_key(pdf_path: Path) -> str:
+    """The stored identity of a PDF: ``<product type>/<model folder>/<file name>``.
+
+    Every catalogue sits in a model folder inside a product-type folder, so the last
+    three path parts identify it without needing to know where the root is. A PDF not
+    inside a product folder keeps the older ``<model folder>/<file name>`` form.
     """
+    product = pdf_path.parent.parent.name
+    if product in PRODUCT_TYPES:
+        return f"{product}/{pdf_path.parent.name}/{pdf_path.name}"
     return f"{pdf_path.parent.name}/{pdf_path.name}"
+
+
+def product_type_of(key: str) -> str:
+    """MC or OBM, from a stored key's top folder."""
+    head = key.split("/", 1)[0]
+    return head if head in PRODUCT_TYPES else DEFAULT_PRODUCT_TYPE
+
+
+def model_folder_of(key: str) -> str:
+    """The model folder (e.g. AEROX) a stored key sits in."""
+    parts = key.split("/")
+    return parts[1] if parts[0] in PRODUCT_TYPES and len(parts) > 2 else parts[0]
+
+
+def model_folders(root: Path) -> list[tuple[str, Path]]:
+    """Every (product type, model folder) under the catalogue root, sorted by name."""
+    out: list[tuple[str, Path]] = []
+    if not root.exists():
+        return out
+    for product in PRODUCT_TYPES:
+        base = root / product
+        if base.is_dir():
+            out += [
+                (product, f)
+                for f in sorted(base.iterdir(), key=lambda p: p.name.upper())
+                if f.is_dir()
+            ]
+    return out
 
 
 def override_for(pdf_path: Path) -> CatalogueOverride:

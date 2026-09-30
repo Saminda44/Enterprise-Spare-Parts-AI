@@ -216,3 +216,51 @@ def test_buyer_age_bands_and_implausible_ages() -> None:
     assert buyer_age_band(70) == "66+"
     assert buyer_age_band(116) == UNKNOWN_AGE  # a recording error, not a buyer
     assert buyer_age_band(float("nan")) == UNKNOWN_AGE
+
+
+def test_segments_follow_the_current_numbers_brand() -> None:
+    from src.dashboard.segments import segment_of_material_group, sku_segments
+
+    master = pd.DataFrame(
+        {
+            "material": ["OLD-1", "NEW-1", "YM-2", "KT-3"],
+            "active_sku_id": ["NEW-1", "NEW-1", "YM-2", "KT-3"],
+            "brand": ["YM", "OB", "YM", "KT"],
+            "chain_depth": [1, 0, 0, 0],
+        }
+    )
+    seg = sku_segments(master)
+    assert seg["NEW-1"] == "OBM"  # an old YM number superseded by an outboard part
+    assert seg["YM-2"] == "MC" and seg["KT-3"] == "MC"
+    groups = pd.Series(["AWPOB0014", "AWPYM0021", "AWLCA0011"])
+    assert segment_of_material_group(groups).tolist() == ["OBM", "MC", "MC"]
+
+
+def test_mc_categories_follow_the_material_category_rule() -> None:
+    from src.dashboard.segments import part_category, sales_category
+
+    desc = pd.Series(
+        ["YAMALUBE 10W40", "KARATE BATTERY", "90/100-10 KATANA TYRE", "BRAKE PAD", "S. PLUG"]
+    )
+    seg = pd.Series(["MC", "MC", "MC", "MC", "OBM"])
+    assert part_category(desc, seg).tolist() == [
+        "Lubricant",
+        "Battery",
+        "Tyre",
+        "Spare Parts",
+        "OBM Spare Parts",
+    ]
+    # Billed sales: another brand's oil is a lubricant, not a spare part.
+    sales = sales_category(
+        pd.Series(["CASTROL GTX 10W30", "BOLT"]),
+        pd.Series(["AWLCA0011", "AWPYM0001"]),
+        pd.Series(["MC", "MC"]),
+    )
+    assert sales.tolist() == ["Lubricant", "Spare Parts"]
+
+
+def test_vehicle_search_ignores_spaces_and_dashes() -> None:
+    from src.api.compat.bikes import VEHICLE_SEARCH_MIN_CHARS, _clean_id
+
+    assert _clean_id(" me1-se 12a ") == "ME1SE12A"
+    assert len(_clean_id("ab")) < VEHICLE_SEARCH_MIN_CHARS  # too short to search

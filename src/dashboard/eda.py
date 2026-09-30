@@ -17,6 +17,13 @@ from __future__ import annotations
 import pandas as pd
 
 from src.core.result import StageResult
+from src.dashboard.segments import (
+    SEGMENT_MC,
+    part_category,
+    sales_category,
+    segment_of_material_group,
+    sku_segments,
+)
 from src.io.parquet import read_table
 
 #: Additive measures every orders cut carries.
@@ -31,7 +38,8 @@ ORDER_MEASURES = [
 ]
 
 #: The dimensions the UI filters on. Present on every cut so one filter works everywhere.
-FILTERS = ["year", "dealer_type", "material_category"]
+#: ``segment`` is MC / OBM by the part's PN_Yamaha brand (``src/dashboard/segments.py``).
+FILTERS = ["year", "dealer_type", "material_category", "segment", "part_category"]
 
 #: CLAUDE.md's stop-and-ask threshold: one dealer above this share of a month's return
 #: value is a concentration worth a human look, not a number to average away.
@@ -57,6 +65,11 @@ def _category_label(frame: pd.DataFrame) -> pd.Series:
     return category.where(~(missing & not_found), NOT_IN_MASTER).fillna("Unknown")
 
 
+def _sku_segments() -> pd.Series:
+    """``active_sku_id`` -> MC / OBM from the Part Master brand."""
+    return sku_segments(read_table("facts", "part_master"))
+
+
 def _prepare_orders() -> pd.DataFrame:
     """Order lines with the filter dimensions and additive measures attached."""
     frame = read_table("facts", "orders_clean").copy()
@@ -68,6 +81,8 @@ def _prepare_orders() -> pd.DataFrame:
         "Unknown"
     )
     frame["material_category"] = _category_label(frame)
+    frame["segment"] = frame["active_sku_id"].map(_sku_segments()).fillna(SEGMENT_MC)
+    frame["part_category"] = part_category(frame["Material Description"], frame["segment"])
     frame["order_lines"] = 1
     # Step 03 publishes `order_value` as confirmed quantity x price — what the dealer will
     # actually be billed for. What they *asked* for is that plus the measured lost sale,
@@ -93,6 +108,10 @@ def _prepare_returns() -> pd.DataFrame:
         "Unknown"
     )
     frame["material_category"] = _category_label(frame)
+    frame["segment"] = frame["active_sku_id"].map(_sku_segments()).fillna(SEGMENT_MC)
+    frame["part_category"] = part_category(
+        frame.get("Material Description", pd.Series("", index=frame.index)), frame["segment"]
+    )
     frame["return_lines"] = 1
     frame["return_quantity"] = pd.to_numeric(frame["ordered_quantity"], errors="coerce").fillna(0.0)
     frame["return_value"] = pd.to_numeric(frame["order_value"], errors="coerce").fillna(0.0).abs()
@@ -157,9 +176,9 @@ def build_orders(result: StageResult) -> dict[str, pd.DataFrame]:
     tables["mart_ui_orders_fulfilment"] = _cut(orders, ["fulfilment_class"], ORDER_MEASURES)
 
     # Documents, so "fully filled / partial / zero" can be reported per purchase order.
-    doc = orders.groupby(
-        ["year", "dealer_type", "material_category", "Sales Document"], as_index=False
-    )[["ordered_quantity", "confirmed_quantity"]].sum()
+    doc = orders.groupby([*FILTERS, "Sales Document"], as_index=False)[
+        ["ordered_quantity", "confirmed_quantity"]
+    ].sum()
     doc_class = pd.Series("partial_fill", index=doc.index, dtype=object)
     doc_class[doc["confirmed_quantity"] >= doc["ordered_quantity"]] = "fully_filled"
     doc_class[doc["confirmed_quantity"] <= 0] = "complete_zero"
@@ -287,6 +306,9 @@ def build_sales(result: StageResult) -> dict[str, pd.DataFrame]:
         "Unknown"
     )
     sales["material_category"] = sales["material_category"].fillna("Unknown")
+    groups = sales.get("Matl Group", pd.Series("", index=sales.index))
+    sales["segment"] = segment_of_material_group(groups)
+    sales["part_category"] = sales_category(sales["material_description"], groups, sales["segment"])
 
     is_return = sales["is_return"].fillna(False).astype(bool)
     value = pd.to_numeric(sales["Net Sales"], errors="coerce").fillna(0.0)

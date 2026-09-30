@@ -2,6 +2,7 @@ import { Fragment, useEffect, useState } from "react";
 import { Download } from "lucide-react";
 import { fetchOrderPlan, type OrderPlanData } from "../api/client";
 import { KpiCard } from "../components/KpiCard";
+import { useSegment, useCategory, SEGMENT_TEXT, CATEGORY_TEXT, withSegment } from "../api/segment";
 
 function fmt(n: number) {
   if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`;
@@ -45,6 +46,8 @@ function Bars({ title, rows, total, colors }: {
 }
 
 export function Orders() {
+  const segment = useSegment();
+  const category = useCategory();
   const [data,     setData]     = useState<OrderPlanData | null>(null);
   const [status,   setStatus]   = useState("to order");
   const [abc,      setAbc]      = useState("");
@@ -75,12 +78,16 @@ export function Orders() {
     <div className="flex-1 p-6 space-y-6 overflow-y-auto">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-slate-800">Next Order — {monthName(data.cycle_month)}</h2>
+          <h2 className="text-xl font-bold text-slate-800">
+            {segment ? `${SEGMENT_TEXT[segment]} Spare Parts — ` : ""}Next Order — {monthName(data.cycle_month)}{category && <span className="text-brand-blue"> — {CATEGORY_TEXT[category]}</span>}
+          </h2>
           <p className="text-xs text-slate-500 mt-1">
             Placed this month, arriving about <b>{monthName(data.expected_arrival)}</b> ({a.lead_time_months}-month import lead time).
+            {segment === "obm" && " Yamaha outboard parts only (PN_Yamaha brand OB)."}
+            {segment === "mc" && " Yamaha motorcycle parts only (PN_Yamaha brand YM, with Katana tyres)."}
           </p>
         </div>
-        <a href="/api/v1/policy/export.xlsx" download
+        <a href={withSegment("/api/v1/policy/export.xlsx")} download
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-green-600 text-white hover:bg-green-700 font-medium">
           <Download size={13}/> Export order (Excel)
         </a>

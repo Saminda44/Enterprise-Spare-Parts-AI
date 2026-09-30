@@ -70,6 +70,11 @@ def export_policy(
     if not table_exists("marts", "mart_monthly_order"):
         raise HTTPException(503, "monthly order mart unavailable")
     proposal = read_table("marts", "mart_monthly_order")
+    from src.api.compat.filters import segment_skus  # noqa: PLC0415
+
+    scope = segment_skus()
+    if scope is not None:
+        proposal = proposal[proposal["active_sku_id"].astype(str).isin(scope)]
     if any((urgency, tier, ss_method, search)):
         from src.api.compat.parts import _sku
 

@@ -28,6 +28,7 @@ from typing import Any
 
 import pandas as pd
 from loguru import logger
+from src.catalogue.browser.overrides import model_folders
 
 # ── Description quality helpers ───────────────────────────────────────────────
 # Matches hyphenated Yamaha part numbers AND 12-char alphanumeric part numbers
@@ -144,11 +145,7 @@ def _build_cache_stem_map(pdf_root: Path) -> dict[str, str]:
     names like "FZ & FZS", "MT 15", and "R 15" are preserved correctly.
     """
     mapping: dict[str, str] = {}
-    if not pdf_root.exists():
-        return mapping
-    for folder in pdf_root.iterdir():
-        if not folder.is_dir():
-            continue
+    for _product, folder in model_folders(pdf_root):
         for pdf in folder.rglob("*"):
             if pdf.suffix not in _PDF_EXTS or not pdf.is_file():
                 continue
@@ -393,9 +390,7 @@ def build_part_master(
     # ── Discover all PDFs, compute which ones are NOT cached ─────────────────
     uncached_pdfs: list[tuple[Path, str]] = []  # (pdf_path, model_folder)
     if pdf_root.exists():
-        for folder in sorted(pdf_root.iterdir()):
-            if not folder.is_dir():
-                continue
+        for _product, folder in model_folders(pdf_root):
             model_folder = folder.name
             for pdf_path in sorted(folder.rglob("*")):
                 if pdf_path.suffix not in _PDF_EXTS or not pdf_path.is_file():

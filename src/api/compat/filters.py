@@ -7,6 +7,7 @@ nothing else.
 
 from __future__ import annotations
 
+from contextvars import ContextVar
 from functools import lru_cache
 from typing import Any
 
@@ -25,13 +26,37 @@ CATEGORY_ALIASES = {
 }
 
 
+#: The spare-parts section a request comes from — "MC", "OBM" or None (whole book). Set
+#: once per request from its ``segment`` query parameter (``src/api/main.py``).
+REQUEST_SEGMENT: ContextVar[str | None] = ContextVar("request_segment", default=None)
+#: Within MC: "Spare Parts", "Lubricant", "Battery" or "Tyre" (``?category=``), or None.
+REQUEST_CATEGORY: ContextVar[str | None] = ContextVar("request_category", default=None)
+
+
+def request_segment() -> str | None:
+    """The MC / OBM section this request asked for, or None for every part."""
+    return REQUEST_SEGMENT.get()
+
+
 def mart(name: str) -> pd.DataFrame:
-    """A published UI mart, cached. Missing tables read as empty, never as an error."""
+    """A published UI mart, cached. Missing tables read as empty, never as an error.
+
+    Business meaning: a request from the MC or OBM spare-parts section sees only that
+    section's rows of every mart that carries a ``segment`` column, so every figure on the
+    page — totals, lists, charts — is the section's own. Marts without one are shared.
+    """
     if not table_exists("marts", name):
         return pd.DataFrame()
     path = table_path("marts", name).resolve()
     stamp = path.stat()
-    return _cached_mart(name, str(path), stamp.st_mtime_ns, stamp.st_size)
+    frame = _cached_mart(name, str(path), stamp.st_mtime_ns, stamp.st_size)
+    segment = request_segment()
+    if segment and "segment" in frame.columns:
+        frame = frame[frame["segment"].astype(str).str.upper() == segment]
+    category = REQUEST_CATEGORY.get()
+    if category and "part_category" in frame.columns:
+        frame = frame[frame["part_category"].astype(str) == category]
+    return frame
 
 
 @lru_cache(maxsize=128)
@@ -44,6 +69,19 @@ def _cached_mart(name: str, path: str, modified: int, size: int) -> pd.DataFrame
         if "order_urgency" in frame:
             frame["order_urgency"] = frame["order_urgency"].str.lower()
     return frame
+
+
+def segment_skus() -> set[str] | None:
+    """The ``active_sku_id``s of the requested MC / OBM section, or None for every part.
+
+    For handlers that read facts rather than a segmented mart (history, exports, the Part
+    Master fallback): the Part Master analysis mart is the one list of every part with its
+    section.
+    """
+    if request_segment() is None and REQUEST_CATEGORY.get() is None:
+        return None
+    frame = mart("mart_ui_part_master_analysis")
+    return set(frame["active_sku_id"].astype(str)) if "active_sku_id" in frame else set()
 
 
 def clear_cache() -> None:

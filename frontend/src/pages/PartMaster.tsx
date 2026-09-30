@@ -8,6 +8,7 @@ import {
   type CatalogDerivedPartsData, type CatalogDerivedPartRow,
   type PartMasterRebuildStatus,
 } from "../api/client";
+import { useSegment, useCategory, SEGMENT_TEXT, CATEGORY_TEXT } from "../api/segment";
 
 const SUPERSEDE_HEADERS = [
   "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th", "10th",
@@ -141,6 +142,8 @@ function BuildIndexPanel({ onDone }: { onDone: () => void }) {
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export function PartMaster() {
+  const segment = useSegment();
+  const category = useCategory();
   const [data,        setData]        = useState<CatalogDerivedPartsData | null>(null);
   const [search,      setSearch]      = useState("");
   const [debSearch,   setDebSearch]   = useState("");
@@ -208,7 +211,7 @@ export function PartMaster() {
     return (
       <div className="flex-1 p-6 overflow-y-auto">
         <div className="space-y-2 mb-6">
-          <h2 className="text-xl font-bold text-slate-800">Part Master</h2>
+          <h2 className="text-xl font-bold text-slate-800">{segment ? `${SEGMENT_TEXT[segment]} Part Master` : "Part Master"}</h2>
           <p className="text-xs text-slate-500">
             PN_Yamaha master with catalogue model compatibility
           </p>
@@ -226,12 +229,14 @@ export function PartMaster() {
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-xl font-bold text-slate-800">Part Master</h2>
+            <h2 className="text-xl font-bold text-slate-800">{segment ? `${SEGMENT_TEXT[segment]} Part Master` : "Part Master"}{category && <span className="text-brand-blue"> — {CATEGORY_TEXT[category]}</span>}</h2>
             <p className="text-xs text-slate-500 mt-0.5">
               {data
-                ? data.source === "pn_yamaha_db"
-                  ? `${data.total.toLocaleString()} PN_Yamaha materials (Brand YM) · ${data.total_models} model variants`
-                  : `${data.total.toLocaleString()} unique part numbers · ${data.total_models} models · PN_Yamaha master`
+                ? segment === "obm"
+                  ? `${data.total.toLocaleString()} Yamaha outboard parts (PN_Yamaha brand OB) · ${data.total_models} model variants in the catalogues (MC and OBM)`
+                  : data.source === "pn_yamaha_db"
+                    ? `${data.total.toLocaleString()} PN_Yamaha materials (Brand YM) · ${data.total_models} model variants`
+                    : `${data.total.toLocaleString()} unique part numbers · ${data.total_models} models · PN_Yamaha master`
                 : "Loading…"}
             </p>
           </div>

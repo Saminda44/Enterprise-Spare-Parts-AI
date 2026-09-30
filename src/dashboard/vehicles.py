@@ -422,6 +422,102 @@ def build_buyer_age(result: StageResult) -> dict[str, pd.DataFrame]:
     return {"mart_ui_mc_age_model_colour": cube, "mart_ui_mc_age_model": per_model}
 
 
+#: MCSI columns carried into the vehicle lookup, as published names.
+VEHICLE_COLUMNS = {
+    "VIN": "vin",
+    "Batch": "batch",
+    "Model": "model_code",
+    "Model Name": "model_description",
+    "Color": "colour",
+    "Type": "motorcycle_type",
+    "Billing Date": "billing_date",
+    "Billing Document": "billing_document",
+    "Bill. Type": "bill_type",
+    "SlsVolQty": "quantity",
+    "Sales Price": "sales_price",
+    "Discount": "discount",
+    "Net Sales": "net_sales",
+    "Dealer code": "dealer_code",
+    "Dealer Name": "dealer_name",
+    "Province": "province",
+    "District": "district",
+    "RM": "rm",
+    "ASE": "ase",
+    "Customer Id": "customer_id",
+    "Age At Purchase": "age_at_purchase",
+    "Age Today": "age_today",
+}
+
+
+def build_vehicle_lookup(result: StageResult) -> dict[str, pd.DataFrame]:
+    """One row per bike (chassis / VIN) and every billing line behind it, for the lookup page.
+
+    Business meaning: MCSI records each motorcycle's chassis number, batch number, model,
+    colour, dealer and buyer. A VIN can carry several billing lines — an invoice, its
+    reversal and a re-invoice — so the bike's status comes from Step 09 (sold / returned),
+    and every line is kept so the history can be read. No vehicle registration number
+    exists in any supplied file, so the lookup is by chassis or batch number.
+
+    Returns:
+        ``mart_ui_vehicle`` (one row per VIN) and ``mart_ui_vehicle_billing`` (its lines).
+    """
+    raw = read_source("mcsi")
+    raw.columns = [str(c).strip() for c in raw.columns]
+    present = {k: v for k, v in VEHICLE_COLUMNS.items() if k in raw.columns}
+    lines = raw[list(present)].rename(columns=present)
+    lines["vin"] = lines["vin"].astype(str).str.strip().str.upper()
+    lines = lines[lines["vin"].str.len() >= 10].copy()  # placeholder VINs ("0") are not bikes
+    for column in ("quantity", "sales_price", "discount", "net_sales"):
+        lines[column] = pd.to_numeric(lines[column], errors="coerce").fillna(0.0)
+    for column in ("age_at_purchase", "age_today"):
+        lines[column] = pd.to_numeric(lines[column], errors="coerce")
+    lines["billing_date"] = pd.to_datetime(
+        lines["billing_date"].astype(str), format="%d.%m.%Y", errors="coerce"
+    ).fillna(pd.to_datetime(lines["billing_date"], errors="coerce"))
+    for column in ("batch", "dealer_code", "billing_document", "customer_id", "model_code"):
+        lines[column] = lines[column].astype(str).str.strip().str.replace(r"\.0$", "", regex=True)
+
+    lines = lines.sort_values(["vin", "billing_date"])
+    first = lines.groupby("vin").first()
+    last = lines.groupby("vin").last()
+    status = read_table("facts", "unit_sales_vin").assign(
+        vin=lambda d: d["vin"].astype(str).str.upper()
+    )
+    status = status.drop_duplicates("vin").set_index("vin")["status"]
+    vehicles = pd.DataFrame(
+        {
+            "batch": first["batch"],
+            "model_code": first["model_code"],
+            "model_description": first["model_description"],
+            "colour": first["colour"],
+            "motorcycle_type": first["motorcycle_type"],
+            "first_billed": first["billing_date"],
+            "last_billed": last["billing_date"],
+            "billing_lines": lines.groupby("vin").size(),
+            "net_quantity": lines.groupby("vin")["quantity"].sum(),
+            "net_sales": lines.groupby("vin")["net_sales"].sum(),
+            "dealer_code": last["dealer_code"],
+            "dealer_name": last["dealer_name"],
+            "province": last["province"],
+            "district": last["district"],
+            "rm": last["rm"],
+            "ase": last["ase"],
+            "customer_id": last["customer_id"],
+            "age_at_purchase": last["age_at_purchase"],
+            "age_today": last["age_today"],
+        }
+    ).reset_index()
+    vehicles["status"] = vehicles["vin"].map(status).fillna("unknown")
+    lines["billing_date"] = lines["billing_date"].dt.strftime("%Y-%m-%d")
+    vehicles["first_billed"] = vehicles["first_billed"].dt.strftime("%Y-%m-%d")
+    vehicles["last_billed"] = vehicles["last_billed"].dt.strftime("%Y-%m-%d")
+    result.warn(
+        f"vehicle lookup: {len(vehicles):,} chassis numbers, {len(lines):,} billing lines "
+        f"(no vehicle registration number in any supplied file)"
+    )
+    return {"mart_ui_vehicle": vehicles, "mart_ui_vehicle_billing": lines}
+
+
 def active_model_codes(classification: pd.DataFrame) -> set[str]:
     """Model codes Sales Summery's Model Classification sheet marks Active.
 

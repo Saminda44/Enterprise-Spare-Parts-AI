@@ -7,7 +7,17 @@ from typing import Any
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Query
 from src.api.compat.context import planning_context
-from src.api.compat.filters import f, i, mart, ratio, records, s
+from src.api.compat.filters import (
+    REQUEST_CATEGORY,
+    f,
+    i,
+    mart,
+    ratio,
+    records,
+    request_segment,
+    s,
+    segment_skus,
+)
 from src.io.parquet import read_table, table_exists
 
 router = APIRouter(tags=["parts"])
@@ -155,6 +165,9 @@ def trend(sku: str | None = None) -> list[dict[str, Any]]:
     if not table_exists("facts", "demand_history"):
         return []
     history = read_table("facts", "demand_history")
+    scope = segment_skus()
+    if scope is not None:
+        history = history[history["active_sku_id"].astype(str).isin(scope)]
     if sku:
         history = history[history["active_sku_id"].astype(str).str.upper() == sku.strip().upper()]
     grouped = history.groupby("month", as_index=False).agg(
@@ -164,6 +177,8 @@ def trend(sku: str | None = None) -> list[dict[str, Any]]:
     )
     if table_exists("facts", "returns_history"):
         returns = read_table("facts", "returns_history")
+        if scope is not None:
+            returns = returns[returns["active_sku_id"].astype(str).isin(scope)]
         if sku:
             returns = returns[
                 returns["active_sku_id"].astype(str).str.upper() == sku.strip().upper()
@@ -1029,6 +1044,9 @@ def part_master(
     if not table_exists("facts", "part_master_enriched"):
         return {"total": 0, "supersession_count": 0, "rows": [], "supersessions": []}
     master = read_table("facts", "part_master_enriched")
+    scope = segment_skus()
+    if scope is not None:
+        master = master[master["active_sku_id"].astype(str).isin(scope)]
     sku_frame = mart("mart_ui_sku")
     lookup = (
         sku_frame.set_index("material_9")[
@@ -1253,7 +1271,10 @@ def master_view(
     B65L") come from the catalogue database, merged across each chain's part numbers;
     Step 02's catalogue join is the fallback when the database cannot be reached.
     """
-    served = _pn_yamaha_master_view(search, model, limit, offset)
+    # The database holds PN_Yamaha brand YM (MC) only and knows no MC category; the OBM
+    # section, and any MC category view, are served from the pipeline's Part Master.
+    narrowed = request_segment() == "OBM" or REQUEST_CATEGORY.get() is not None
+    served = None if narrowed else _pn_yamaha_master_view(search, model, limit, offset)
     if served is not None:
         return served
     if not table_exists("facts", "part_master_enriched"):
@@ -1266,6 +1287,9 @@ def master_view(
             "source": "PN_Yamaha",
         }
     master = read_table("facts", "part_master_enriched")
+    scope = segment_skus()
+    if scope is not None:
+        master = master[master["active_sku_id"].astype(str).isin(scope)]
     per_active, compatibility = _catalogue_compatibility(master)
     frame = master.sort_values("chain_depth").drop_duplicates("active_sku_id").copy()
     if per_active:

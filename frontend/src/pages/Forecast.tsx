@@ -4,6 +4,7 @@ import {
 } from "recharts";
 import { fetchForecast, fetchTrend, type ForecastData, type MonthlyPoint } from "../api/client";
 import { KpiCard } from "../components/KpiCard";
+import { useSegment, useCategory, SEGMENT_TEXT, CATEGORY_TEXT } from "../api/segment";
 
 function fmt(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -26,6 +27,8 @@ const PATTERN_TEXT: Record<string, string> = {
 };
 
 export function Forecast() {
+  const segment = useSegment();
+  const category = useCategory();
   const [data,   setData]   = useState<ForecastData | null>(null);
   const [trend,  setTrend]  = useState<MonthlyPoint[]>([]);
   const [search, setSearch] = useState("");
@@ -57,7 +60,13 @@ export function Forecast() {
   return (
     <div className="flex-1 p-6 space-y-6 overflow-y-auto">
       <div>
-        <h2 className="text-xl font-bold text-slate-800">Demand Forecast</h2>
+        <h2 className="text-xl font-bold text-slate-800">{segment ? `${SEGMENT_TEXT[segment]} Spare Parts — Demand Forecast` : "Demand Forecast"}{category && <span className="text-brand-blue"> — {CATEGORY_TEXT[category]}</span>}</h2>
+        {segment === "obm" && (
+          <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-1.5 mt-2 max-w-4xl">
+            Outboard parts are not in the motorcycle catalogues and have no motorcycle fleet behind them, so they are forecast
+            from their own order history alone.
+          </p>
+        )}
         <p className="text-xs text-slate-500 mt-1 max-w-4xl">
           <b>One forecast per part</b> — the demand the order plan uses. Each part gets a forecast from its <b>own order history</b>
           (the model that tested best for its demand pattern) and, where the catalogues link it to motorcycle models, a

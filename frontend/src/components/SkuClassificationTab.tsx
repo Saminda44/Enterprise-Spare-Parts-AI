@@ -5,6 +5,7 @@ import {
 import { fetchClassification, type ClassificationRow } from "../api/client";
 import { POLICY_COLORS as TIER_COLOR, policyLabel } from "../api/planning";
 import { KpiCard } from "./KpiCard";
+import { withSegment } from "../api/segment";
 
 const PART_TYPE_COLOR: Record<string, string> = {
   Engine:       "#EF4444",
@@ -104,9 +105,9 @@ export function SkuClassificationTab() {
     setAbc(""); setXyz(""); setFsn(""); setTier(""); setPartType(""); setScope(""); setSearch("");
     setBehaviour(""); setSystem(""); setPlanningAbc("");
   };
-  const exportHref = `/api/v1/classification/export.xlsx?${new URLSearchParams(
+  const exportHref = withSegment(`/api/v1/classification/export.xlsx?${new URLSearchParams(
     Object.fromEntries(Object.entries(filters).filter(([, v]) => v)) as Record<string, string>
-  )}`;
+  )}`);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {

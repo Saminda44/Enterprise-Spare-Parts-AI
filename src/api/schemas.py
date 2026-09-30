@@ -85,6 +85,7 @@ class CatalogFile(BaseModel):
 
 class CatalogModel(BaseModel):
     model: str
+    product_type: str = "MC"  # MC or OBM: the product folder the model sits in
     pdf_count: int
     files: list[CatalogFile]
 
@@ -92,6 +93,7 @@ class CatalogModel(BaseModel):
 class CatalogResponse(BaseModel):
     models: list[CatalogModel]
     total_pdfs: int
+    product_types: list[str] = ["MC", "OBM"]
 
 
 class CatalogCoverageRow(BaseModel):
