@@ -60,6 +60,7 @@ dependencies = [
     "umap-learn>=0.5.12",
     "seaborn>=0.13.2",
     "chromadb>=1.5.9",
+    "python-multipart>=0.0.27",
 ]
 
 [project.optional-dependencies]

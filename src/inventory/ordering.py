@@ -21,6 +21,7 @@ import pandas as pd
 from loguru import logger
 
 from src.core.context import PlanningContext
+from src.core.errors import SourceDataError
 from src.core.registry import REGISTRY
 from src.core.result import StageResult
 from src.core.settings import get_settings
@@ -156,7 +157,19 @@ def run(ctx: PlanningContext) -> StageResult:
     frame = (
         params.merge(selection[["active_sku_id", "policy"]], on="active_sku_id", how="left")
         .merge(
-            stock[["active_sku_id", "on_hand", "on_order", "ip"]], on="active_sku_id", how="left"
+            stock[
+                [
+                    "active_sku_id",
+                    "on_hand",
+                    "on_order",
+                    "ip",
+                    "stock_snapshot_as_of",
+                    "on_orders_coverage_end",
+                    "on_orders_sha256",
+                ]
+            ],
+            on="active_sku_id",
+            how="left",
         )
         .merge(
             master[["active_sku_id", "description"]].drop_duplicates("active_sku_id"),
@@ -172,6 +185,11 @@ def run(ctx: PlanningContext) -> StageResult:
         )
     )
     frame[["on_hand", "on_order", "ip"]] = frame[["on_hand", "on_order", "ip"]].fillna(0.0)
+    for column in ("stock_snapshot_as_of", "on_orders_coverage_end", "on_orders_sha256"):
+        values = stock[column].dropna().unique()
+        if len(values) != 1:
+            raise SourceDataError(f"stock position has no unique {column} provenance")
+        frame[column] = frame[column].fillna(values[0])
     frame["policy"] = frame["policy"].fillna("RS")
 
     result.warn(
@@ -227,6 +245,9 @@ def run(ctx: PlanningContext) -> StageResult:
                 "ip": row.ip,
                 "on_hand": row.on_hand,
                 "on_order": row.on_order,
+                "stock_snapshot_as_of": row.stock_snapshot_as_of,
+                "on_orders_coverage_end": row.on_orders_coverage_end,
+                "on_orders_sha256": row.on_orders_sha256,
                 "s": row.s,
                 "S": row.S,
                 "ss": row.safety_stock,

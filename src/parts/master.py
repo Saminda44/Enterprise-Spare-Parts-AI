@@ -12,7 +12,7 @@ from src.core.registry import REGISTRY
 from src.core.result import StageResult, StageStatus
 from src.io.excel import read_source
 from src.io.parquet import read_table, table_exists, write_table
-from src.parts.supersession import SUPERSEDE_COLUMNS, normalise, resolve_chains
+from src.parts.supersession import normalise, resolve_chains, supersede_columns
 
 
 def _model_lookup() -> pd.DataFrame:
@@ -153,7 +153,7 @@ def run(ctx: PlanningContext) -> StageResult:  # noqa: ARG001 — contract requi
     ]
     if "part_kind" in master.columns:
         keep.append("part_kind")
-    keep.extend(c for c in SUPERSEDE_COLUMNS if c in master.columns)
+    keep.extend(supersede_columns(master.columns))
     part_master = master[keep]
 
     result.rows_out = len(part_master)

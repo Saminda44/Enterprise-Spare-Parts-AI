@@ -168,6 +168,57 @@ def workbook_to_parquet(
     )
 
 
+def frame_to_source_parquet(
+    frame: pd.DataFrame,
+    name: str,
+    *,
+    sheet: str | int = 0,
+    sha256: str,
+    source_modified: str,
+) -> ConversionResult:
+    """Materialize a database-backed source into the same validated stage input.
+
+    Business meaning: Excel and PostgreSQL differ only at the source boundary. Every
+    planning stage reads the identical parquet mirror and its recorded vintage.
+    """
+    settings = get_settings()
+    settings.source_parquet_dir.mkdir(parents=True, exist_ok=True)
+    stem = _slug(Path(name).stem)
+    key = stem if sheet in (0, None) else f"{stem}__{_slug(str(sheet))}"
+    parquet = settings.source_parquet_dir / f"{key}.parquet"
+    meta_path = _meta_path(parquet)
+    if parquet.exists() and meta_path.exists():
+        previous = json.loads(meta_path.read_text(encoding="utf-8"))
+        if previous.get("sha256") == sha256:
+            return ConversionResult(
+                source=Path(name), parquet=parquet, sha256=sha256,
+                rows=int(previous["rows"]), columns=int(previous["columns"]),
+                sheet=str(sheet), converted=False, meta=previous,
+            )
+    validated, coerced = coerce_for_parquet(frame)
+    validated.to_parquet(parquet, index=False)
+    saved = pd.read_parquet(parquet)
+    if len(saved) != len(validated) or list(saved.columns) != list(validated.columns):
+        raise SourceDataError(f"{name}[{sheet}]: source mirror failed its round trip")
+    meta: dict[str, Any] = {
+        "source": name,
+        "source_path": f"postgres:{name}",
+        "sheet": str(sheet),
+        "sha256": sha256,
+        "rows": len(validated),
+        "columns": len(validated.columns),
+        "coerced_to_text": coerced,
+        "source_modified": source_modified,
+        "ingested_at": datetime.now(UTC).isoformat(timespec="seconds"),
+    }
+    meta_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
+    return ConversionResult(
+        source=Path(name), parquet=parquet, sha256=sha256,
+        rows=len(validated), columns=len(validated.columns), sheet=str(sheet),
+        coerced_to_text=coerced, meta=meta,
+    )
+
+
 def workbook_sheets(source: Path) -> list[str]:
     """Sheet names without loading any data."""
     from openpyxl import load_workbook

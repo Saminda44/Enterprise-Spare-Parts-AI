@@ -96,6 +96,9 @@ def published_sku(workspace: Path) -> pd.DataFrame:
             "lead_time_months": 4,
             "on_order_interpretation": "arrival",
             "incoming_orders_status": "VERIFIED",
+            "stock_snapshot_as_of": pd.Timestamp("2025-11-30"),
+            "on_orders_coverage_end": "2026-12",
+            "on_orders_sha256": "a" * 64,
             "trigger_reason": "review",
         },
         "orders_by_material": {
@@ -313,7 +316,9 @@ def test_cache_observes_republished_mart(workspace: Path) -> None:
 
 def test_export_has_final_quantities_metadata_and_literal_cells(
     published_sku: pd.DataFrame,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr("src.api.compat.context._local_current_month", lambda: "2025-12")
     response = TestClient(app).get("/api/v1/policy/export.xlsx?urgency=soon")
     assert response.status_code == 200
     book = load_workbook(BytesIO(response.content))
@@ -350,6 +355,14 @@ def test_unverified_incoming_orders_cannot_be_exported(published_sku: pd.DataFra
     write_table(proposal, "marts", "mart_monthly_order")
     clear_cache()
     assert "Incoming orders" in (published_order_hold_reason() or "")
+    assert TestClient(app).get("/api/v1/policy/export.xlsx").status_code == 409
+
+
+def test_historical_order_cannot_be_exported(
+    published_sku: pd.DataFrame, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("src.api.compat.context._local_current_month", lambda: "2026-10")
+    assert "past or future cycle" in (published_order_hold_reason() or "")
     assert TestClient(app).get("/api/v1/policy/export.xlsx").status_code == 409
 
 
@@ -473,6 +486,7 @@ def test_master_view_uses_resolved_identity_without_catalogue(
                 "material": "OLD",
                 "active_sku_id": "NEW",
                 "description": "Old part",
+                "brand": "YM",
                 "chain_depth": 1,
                 "compatible_models": None,
                 "part_kind": None,
@@ -481,6 +495,7 @@ def test_master_view_uses_resolved_identity_without_catalogue(
                 "material": "NEW",
                 "active_sku_id": "NEW",
                 "description": "Current part",
+                "brand": "YM",
                 "chain_depth": 0,
                 "compatible_models": None,
                 "part_kind": None,
@@ -494,6 +509,93 @@ def test_master_view_uses_resolved_identity_without_catalogue(
     assert data["rows"][0]["part_no"] == "NEW"
     assert data["rows"][0]["description"] == "Current part"
     assert data["rows"][0]["kind"] == "unclassified"
+
+
+def test_master_view_splits_current_brands_without_mc_models_on_obm(
+    workspace: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        compat_parts, "_pn_yamaha_master_view", lambda *args: pytest.fail("raw YM view used")
+    )
+    monkeypatch.setattr(
+        compat_parts,
+        "_catalogue_compatibility",
+        lambda master: ({}, {"source": "step_02", "error": "catalogue unavailable"}),
+    )
+    master = pd.DataFrame(
+        [
+            {
+                "material": "OLD-MC",
+                "active_sku_id": "CURRENT-OB",
+                "brand": "YM",
+                "chain_depth": 1,
+                "description": "Old motorcycle number",
+                "compatible_models": "MC MODEL",
+            },
+            {
+                "material": "CURRENT-OB",
+                "active_sku_id": "CURRENT-OB",
+                "brand": "OB",
+                "chain_depth": 0,
+                "latest_ss": "CURRENT-OB",
+                "1st Supersede": "OLD-MC",
+                "description": "Outboard replacement",
+                "compatible_models": "MC MODEL",
+            },
+            {
+                "material": "CURRENT-MC",
+                "active_sku_id": "CURRENT-MC",
+                "brand": "YM",
+                "chain_depth": 0,
+                "latest_ss": "CURRENT-MC",
+                "description": "Motorcycle part",
+                "compatible_models": "MC MODEL",
+            },
+        ]
+    )
+    master["part_kind"] = "shared"
+    master["material_group"] = "parts"
+    write_table(master, "facts", "part_master_enriched")
+    client = TestClient(app)
+    mc = client.get("/api/v1/parts/master-view?segment=mc").json()
+    obm = client.get("/api/v1/parts/master-view?segment=obm").json()
+    assert (mc["total"], obm["total"]) == (1, 1)
+    assert mc["rows"][0]["part_no"] == "CURRENT-MC"
+    assert obm["rows"][0]["part_no"] == "CURRENT-OB"
+    assert obm["rows"][0]["compatible_models"] == ""
+    assert obm["total_models"] == 0
+    assert obm["rows"][0]["latest_ss"] == "CURRENT-OB"
+    assert obm["rows"][0]["supersedes"][0] == "OLD-MC"
+
+
+def test_catalogue_models_follow_the_current_parts_product_type() -> None:
+    master = pd.DataFrame(
+        [
+            {"material": "OLD-MC", "active_sku_id": "CURRENT-OB", "brand": "YM", "chain_depth": 1},
+            {
+                "material": "CURRENT-OB",
+                "active_sku_id": "CURRENT-OB",
+                "brand": "OB",
+                "chain_depth": 0,
+            },
+            {
+                "material": "CURRENT-MC",
+                "active_sku_id": "CURRENT-MC",
+                "brand": "YM",
+                "chain_depth": 0,
+            },
+        ]
+    )
+    models, unmatched = compat_parts._models_by_active_sku(
+        master,
+        [
+            ("OLD-MC", "MC", ["MC MODEL ON OLD NUMBER"]),
+            ("CURRENT-OB", "OBM", ["OBM MODEL"]),
+            ("CURRENT-MC", "MC", ["MC MODEL"]),
+        ],
+    )
+    assert models == {"CURRENT-OB": {"OBM MODEL"}, "CURRENT-MC": {"MC MODEL"}}
+    assert unmatched == 1
 
 
 def test_location_unknown_values_are_not_reported_as_zero(workspace: Path) -> None:

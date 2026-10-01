@@ -78,12 +78,16 @@ function CategoryBar({ value, onChange }: { value: Category | null; onChange: (c
 }
 
 /**
- * Wrap a route in a spare-parts section. MC pages get the category bar. Pages remount when
- * the section or category changes (the key), so no figure lingers from the previous view.
+ * Wrap a route in a spare-parts section. Only MC analysis enables the category bar.
+ * Pages remount when the section or category changes, so no stale figures linger.
  */
-export function SegmentRoute({ segment, children }: { segment: Segment | null; children: ReactNode }) {
+export function SegmentRoute({ segment, categoryEnabled = false, children }: {
+  segment: Segment | null;
+  categoryEnabled?: boolean;
+  children: ReactNode;
+}) {
   const [category, setCategory] = useState<Category | null>(readStoredCategory);
-  const active = segment === "mc" ? category : null;
+  const active = segment === "mc" && categoryEnabled ? category : null;
   current = segment;
   currentCategory = active;
   const choose = (c: Category | null) => {
@@ -93,7 +97,7 @@ export function SegmentRoute({ segment, children }: { segment: Segment | null; c
   return (
     <SegmentContext.Provider value={segment}>
       <CategoryContext.Provider value={active}>
-        {segment === "mc" && <CategoryBar value={active} onChange={choose}/>}
+        {segment === "mc" && categoryEnabled && <CategoryBar value={active} onChange={choose}/>}
         <div key={`${segment ?? "all"}-${active ?? "all"}`} className="flex-1 flex flex-col overflow-hidden">{children}</div>
       </CategoryContext.Provider>
     </SegmentContext.Provider>

@@ -7,18 +7,21 @@ the source does not establish every incoming order through the planning horizon.
 from __future__ import annotations
 
 import calendar
-from datetime import date
+import re
+from datetime import date, timedelta
 
 import pandas as pd
+import pandera.pandas as pa
 from loguru import logger
 
 from src.core.context import PlanningContext
+from src.core.contracts import validate
 from src.core.errors import SourceDataError
 from src.core.registry import REGISTRY
 from src.core.result import StageResult, StageStatus
 from src.core.settings import get_settings
 from src.demand.orders import build_sku_index
-from src.io.excel import read_source
+from src.io.excel import file_digest, read_source, source_vintage
 from src.io.parquet import append_columns, read_table, write_table
 from src.parts.supersession import normalise
 
@@ -104,6 +107,42 @@ def in_scope_skus(part_master: pd.DataFrame) -> set[str]:
     return set(part_master.loc[brand.isin(PLANNING_BRANDS), "active_sku_id"].astype(str))
 
 
+def validate_live_snapshot(cycle_as_of: date, snapshot_as_of: date) -> None:
+    """Require a real month-end stock snapshot immediately before a live cycle.
+
+    Business meaning: a later order cannot silently reuse August stock after sales
+    and receipts have changed the physical inventory position.
+    """
+    if cycle_as_of.day != 1 or snapshot_as_of != cycle_as_of - timedelta(days=1):
+        raise SourceDataError(
+            f"live order cycle {cycle_as_of:%Y-%m-%d} needs a matching month-end stock "
+            f"snapshot; configured snapshot is {snapshot_as_of:%Y-%m-%d}. "
+            "Update current_stock.xlsx and SPI_STOCK_SNAPSHOT_AS_OF before advancing the cycle"
+        )
+
+
+def verified_open_orders(
+    *,
+    owner_confirmed: bool,
+    interpretation: str,
+    coverage_end: pd.Timestamp,
+    required_through: pd.Timestamp,
+    source_modified: date,
+    snapshot_as_of: date,
+) -> bool:
+    """Check whether dated open orders support this snapshot and protection horizon.
+
+    Business meaning: future column headings do not verify an old open-PO export for
+    a newer stock snapshot; the complete list must be refreshed for each cycle.
+    """
+    return (
+        owner_confirmed
+        and interpretation == "arrival"
+        and coverage_end >= required_through
+        and source_modified >= snapshot_as_of
+    )
+
+
 @REGISTRY.register(
     "12_stock",
     depends_on=["02_part_master"],
@@ -180,7 +219,19 @@ def run(ctx: PlanningContext) -> StageResult:
         description=("Material Description", "first"),
     )
 
-    schedule, last_arrival = _on_order_schedule(ctx, result, index)
+    from src.ingestion.store import active_excel_path, stock_snapshot_date
+
+    on_orders_source = active_excel_path("On_Orders.xlsx")
+    on_orders_vintage = source_vintage("on_orders")
+    if get_settings().data_backend == "excel" and file_digest(on_orders_source) != on_orders_vintage["sha256"]:
+        raise SourceDataError("On_Orders source mirror is stale; ingest the updated workbook first")
+    modified_at = pd.to_datetime(
+        on_orders_vintage.get("source_modified"), utc=True, errors="coerce"
+    )
+    if pd.isna(modified_at):
+        raise SourceDataError("On_Orders source mirror lacks a valid file modification timestamp")
+    source_modified = modified_at.tz_convert("Asia/Colombo").date()
+    schedule, coverage_end = _on_order_schedule(ctx, result, index)
     outside = ~schedule["active_sku_id"].astype(str).isin(scope)
     if outside.any():
         result.warn(
@@ -188,6 +239,22 @@ def run(ctx: PlanningContext) -> StageResult:
             f"{float(schedule.loc[outside, 'qty'].sum()):,.0f} units outside Yamaha MC/OBM"
         )
         schedule = schedule.loc[~outside].copy()
+    schedule = validate(
+        schedule,
+        pa.DataFrameSchema(
+            {
+                "active_sku_id": pa.Column(str, nullable=False),
+                "arrival": pa.Column("datetime64[ns]", nullable=False),
+                "qty": pa.Column(float, pa.Check.ge(0), nullable=False, coerce=True),
+            }
+        ),
+        stage="12_stock",
+        table="on_order_schedule",
+    )
+    result.artifact("on_order_schedule", write_table(schedule, "facts", "on_order_schedule"))
+    saved_schedule = read_table("facts", "on_order_schedule")
+    if len(saved_schedule) != len(schedule) or saved_schedule["qty"].sum() != schedule["qty"].sum():
+        raise SourceDataError("on_order_schedule failed its publication round trip")
 
     snapshot_value = ctx.option("stock_snapshot_as_of")
     provisional = bool(ctx.option("provisional", False))
@@ -217,7 +284,8 @@ def run(ctx: PlanningContext) -> StageResult:
             "units. These are scenario estimates, not measured lost sales."
         )
     else:
-        snapshot_as_of = ctx.as_of
+        snapshot_as_of = stock_snapshot_date()
+        validate_live_snapshot(ctx.as_of, snapshot_as_of)
 
     cycle_start = pd.Timestamp(ctx.as_of).to_period("M").to_timestamp()
     future = schedule.loc[schedule["arrival"] >= cycle_start]
@@ -242,11 +310,32 @@ def run(ctx: PlanningContext) -> StageResult:
     position["as_of"] = pd.Timestamp(ctx.as_of)
     position["stock_snapshot_as_of"] = pd.Timestamp(snapshot_as_of)
     position["provisional"] = provisional
-    position["on_order_complete"] = bool(ctx.option("on_orders_verified_complete", False))
+    required_through = cycle_start + pd.DateOffset(months=ctx.protection_interval_months - 1)
+    verified_by_owner = bool(
+        ctx.option("on_orders_verified_complete", get_settings().on_orders_verified_complete)
+    )
+    position["on_order_complete"] = verified_open_orders(
+        owner_confirmed=verified_by_owner,
+        interpretation=get_settings().on_order_interpretation,
+        coverage_end=coverage_end,
+        required_through=required_through,
+        source_modified=source_modified,
+        snapshot_as_of=snapshot_as_of,
+    )
+    position["on_orders_coverage_end"] = coverage_end.strftime("%Y-%m")
+    position["on_orders_sha256"] = on_orders_vintage["sha256"]
     if not position["on_order_complete"].all():
         result.warn(
-            f"incoming-order coverage after {last_arrival:%Y-%m} is UNVERIFIED; "
+            f"incoming orders UNVERIFIED: columns through {coverage_end:%Y-%m}, "
+            f"required through {required_through:%Y-%m}, source modified "
+            f"{source_modified:%Y-%m-%d}, stock snapshot {snapshot_as_of:%Y-%m-%d}; "
             "known on_order is a lower bound, so the proposed purchase quantity can be too high"
+        )
+    else:
+        result.warn(
+            f"open orders VERIFIED by owner: dated expected arrivals through "
+            f"{coverage_end:%Y-%m} cover the {required_through:%Y-%m} protection horizon; "
+            f"source refreshed {source_modified:%Y-%m-%d} after the stock snapshot"
         )
 
     total_ip = float(position["ip"].sum())
@@ -261,7 +350,25 @@ def run(ctx: PlanningContext) -> StageResult:
         )
 
     result.rows_out = len(position)
+    position = validate(
+        position,
+        pa.DataFrameSchema(
+            {
+                "active_sku_id": pa.Column(str, nullable=False),
+                "on_hand": pa.Column(float, pa.Check.ge(0), nullable=False, coerce=True),
+                "on_order": pa.Column(float, pa.Check.ge(0), nullable=False, coerce=True),
+                "ip": pa.Column(float, pa.Check.ge(0), nullable=False, coerce=True),
+                "on_order_complete": pa.Column(bool, nullable=False),
+            },
+            unique=["active_sku_id"],
+        ),
+        stage="12_stock",
+        table="stock_position",
+    )
     result.artifact("stock_position", write_table(position, "facts", "stock_position"))
+    saved_position = read_table("facts", "stock_position")
+    if len(saved_position) != len(position) or saved_position["ip"].sum() != position["ip"].sum():
+        raise SourceDataError("stock_position failed its publication round trip")
 
     enriched = append_columns(
         read_table("facts", "part_master_enriched"),
@@ -293,14 +400,48 @@ def _on_order_schedule(
     frame = read_source("on_orders")
     frame.columns = [str(c).strip() for c in frame.columns]
 
-    month_columns = [c for c in frame.columns if str(c).strip().upper()[:3] in MONTH_ABBR]
-    if "PN" not in frame or not month_columns:
-        raise SourceDataError("On_Orders needs PN and at least one month column")
+    if "Material" not in frame:
+        raise SourceDataError("On_Orders needs a Material column")
+    month_dates: dict[str, pd.Timestamp] = {}
+    for column in frame.columns:
+        if column[:3].upper() not in MONTH_ABBR:
+            continue
+        match = re.fullmatch(r"([A-Za-z]{3})\s+(20\d{2})", column)
+        if match is None:
+            raise SourceDataError(
+                f"On_Orders month column {column!r} needs an explicit year, e.g. 'Sep 2026'"
+            )
+        month_dates[column] = pd.Timestamp(
+            year=int(match.group(2)), month=MONTH_ABBR[match.group(1).upper()], day=1
+        )
+    if not month_dates:
+        raise SourceDataError("On_Orders needs dated month columns such as 'Sep 2026'")
+    ordered_months = sorted(month_dates.values())
+    if len(set(ordered_months)) != len(ordered_months):
+        raise SourceDataError("On_Orders has duplicate arrival month columns")
+    expected_months = pd.period_range(ordered_months[0], ordered_months[-1], freq="M")
+    if len(expected_months) != len(ordered_months):
+        raise SourceDataError("On_Orders arrival month columns have a gap")
+
+    frame = validate(
+        frame,
+        pa.DataFrameSchema(
+            {
+                "Material": pa.Column(str, nullable=False),
+                **{
+                    column: pa.Column(float, pa.Check.ge(0), nullable=True, coerce=True)
+                    for column in month_dates
+                },
+            }
+        ),
+        stage="12_stock",
+        table="On_Orders",
+    )
 
     interpretation = settings.on_order_interpretation
     result.warn(
-        f"ON-ORDER INTERPRETATION = '{interpretation}': month columns "
-        f"{month_columns[0]}..{month_columns[-1]} are read as "
+        f"ON-ORDER INTERPRETATION = '{interpretation}': dated columns "
+        f"{ordered_months[0]:%Y-%m}..{ordered_months[-1]:%Y-%m} are read as "
         + (
             "expected arrival"
             if interpretation == "arrival"
@@ -310,41 +451,36 @@ def _on_order_schedule(
         + "."
     )
 
-    snapshot_value = ctx.option("stock_snapshot_as_of")
-    default_year = pd.Timestamp(snapshot_value).year if snapshot_value else ctx.as_of.year
-    year = int(ctx.option("on_order_year", default_year))
-    result.warn(
-        f"On_Orders month columns carry NO YEAR — using {year} from the "
-        f"{'stock snapshot' if snapshot_value else 'cycle date'}; confirm on each new export"
-    )
-
     long = frame.melt(
-        id_vars=[c for c in ("PN", "Desc") if c in frame.columns],
-        value_vars=month_columns,
+        id_vars=["Material"],
+        value_vars=list(month_dates),
         var_name="month_name",
         value_name="qty",
     )
-    parsed = pd.to_numeric(long["qty"], errors="coerce")
-    invalid = long["qty"].notna() & long["qty"].astype(str).str.strip().ne("") & parsed.isna()
-    if invalid.any():
-        raise SourceDataError(f"On_Orders has {int(invalid.sum())} nonnumeric quantities")
-    long["qty"] = parsed.fillna(0.0)
-    if (long["qty"] < 0).any():
-        raise SourceDataError("On_Orders has negative incoming quantities")
+    long["qty"] = long["qty"].fillna(0.0)
     long = long[long["qty"] != 0]
-    long["month_no"] = long["month_name"].str.strip().str.upper().str[:3].map(MONTH_ABBR)
-    long["arrival"] = pd.to_datetime(
-        dict(year=year, month=long["month_no"], day=1), errors="coerce"
-    )
+    long["arrival"] = pd.to_datetime(long["month_name"].map(month_dates))
     if interpretation == "raised":
         long["arrival"] = long["arrival"] + pd.DateOffset(months=ctx.lead_time_months)
 
-    last_month = max(MONTH_ABBR[str(c).strip().upper()[:3]] for c in month_columns)
-    last_arrival = pd.Timestamp(year=year, month=last_month, day=1)
+    coverage_end = ordered_months[-1]
     if interpretation == "raised":
-        last_arrival += pd.DateOffset(months=ctx.lead_time_months)
-    long["active_sku_id"] = long["PN"].map(lambda p: index.get(normalise(p)))
+        coverage_end += pd.DateOffset(months=ctx.lead_time_months)
+    result.warn(
+        f"On_Orders source: {len(frame):,} material rows, {len(long):,} nonzero "
+        f"arrival cells, {float(long['qty'].sum()):,.0f} units across dated columns"
+    )
+    long["active_sku_id"] = long["Material"].map(lambda part: index.get(normalise(part)))
     unmatched = int(long["active_sku_id"].isna().sum())
     if unmatched:
-        result.warn(f"{unmatched:,} on-order line(s) have no part master match and are excluded")
-    return long.dropna(subset=["active_sku_id"])[["active_sku_id", "arrival", "qty"]], last_arrival
+        result.warn(
+            f"{unmatched:,} on-order line(s) / "
+            f"{float(long.loc[long['active_sku_id'].isna(), 'qty'].sum()):,.0f} units "
+            "have no part master match and are excluded"
+        )
+    return (
+        long.dropna(subset=["active_sku_id"])[["active_sku_id", "arrival", "qty"]].reset_index(
+            drop=True
+        ),
+        coverage_end,
+    )

@@ -10,6 +10,7 @@ from src.parts.supersession import (
     build_successor_map,
     normalise,
     resolve_chains,
+    supersede_columns,
     walk,
 )
 
@@ -30,8 +31,8 @@ def _frame(rows: list[dict[str, object]]) -> pd.DataFrame:
     return pd.DataFrame(rows).reindex(columns=columns)
 
 
-def test_successor_edge_runs_from_superseded_to_current() -> None:
-    frame = _frame([{"Material": "NEW-1", "1st Supersede": "OLD-1", "Latest SS": "NEW-1"}])
+def test_successor_edge_follows_numbered_columns() -> None:
+    frame = _frame([{"Material": "OLD-1", "1st Supersede": "NEW-1", "Latest SS": "NEW-1"}])
     assert build_successor_map(frame)[normalise("OLD-1")] == "NEW-1"
 
 
@@ -53,8 +54,8 @@ def test_cycle_is_detected_rather_than_looping_forever() -> None:
 def test_resolve_uses_latest_ss_and_flags_disagreement() -> None:
     frame = _frame(
         [
-            {"Material": "OLD-1", "Latest SS": "NEW-1"},
-            {"Material": "NEW-1", "Latest SS": "NEW-1", "1st Supersede": "OLD-1"},
+            {"Material": "OLD-1", "Latest SS": "NEW-1", "1st Supersede": "NEW-1"},
+            {"Material": "NEW-1", "Latest SS": "NEW-1"},
         ]
     )
     resolutions, cycles = resolve_chains(frame)
@@ -68,11 +69,11 @@ def test_lookup_labels_every_member_of_the_chain() -> None:
     frame = _frame(
         [
             {
-                "Material": "5VL-F341E-10",
+                "Material": "5VL-F341E-00",
                 "Latest SS": "5VL-F341E-10",
                 "active_sku_id": "5VL-F341E-10",
                 "Material description": "DISC, BRAKE",
-                "1st Supersede": "5VL-F341E-00",
+                "1st Supersede": "5VL-F341E-10",
             }
         ]
     )
@@ -86,10 +87,10 @@ def test_lookup_is_dash_insensitive_and_supports_partials() -> None:
     frame = _frame(
         [
             {
-                "Material": "5VL-F341E-10",
+                "Material": "5VL-F341E-00",
                 "Latest SS": "5VL-F341E-10",
                 "active_sku_id": "5VL-F341E-10",
-                "1st Supersede": "5VL-F341E-00",
+                "1st Supersede": "5VL-F341E-10",
             }
         ]
     )
@@ -116,3 +117,15 @@ def test_lookup_handles_lowercased_part_master_columns() -> None:
 
     assert [h.label for h in hits] == ["QUERIED"]
     assert hits[0].description == "WIDGET"
+
+
+def test_eleventh_supersede_is_discovered_and_resolved() -> None:
+    frame = pd.DataFrame(
+        [{"Material": "OLD", "Latest SS": "NEW", "10th Supersede": "MID", "11th Supersede": "NEW"}]
+    )
+    assert supersede_columns(frame.columns) == ["10th Supersede", "11th Supersede"]
+    assert build_successor_map(frame) == {"OLD": "MID", "MID": "NEW"}
+    resolved, cycles = resolve_chains(frame)
+    assert not cycles
+    assert resolved[0].active_sku_id == "NEW"
+    assert resolved[0].agrees_with_latest_ss

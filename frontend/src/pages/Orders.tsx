@@ -93,7 +93,7 @@ export function Orders() {
         </a>}
       </div>
       {!data.buyer_ready && <div role="alert" className="border border-amber-400 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-        <strong>Do not place this order.</strong> {data.hold_reason} The published quantities below remain on hold; the December projection is a separate provisional scenario.
+        <strong>Do not place this order.</strong> {data.hold_reason}
       </div>}
 
       {/* How the order is built */}

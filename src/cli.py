@@ -15,7 +15,7 @@ import typer
 from src.core.context import PlanningContext
 from src.core.registry import REGISTRY
 from src.core.settings import get_settings
-from src.refresh import SOURCE_WORKBOOKS, source_workbook_path
+from src.refresh import SOURCE_WORKBOOKS
 from src.stages import load_stages
 
 load_stages()
@@ -65,14 +65,25 @@ def stages() -> None:
 @app.command()
 def ingest(force: bool = typer.Option(False, help="Re-convert even if the hash matches.")) -> None:
     """Convert the source workbooks to parquet. Idempotent — unchanged files are skipped."""
+    from src.ingestion.store import active_excel_path
     from src.io.excel import workbook_sheets, workbook_to_parquet
 
     settings = get_settings()
     settings.ensure_dirs()
+    if settings.data_backend == "postgres":
+        from src.refresh import _ingest  # noqa: PLC0415
+
+        changed, failures = _ingest()
+        typer.echo(f"PostgreSQL sources materialized: {', '.join(changed) or 'unchanged'}")
+        if failures:
+            for failure in failures:
+                typer.echo(f"  FAILED  {failure}")
+            raise typer.Exit(1)
+        return
     typer.echo(f"source dir: {settings.raw_dir}")
     failures = 0
     for name, sheets in SOURCE_WORKBOOKS.items():
-        path = source_workbook_path(settings.raw_dir, name)
+        path = active_excel_path(name)
         if not path.exists():
             typer.echo(f"  {name:<24} MISSING")
             failures += 1

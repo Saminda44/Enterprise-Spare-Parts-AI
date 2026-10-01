@@ -5,7 +5,7 @@ from datetime import date
 import pandas as pd
 import pytest
 from src.core.context import PlanningContext
-from src.core.errors import SourceDataError
+from src.core.errors import ContractViolation, SourceDataError
 from src.core.result import StageResult
 from src.inventory import stock
 
@@ -55,12 +55,61 @@ def test_projection_requires_month_end_snapshot() -> None:
 
 
 def test_on_orders_month_is_expected_arrival(monkeypatch: pytest.MonkeyPatch) -> None:
-    frame = pd.DataFrame({"PN": ["A"], "Desc": ["Synthetic"], "Aug": [25], "Dec": [30]})
+    frame = pd.DataFrame(
+        {
+            "Material": ["OLD-A"],
+            "Description": ["Synthetic"],
+            "Dec 2026": [25],
+            "Jan 2027": [30],
+        }
+    )
     monkeypatch.setattr(stock, "read_source", lambda name: frame.copy())
-    ctx = PlanningContext(as_of=date(2026, 12, 1), config={"stock_snapshot_as_of": "2026-08-31"})
+    ctx = PlanningContext(as_of=date(2026, 9, 1))
 
-    schedule, latest = stock._on_order_schedule(ctx, StageResult(stage="12_stock"), {"A": "A"})
+    schedule, latest = stock._on_order_schedule(
+        ctx, StageResult(stage="12_stock"), {"OLDA": "CURRENT-A"}
+    )
 
-    assert schedule["arrival"].dt.strftime("%Y-%m").tolist() == ["2026-08", "2026-12"]
+    assert schedule["arrival"].dt.strftime("%Y-%m").tolist() == ["2026-12", "2027-01"]
+    assert schedule["active_sku_id"].tolist() == ["CURRENT-A", "CURRENT-A"]
     assert schedule["qty"].sum() == 55
-    assert latest == pd.Timestamp("2026-12-01")
+    assert latest == pd.Timestamp("2027-01-01")
+
+
+def test_on_orders_rejects_yearless_or_gapped_months(monkeypatch: pytest.MonkeyPatch) -> None:
+    ctx = PlanningContext(as_of=date(2026, 9, 1))
+    for columns in ({"Sep": [1]}, {"Sep 2026": [1], "Nov 2026": [1]}):
+        frame = pd.DataFrame({"Material": ["A"], **columns})
+        monkeypatch.setattr(stock, "read_source", lambda name, frame=frame: frame.copy())
+        with pytest.raises(SourceDataError):
+            stock._on_order_schedule(ctx, StageResult(stage="12_stock"), {"A": "A"})
+
+
+@pytest.mark.parametrize("quantity", ["not a quantity", -1])
+def test_on_orders_rejects_invalid_quantities(
+    monkeypatch: pytest.MonkeyPatch, quantity: object
+) -> None:
+    frame = pd.DataFrame({"Material": ["A"], "Sep 2026": [quantity]})
+    monkeypatch.setattr(stock, "read_source", lambda name: frame.copy())
+    with pytest.raises(ContractViolation):
+        stock._on_order_schedule(
+            PlanningContext(as_of=date(2026, 9, 1)), StageResult(stage="12_stock"), {"A": "A"}
+        )
+
+
+def test_live_order_cannot_reuse_an_older_stock_snapshot() -> None:
+    stock.validate_live_snapshot(date(2026, 9, 1), date(2026, 8, 31))
+    with pytest.raises(SourceDataError, match="matching month-end stock"):
+        stock.validate_live_snapshot(date(2026, 10, 1), date(2026, 8, 31))
+
+
+def test_open_orders_must_be_refreshed_for_a_new_stock_snapshot() -> None:
+    kwargs = {
+        "owner_confirmed": True,
+        "interpretation": "arrival",
+        "coverage_end": pd.Timestamp("2027-12-01"),
+        "required_through": pd.Timestamp("2027-01-01"),
+        "source_modified": date(2026, 9, 30),
+    }
+    assert stock.verified_open_orders(**kwargs, snapshot_as_of=date(2026, 8, 31))
+    assert not stock.verified_open_orders(**kwargs, snapshot_as_of=date(2026, 12, 31))

@@ -38,21 +38,20 @@ executes the DAG; `--skip` reuses an expensive upstream stage's artifacts unchan
 | 09 Unit Sales | ✅ 22,087 VINs; geography unusable on 3.5% (office leak) |
 | 10 UIO Cohorts | ✅ import-ban hole survives into the age histogram |
 | 11 Targets | ✅ lag test passes: +10% units → **+1.24%** parts demand in year one |
-| 12 Stock | ✅ PDC position, **Yamaha MC (YM) and OBM (OB) parts only** — non-PN_Yamaha rows and other brands (KT) rejected, for stock and on-order alike. Inventory status runs on **on hand + on order** against the monthly forecast (Stockout / Awaiting stock / Critical / OK / Excess / No demand). Owner correction 2026-09-30: On_Orders months are **expected arrivals**, not PO dates; Jan–Aug 2026 arrivals are included in the Aug 31 stock snapshot. Later arrivals are unknown until the file is updated. |
-| 13 Policy | ⚠️ gate **FRONTIER** (fill 0.607 vs 0.376 baseline; inventory 379M vs 184M LKR). FSN=N parts now ON_DEMAND/NO_STOCK unless the fleet supports ≥1/month; published s/S use the live forecast |
-| 14 Monthly Order | ✅ 915 placeable lines, ~287M LKR; lines above 3x recent demand are **held for buyer review** (1,169 lines, ~104M LKR, `mart_order_review`) |
+| 12 Stock | ✅ PDC position, **Yamaha MC (YM) and OBM (OB) parts only**. The updated On_Orders has explicit Sep 2026–Dec 2027 expected-arrival columns: 279,525 open-order units all matched Part Master, combined with 207,840 scoped PDC units on hand for the Sep 1 cycle. The Aug 31 stock snapshot must be replaced before advancing the live cycle. |
+| 13 Policy | ⚠️ gate **FRONTIER** after the updated open orders (fill 0.500 vs 0.267 baseline; inventory 380M vs 179M LKR). FSN=N parts remain ON_DEMAND/NO_STOCK unless the fleet supports ≥1/month; published s/S use the live forecast |
+| 14 Monthly Order | ✅ Sep 2026 proposal recalculated from real stock and dated open orders: 739 candidate lines, ~272M LKR; 1,476 additional lines, ~371M LKR, held for buyer review. The historical September cycle is not placeable in October. |
 | 15 FastAPI | ✅ all endpoints serve marts; `uvicorn src.api.main:app --port 8090`. Serves the original dashboard at `/` from `frontend/dist`, using `/api/v1` compatibility routes over the new pipeline. Spare parts are split into **MC** and **OBM** sections by the part's PN_Yamaha brand (OB → OBM, else MC; `src/dashboard/segments.py`): every spare-parts mart carries `segment`, and a request's `?segment=mc|obm` narrows every mart in `mart()` (`src/api/compat/filters.py`). OBM routes live under `/obm/*`; the Overview stays combined. Within MC, `part_category` (Lubricant / Battery / Tyre / Spare Parts, the material-category rule on the part's description; billed sales also count `AWL…` oils as Lubricant) narrows every mart the same way via `?category=` |
 
-**Blocking unknowns — none of these can be resolved from the supplied files:**
+**Open constraints and unknowns:**
 0. `orders.xlsx` and `sales.xlsx` cover **different populations** — 2025 orders is 44,180
    lines / 644k units / 278 dealers from one sales office (`W1B1`); billed sales is 79,408
    lines / 2.76M units / 427 payers (`Seeduwa - PDC`). Billed value is ~9x ordered value, so
    the two cannot be divided into a fulfilment rate. What `orders.xlsx` is scoped to is unknown.
-1. `On_Orders` months carry no year. The owner corrected their interpretation on 2026-09-30:
-   they are **expected arrival months**, not when POs were raised. The 2026 year is still assumed;
-   arrivals after August are unknown, not confirmed zero. A December 2026 proposal using the Aug 31
-   stock snapshot is provisional and must not be sent to purchasing until actual stock and open POs
-   are updated.
+1. The owner confirmed (2026-10-01) the updated `On_Orders.xlsx` is the complete open-PO list
+   with explicit expected-arrival months. It is verified for the Sep 1 cycle based on Aug 31 stock.
+   Later live cycles require an updated month-end `current_stock.xlsx`, its confirmed snapshot date,
+   and a refreshed complete open-order workbook; the old December projection is not the live plan.
 2. Fill-rate targets, holding rate, order cost, MOQ and pack size are **assumed** defaults
    in `Settings`. Step 13's numbers move with them.
 3. No de-registration records, so survival is assumed; three Weibull scenarios are run.
@@ -137,7 +136,8 @@ models, never silently swallow a data-quality issue.
 
 Checked 2026-09-22 against `data/raw/`. **Refreshed 2026-09-27:** the owner replaced `orders.xlsx`
 (now 155,424 lines, 2024-01 → 2026-08) and `MCSI.xlsx` (56,211 rows, registrations 2025-04 → 2026-08);
-the published cycle moved to as_of **2026-09-01**, so On_Orders months are now assumed to be 2026. **These differ from the figures quoted in
+the published cycle moved to as_of **2026-09-01**. `On_Orders.xlsx` was replaced on 2026-09-30
+with explicit 2026–27 month columns. **These differ from the figures quoted in
 `instructions/`**, which describe a Jan–Aug 2026 extract that is not the file present.
 
 | File | Rows | Coverage | Notes |
@@ -146,7 +146,7 @@ the published cycle moved to as_of **2026-09-01**, so On_Orders months are now a
 | `sales.xlsx` | 113,231 × 41 | 2024-01 → 2025-12 | no missing month; ~93k trailing blank rows |
 | `MCSI.xlsx` | 23,415 × 56 | Apr–Dec, one year | sheet `MCSI`; 22,087 VINs; 9 models |
 | `current_stock.xlsx` | 26,288 × 8 | Aug 31, 2026 snapshot (owner-confirmed) | W1B4 = 86.5%; only an `Unrestricted` column |
-| `On_Orders.xlsx` | 2,820 × 10 | `Jan`…`Aug` expected arrivals | **no year in the columns**; August receipts are already in the stock snapshot |
+| `On_Orders.xlsx` | 30,215 × 23 | Sep 2026–Dec 2027 expected arrivals | 279,525 open-order units; all nonzero arrival cells matched Part Master in the Sep 1 run |
 | `PN_Yamaha.xlsx` | 30,218 × 16 | — | `Latest SS` pre-resolved; verify, don't recompute |
 | `dealers.xlsx` | 414 × 12 | — | Type MC/OBM, RM, ASE, Province, District |
 | `Sales_Summery.xlsx` | 20 sheets | 2014–21, 2025–26 | 113 models classified |
@@ -158,11 +158,10 @@ from `current_stock.xlsx` and supersession from `PN_Yamaha.xlsx`.
 **Never hard-code a date window.** A newer export is expected; everything derives its window from
 `ctx.as_of` and reports the min/max month it actually observed.
 
-**Open and blocking:** the `On_Orders` month columns carry no year and end in August; later incoming
-orders are unknown. The owner confirmed they mean expected arrival (default `arrival`). A provisional
-December scenario projects September–November demand from Aug 31 stock, uses a four-month lead and
-five-month protection interval, and arrives April 2027. It lives under `data/scenarios/`, not the
-buyer-ready live marts. Policy assignments in that scenario are reused, not revalidated.
+The dated `On_Orders` workbook is the live September order source. Its complete open orders were
+verified by the owner; Stage 12 rejects yearless months and stale stock snapshots. The old
+`data/scenarios/` projection is not used. For future monthly plans, replace the open-order sheet
+and stock snapshot, then advance `SPI_STOCK_SNAPSHOT_AS_OF` to the confirmed month-end date.
 
 ---
 

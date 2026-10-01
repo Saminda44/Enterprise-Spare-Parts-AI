@@ -232,8 +232,8 @@ export function PartMaster() {
             <h2 className="text-xl font-bold text-slate-800">{segment ? `${SEGMENT_TEXT[segment]} Part Master` : "Part Master"}{category && <span className="text-brand-blue"> — {CATEGORY_TEXT[category]}</span>}</h2>
             <p className="text-xs text-slate-500 mt-0.5">
               {data
-                ? segment === "obm"
-                  ? `${data.total.toLocaleString()} Yamaha outboard parts (PN_Yamaha brand OB) · ${data.total_models} model variants in the catalogues (MC and OBM)`
+                ? segment
+                  ? `${data.total.toLocaleString()} current ${SEGMENT_TEXT[segment]} parts · ${data.total_models} matching catalogue model variants`
                   : data.source === "pn_yamaha_db"
                     ? `${data.total.toLocaleString()} PN_Yamaha materials (Brand YM) · ${data.total_models} model variants`
                     : `${data.total.toLocaleString()} unique part numbers · ${data.total_models} models · PN_Yamaha master`
@@ -275,7 +275,7 @@ export function PartMaster() {
             label="Model Variants"
             value={loading ? "…" : (data?.total_models ?? 0).toString()}
             sub={data?.compatibility?.source === "catalogue_database"
-              ? `${(data.compatibility.parts_with_models ?? 0).toLocaleString()} materials found in catalogues`
+              ? `${(data.compatibility.parts_with_models ?? 0).toLocaleString()} parts found in catalogues`
               : "catalogue models indexed"}
           />
           <Kpi
@@ -288,6 +288,8 @@ export function PartMaster() {
             value={!data ? "…" : data.compatibility?.source === "catalogue_database" ? "Catalogue DB" : "Step 02"}
             sub={data?.compatibility?.source === "catalogue_database"
               ? "merged across each supersession chain"
+              : segment === "obm"
+                ? "OBM catalogue models unavailable"
               : data?.compatibility?.error
                 ? "catalogue database unreachable — Step 02 fallback"
                 : "supersession-resolved current identities"}
@@ -437,7 +439,7 @@ export function PartMaster() {
                   ? <><Layers size={12} className="text-slate-300" />
                       PN_Yamaha Brand YM from the database · part name and compatible models where the Material, Latest SS or a superseded number is in a catalogue</>
                   : <><Layers size={12} className="text-slate-300" />
-                      Published PN_Yamaha master (Step 02 — catalogue database not reachable or PN_Yamaha not loaded)</>
+                      Published PN_Yamaha master · one row per current part identity</>
               }
             </div>
           )}

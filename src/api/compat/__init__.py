@@ -14,7 +14,7 @@ recorded in ``NOT_MODELLED`` rather than filled with a plausible-looking number.
 from __future__ import annotations
 
 from fastapi import APIRouter
-from src.api.compat import bikes, catalog, eda, exports, parts, pipeline
+from src.api.compat import bikes, catalog, eda, exports, parts, pipeline, sources
 from src.api.compat.overview import router as overview_router
 
 #: Legacy fields the new design does not produce, and why. Served at /api/v1/not-modelled
@@ -24,7 +24,6 @@ NOT_MODELLED: dict[str, str] = {
     "in_ssop": "SSOP.xlsx is out of scope; supersession comes from PN_Yamaha.xlsx",
     "mcsi.by_color": "this MCSI vintage carries no colour column, so no colour cut exists",
     "bikes.geo_color": "same — colour is absent from the vehicle registration extract",
-    "on_order": "On_Orders months carry no year or arrival flag, so it resolves to zero",
     "container_utilization": "no container or shipment dimension exists in the sources",
     "movements": "stock movements are out of scope; stock is a snapshot from current_stock.xlsx",
 }
@@ -37,6 +36,7 @@ router.include_router(eda.router)
 router.include_router(bikes.router)
 router.include_router(catalog.router)
 router.include_router(pipeline.router)
+router.include_router(sources.router)
 
 
 @router.get("/not-modelled", tags=["compat"])

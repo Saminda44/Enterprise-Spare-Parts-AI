@@ -13,8 +13,7 @@ from src.stages import load_stages
 
 @pytest.fixture(scope="module", autouse=True)
 def _stages() -> None:
-    if not REGISTRY.stages:
-        load_stages()
+    load_stages()
 
 
 def test_every_watched_workbook_maps_to_real_stages() -> None:
@@ -38,6 +37,12 @@ def test_orders_change_reruns_its_downstream_only() -> None:
     stale = REGISTRY.downstream(refresh.SOURCE_STAGES["orders.xlsx"])
     assert {"03_orders", "05_order_analysis", "08_forecast", "13_policy", "15_dashboard"} <= stale
     assert not stale & {"01_catalogue", "02_part_master", "04_sales", "09_unit_sales", "12_stock"}
+
+
+def test_on_orders_change_republishes_the_order_plan() -> None:
+    stale = REGISTRY.downstream(refresh.SOURCE_STAGES["On_Orders.xlsx"])
+    assert {"12_stock", "13_policy", "14_monthly_order", "15_dashboard"} <= stale
+    assert not stale & {"03_orders", "04_sales", "09_unit_sales"}
 
 
 def test_mcsi_change_starts_at_unit_sales() -> None:

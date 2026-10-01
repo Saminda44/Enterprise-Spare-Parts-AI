@@ -804,7 +804,7 @@ export interface CatalogDerivedPartRow {
   variant_count: number | null;
   source_count: number | null;
   kind: string;
-  /** PN_Yamaha database rows only. */
+  /** Current PN_Yamaha part number. */
   latest_ss?: string;
   /** The catalogue's part name, when the material is found in a catalogue. */
   catalogue_description?: string;

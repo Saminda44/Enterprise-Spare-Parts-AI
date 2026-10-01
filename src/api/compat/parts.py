@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from typing import Any
 
 import pandas as pd
@@ -18,6 +19,7 @@ from src.api.compat.filters import (
     s,
     segment_skus,
 )
+from src.dashboard.segments import part_category, sku_segments
 from src.io.parquet import read_table, table_exists
 
 router = APIRouter(tags=["parts"])
@@ -1135,14 +1137,51 @@ _SUPERSEDE_COLUMNS = [
 ]
 
 
+def _models_by_active_sku(
+    master: pd.DataFrame, rows: Iterable[tuple[str, str, list[str]]]
+) -> tuple[dict[str, set[str]], int]:
+    """Match catalogue models to current identities within their product type.
+
+    Business meaning: an MC catalogue match on an old number does not make its
+    current OBM replacement an MC model variant on the OBM page.
+    """
+    from src.catalogue.store import material_key, material_key_forms  # noqa: PLC0415
+
+    segments = sku_segments(master)
+    to_active: dict[tuple[str, str], str] = {}
+    for column in ["material", *[c for c in _SUPERSEDE_COLUMNS if c in master.columns]]:
+        for number, active in zip(master[column], master["active_sku_id"], strict=True):
+            if isinstance(number, str) and number.strip():
+                segment = segments.get(active)
+                if segment:
+                    for form in material_key_forms(material_key(number)):
+                        to_active.setdefault((form, segment), active)
+
+    per_active: dict[str, set[str]] = {}
+    unmatched = 0
+    for key, product_type, models in rows:
+        segment = str(product_type).strip().upper()
+        active = next(
+            (
+                to_active[(form, segment)]
+                for form in material_key_forms(material_key(key))
+                if (form, segment) in to_active
+            ),
+            None,
+        )
+        if active is None:
+            unmatched += 1
+            continue
+        per_active.setdefault(active, set()).update(models or [])
+    return per_active, unmatched
+
+
 def _catalogue_compatibility(master: pd.DataFrame) -> tuple[dict[str, set[str]], dict[str, Any]]:
     """Compatible model variants per current identity, from the catalogue database.
 
-    Every catalogue part number is matched, separators ignored and its 10- and 12-digit
-    forms taken as one, against every number in the part master — the material itself
-    and each number it superseded — and its
-    models are credited to that chain's ``active_sku_id``. So an old and a new number
-    for one physical part show one merged list, per the one-identity rule.
+    Business meaning: match material and superseded numbers to the current identity,
+    but credit only catalogue models from its MC or OBM product type. A cross-brand
+    chain does not leak motorcycle models into the OBM Part Master.
 
     Returns the models per active_sku_id and a summary; an empty mapping with the
     reason when the database cannot be reached.
@@ -1150,8 +1189,6 @@ def _catalogue_compatibility(master: pd.DataFrame) -> tuple[dict[str, set[str]],
     from src.catalogue.store import (  # noqa: PLC0415
         connect,
         ensure_schema,
-        material_key,
-        material_key_forms,
     )
     from src.core.errors import CatalogueStoreError  # noqa: PLC0415
 
@@ -1159,26 +1196,18 @@ def _catalogue_compatibility(master: pd.DataFrame) -> tuple[dict[str, set[str]],
         with connect() as conn:
             ensure_schema(conn)
             rows = conn.execute(
-                "SELECT material_key, compatible_models FROM part_compatible_models"
+                "SELECT upper(regexp_replace(p.part_no, '[^A-Za-z0-9]', '', 'g')), "
+                "c.product_type, "
+                "array_agg(DISTINCT m.model_name || ' - ' || m.model_code "
+                "ORDER BY m.model_name || ' - ' || m.model_code) "
+                "FROM catalogue_parts p JOIN models m USING (model_code) "
+                "JOIN catalogues c USING (catalogue_id) WHERE c.status = 'loaded' "
+                "GROUP BY 1, 2"
             ).fetchall()
     except CatalogueStoreError as exc:
         return {}, {"source": "step_02", "error": str(exc)}
 
-    to_active: dict[str, str] = {}
-    for column in ["material", *[c for c in _SUPERSEDE_COLUMNS if c in master.columns]]:
-        for number, active in zip(master[column], master["active_sku_id"], strict=True):
-            if isinstance(number, str) and number.strip():
-                for form in material_key_forms(material_key(number)):
-                    to_active.setdefault(form, active)
-    per_active: dict[str, set[str]] = {}
-    unmatched = 0
-    for key, models in rows:
-        # "B65-E3907-10" in the catalogue is "B65-E3907-10-00" in the master.
-        active = next((to_active[f] for f in material_key_forms(key) if f in to_active), None)
-        if active is None:
-            unmatched += 1
-            continue
-        per_active.setdefault(active, set()).update(models or [])
+    per_active, unmatched = _models_by_active_sku(master, rows)
     return per_active, {
         "source": "catalogue_database",
         "catalogue_part_numbers": len(rows),
@@ -1280,9 +1309,9 @@ def master_view(
     B65L") come from the catalogue database, merged across each chain's part numbers;
     Step 02's catalogue join is the fallback when the database cannot be reached.
     """
-    # The database holds PN_Yamaha brand YM (MC) only and knows no MC category; the OBM
-    # section, and any MC category view, are served from the pipeline's Part Master.
-    narrowed = request_segment() == "OBM" or REQUEST_CATEGORY.get() is not None
+    # The database view contains raw YM materials, whereas both section pages show
+    # one current identity per supersession chain. Use the same grain for MC and OBM.
+    narrowed = request_segment() is not None or REQUEST_CATEGORY.get() is not None
     served = None if narrowed else _pn_yamaha_master_view(search, model, limit, offset)
     if served is not None:
         return served
@@ -1296,15 +1325,21 @@ def master_view(
             "source": "PN_Yamaha",
         }
     master = read_table("facts", "part_master_enriched")
-    scope = segment_skus()
-    if scope is not None:
-        master = master[master["active_sku_id"].astype(str).isin(scope)]
-    per_active, compatibility = _catalogue_compatibility(master)
+    segments = sku_segments(master)
     frame = master.sort_values("chain_depth").drop_duplicates("active_sku_id").copy()
-    if per_active:
+    frame["segment"] = frame["active_sku_id"].map(segments)
+    if request_segment():
+        frame = frame[frame["segment"] == request_segment()]
+    if category := REQUEST_CATEGORY.get():
+        frame = frame[part_category(frame["description"], frame["segment"]) == category]
+    scoped_master = master[master["active_sku_id"].isin(frame["active_sku_id"])]
+    per_active, compatibility = _catalogue_compatibility(scoped_master)
+    if compatibility["source"] == "catalogue_database":
         frame["compatible_models"] = frame["active_sku_id"].map(
             lambda active: ", ".join(sorted(per_active.get(active, ())))
         )
+    else:
+        frame.loc[frame["segment"] == "OBM", "compatible_models"] = ""
     models = sorted(
         {
             m.strip()
@@ -1341,8 +1376,11 @@ def master_view(
         "rows": [
             {
                 "part_no": s(r["active_sku_id"]),
+                "latest_ss": s(r.get("latest_ss")),
                 "description": s(r["description"]),
                 "compatible_models": s(r["compatible_models"]),
+                "in_catalogue": bool(s(r["compatible_models"]).strip()),
+                "supersedes": [s(r.get(column)) for column in _SUPERSEDE_COLUMNS],
                 "section": s(r.get("material_group")),
                 "variant_count": None,
                 "source_count": None,

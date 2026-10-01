@@ -15,6 +15,7 @@ import { Inventory }      from "./pages/Inventory";
 import { Orders }         from "./pages/Orders";
 import { Catalog }        from "./pages/Catalog";
 import { Pipeline }               from "./pages/Pipeline";
+import { Sources }                from "./pages/Sources";
 
 const all = (el: React.ReactNode) => <SegmentRoute segment={null}>{el}</SegmentRoute>;
 const seg = (s: Segment, el: React.ReactNode) => <SegmentRoute segment={s}>{el}</SegmentRoute>;
@@ -34,7 +35,7 @@ export default function App() {
             <Route path="/vehicle"        element={all(<VehicleLookup />)} />
             <Route path="/uio-forecast"   element={all(<UIOForecast />)} />
             {/* MC spare parts — part brand YM (and the few Katana tyres) */}
-            <Route path="/eda"            element={seg("mc", <EDA />)} />
+            <Route path="/eda"            element={<SegmentRoute segment="mc" categoryEnabled><EDA /></SegmentRoute>} />
             <Route path="/forecast"       element={seg("mc", <Forecast />)} />
             <Route path="/orders"         element={seg("mc", <Orders />)} />
             <Route path="/parts"          element={seg("mc", <PartMaster />)} />
@@ -47,6 +48,7 @@ export default function App() {
             <Route path="/obm-eda"        element={<Navigate to="/obm/eda" replace />} />
             <Route path="/catalog"        element={all(<Catalog />)} />
             <Route path="/pipeline"       element={all(<Pipeline />)} />
+            <Route path="/sources"        element={all(<Sources />)} />
           </Routes>
         </main>
       </div>

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
@@ -31,12 +32,23 @@ class Settings(BaseSettings):
     # Where source workbooks land. Manual drop into data/raw today; point this at a
     # watched folder later without touching a loader.
     source_dir: Path | None = None
+    # Excel is the active source now. PostgreSQL stores the same versioned workbook
+    # tables when selected; analytics still consume the normalized parquet mirrors.
+    data_backend: Literal["excel", "postgres"] = Field(
+        default="excel", validation_alias=AliasChoices("DATA_BACKEND", "SPI_DATA_BACKEND")
+    )
+    upload_api_key: SecretStr = Field(default=SecretStr(""), validation_alias="SPI_UPLOAD_API_KEY")
 
     # Step 12: are On_Orders month columns the expected arrival month, or when the PO
     # was raised? This single assumption shifts the pipeline by a quarter, so it is
     # printed in every run report.
     # Owner confirmed 2026-09-30: these are expected arrival months, not PO dates.
     on_order_interpretation: Literal["arrival", "raised"] = "arrival"
+    # Owner-confirmed current_stock.xlsx snapshot. A later live cycle requires this
+    # date to advance with a newly supplied stock file.
+    stock_snapshot_as_of: date = date(2026, 8, 31)
+    # Owner confirmed 2026-10-01 that the dated On_Orders export lists all open POs.
+    on_orders_verified_complete: bool = True
 
     plant: str = "W1B4"
     lead_time_months: int = 4
@@ -119,6 +131,11 @@ class Settings(BaseSettings):
         return self.staging_dir / "sources"
 
     @property
+    def managed_source_dir(self) -> Path:
+        """Writable, versioned Excel sources; ``data/raw`` remains immutable."""
+        return self.staging_dir / "working_sources"
+
+    @property
     def facts_dir(self) -> Path:
         return self.root / "data" / "facts"
 
@@ -135,6 +152,7 @@ class Settings(BaseSettings):
         for d in (
             self.staging_dir,
             self.source_parquet_dir,
+            self.managed_source_dir,
             self.facts_dir,
             self.marts_dir,
             self.reports_dir,
@@ -145,7 +163,10 @@ class Settings(BaseSettings):
         return {
             "root": str(self.root),
             "raw_dir": str(self.raw_dir),
+            "data_backend": self.data_backend,
             "on_order_interpretation": self.on_order_interpretation,
+            "stock_snapshot_as_of": self.stock_snapshot_as_of.isoformat(),
+            "on_orders_verified_complete": self.on_orders_verified_complete,
             "plant": self.plant,
             "lead_time_months": self.lead_time_months,
             "review_period_months": self.review_period_months,

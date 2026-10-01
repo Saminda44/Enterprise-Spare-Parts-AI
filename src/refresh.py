@@ -163,13 +163,32 @@ def data_cycle_date() -> date | None:
 
 def _ingest() -> tuple[list[str], list[str]]:
     """Re-convert changed workbooks. Returns (changed workbook names, failures)."""
-    from src.io.excel import workbook_sheets, workbook_to_parquet
+    from src.ingestion.store import active_excel_path, source_store
+    from src.io.excel import frame_to_source_parquet, workbook_sheets, workbook_to_parquet
 
     settings = get_settings()
     changed: list[str] = []
     failed: list[str] = []
+    if getattr(settings, "data_backend", "excel") == "postgres":
+        store = source_store()
+        for name, sheets in SOURCE_WORKBOOKS.items():
+            try:
+                version = store.version(name)
+                frames = store.read(name)
+                targets = frames.items() if sheets == "*" else [next(iter(frames.items()))]
+                for sheet_name, frame in targets:
+                    result = frame_to_source_parquet(
+                        frame, name, sheet=sheet_name if sheets == "*" else 0,
+                        sha256=version["version_id"],
+                        source_modified=version["source_modified"],
+                    )
+                    if result.converted and name not in changed:
+                        changed.append(name)
+            except Exception as exc:  # noqa: BLE001 - fail closed before stages run
+                failed.append(f"{name}: {type(exc).__name__}: {exc}")
+        return changed, failed
     for name, sheets in SOURCE_WORKBOOKS.items():
-        path = source_workbook_path(settings.raw_dir, name)
+        path = active_excel_path(name)
         if not path.exists():
             failed.append(f"{name}: missing")
             continue
@@ -340,11 +359,21 @@ def refresh_in_background(reason: str, *, rerun_all: bool = False) -> bool:
     return True
 
 
-def _snapshot() -> dict[str, tuple[int, int]]:
-    raw = get_settings().raw_dir
-    snap: dict[str, tuple[int, int]] = {}
+def _snapshot() -> dict[str, tuple[int, int] | str]:
+    from src.ingestion.store import active_excel_path, source_store
+
+    settings = get_settings()
+    snap: dict[str, tuple[int, int] | str] = {}
+    if getattr(settings, "data_backend", "excel") == "postgres":
+        store = source_store()
+        for name in SOURCE_WORKBOOKS:
+            try:
+                snap[name] = str(store.version(name)["version_id"])
+            except Exception:  # noqa: BLE001 - refresh will show the source error
+                snap[name] = "missing"
+        return snap
     for name in SOURCE_WORKBOOKS:
-        path = source_workbook_path(raw, name)
+        path = active_excel_path(name, settings=settings)
         try:
             stat = path.stat()
             snap[name] = (stat.st_mtime_ns, stat.st_size)

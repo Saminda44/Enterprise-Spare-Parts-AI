@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from itertools import pairwise
 from typing import TYPE_CHECKING
 
 from src.core.errors import PipelineError
@@ -34,6 +35,18 @@ SUPERSEDE_COLUMNS = tuple(
 
 _MAX_DEPTH = 20
 _NON_ALNUM = re.compile(r"[^0-9A-Z]")
+_SUPERSEDE_NAME = re.compile(r"^(\d+)(?:st|nd|rd|th) Supersede$", re.IGNORECASE)
+
+
+def supersede_columns(columns: object) -> list[str]:
+    """Find every numbered supersede column, including 11th and later."""
+    found = []
+    for column in columns:
+        match = _SUPERSEDE_NAME.fullmatch(str(column).strip())
+        if match:
+            found.append((int(match.group(1)), str(column)))
+    found.sort()
+    return [column for _, column in found]
 
 
 class SupersessionCycleError(PipelineError):
@@ -44,7 +57,10 @@ def normalise(part_no: object) -> str:
     """Dash-insensitive key: ``5VL-F341E-00`` and ``5VLF341E00`` compare equal."""
     if part_no is None:
         return ""
-    return _NON_ALNUM.sub("", str(part_no).upper())
+    value = str(part_no).strip()
+    if value in {"", "nan", "NaN", "None", "<NA>", "NaT"}:
+        return ""
+    return _NON_ALNUM.sub("", value.upper())
 
 
 @dataclass
@@ -60,21 +76,22 @@ class ChainResolution:
 
 
 def build_successor_map(frame: pd.DataFrame) -> dict[str, str]:
-    """``normalised predecessor -> successor``, taken from the supersede columns.
+    """``normalised predecessor -> successor`` from each row's ordered chain.
 
-    A part's supersede columns list the numbers it replaces, so the edge runs from each
-    supersede value to the row's own Material.
+    Business meaning: PN_Yamaha's numbered columns are successive replacements of its
+    Material. The last populated column equals Latest SS in the supplied workbook.
     """
     successor: dict[str, str] = {}
-    present = [c for c in SUPERSEDE_COLUMNS if c in frame.columns]
+    present = supersede_columns(frame.columns)
     for material, *supersedes in zip(frame["Material"], *(frame[c] for c in present), strict=True):
-        current = str(material).strip()
+        chain = [str(material).strip()]
         for value in supersedes:
-            if value is None or str(value).strip() in {"", "None", "nan"}:
+            if not normalise(value):
                 continue
-            key = normalise(value)
-            if key and key != normalise(current):
-                successor.setdefault(key, current)
+            chain.append(str(value).strip())
+        for older, newer in pairwise(chain):
+            if normalise(older) and normalise(older) != normalise(newer):
+                successor.setdefault(normalise(older), newer)
     return successor
 
 
@@ -109,7 +126,7 @@ def resolve_chains(frame: pd.DataFrame) -> tuple[list[ChainResolution], list[str
 
     for material, latest in zip(frame["Material"], frame["Latest SS"], strict=True):
         material_s = str(material).strip()
-        latest_s = str(latest).strip() if latest is not None else ""
+        latest_s = str(latest).strip() if normalise(latest) else ""
         try:
             derived, chain, depth = walk(material_s, successor)
         except SupersessionCycleError as exc:
@@ -159,7 +176,7 @@ class SupersessionLookup:
         desc_col = next(
             (c for c in ("Material description", "description") if c in frame.columns), None
         )
-        supersede_cols = [c for c in SUPERSEDE_COLUMNS if c in frame.columns]
+        supersede_cols = supersede_columns(frame.columns)
 
         for record in frame.to_dict("records"):
             material = str(record.get(material_col, "")).strip()

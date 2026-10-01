@@ -2,7 +2,7 @@ import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard, TrendingUp, Package, ShoppingCart,
   BookOpen, FileText,
-  Activity, Search, Terminal, ScanSearch,
+  Activity, Search, Terminal, ScanSearch, UploadCloud,
 } from "lucide-react";
 // ── Overview ──────────────────────────────────────────────────────────────
 const NAV_OVERVIEW = [
@@ -33,6 +33,7 @@ const NAV_OBM_PARTS = [
 ];
 
 const NAV_TOOLS = [
+  { to: "/sources",   label: "Data Sources",    Icon: UploadCloud },
   { to: "/catalog",   label: "Catalogues",      Icon: FileText  },
   { to: "/pipeline",  label: "Pipeline Runner",  Icon: Terminal  },
 ];
