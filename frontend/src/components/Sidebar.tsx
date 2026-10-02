@@ -1,8 +1,9 @@
-import { NavLink } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, TrendingUp, Package, ShoppingCart,
   BookOpen, FileText,
-  Activity, Search, Terminal, ScanSearch, UploadCloud,
+  Activity, Search, Terminal, ScanSearch, UploadCloud, Menu, X,
 } from "lucide-react";
 // ── Overview ──────────────────────────────────────────────────────────────
 const NAV_OVERVIEW = [
@@ -68,10 +69,24 @@ function Divider() {
 }
 
 export function Sidebar() {
+  const [open, setOpen] = useState(false);
+  const location = useLocation();
+
+  useEffect(() => { setOpen(false); }, [location.pathname]);
+
   return (
-    <aside className="w-60 h-screen bg-sidebar text-white flex flex-col shrink-0 overflow-hidden">
+    <>
+      <button type="button" onClick={() => setOpen(value => !value)}
+        className="md:hidden fixed left-3 top-2.5 z-50 grid h-8 w-8 place-items-center rounded bg-sidebar text-white"
+        aria-label={open ? "Close navigation" : "Open navigation"}
+        title={open ? "Close navigation" : "Open navigation"}>
+        {open ? <X size={18}/> : <Menu size={18}/>}
+      </button>
+      {open && <button type="button" aria-label="Close navigation" onClick={() => setOpen(false)}
+        className="md:hidden fixed inset-0 z-30 bg-slate-950/45"/>}
+      <aside className={`fixed inset-y-0 left-0 z-40 w-60 h-screen bg-sidebar text-white flex flex-col shrink-0 overflow-hidden transition-transform md:static md:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}>
       {/* Logo */}
-      <div className="px-6 py-4 border-b border-white/10 shrink-0">
+      <div className="pl-14 pr-6 md:px-6 py-4 border-b border-white/10 shrink-0">
         <p className="text-xs text-slate-400 font-medium uppercase tracking-widest">Yamaha Sri Lanka</p>
         <h1 className="text-base font-bold leading-tight mt-0.5">Inventory Optimisation</h1>
       </div>
@@ -107,6 +122,7 @@ export function Sidebar() {
         {NAV_TOOLS.map(n => <NavItem key={n.to} {...n}/>)}
 
       </nav>
-    </aside>
+      </aside>
+    </>
   );
 }

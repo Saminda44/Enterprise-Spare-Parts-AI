@@ -77,6 +77,22 @@ def _preview_payload(
     }
 
 
+def _snapshot_metadata_changed(
+    name: str, snapshot_as_of: date | None, metadata: dict
+) -> bool:
+    """Return whether a stock-date confirmation changes the active source metadata.
+
+    Business meaning: the owner may confirm the snapshot date after the workbook was
+    already supplied; that confirmation must not be discarded just because no stock
+    quantity changed.
+    """
+    return (
+        name == "current_stock.xlsx"
+        and snapshot_as_of is not None
+        and metadata.get("stock_snapshot_as_of") != snapshot_as_of.isoformat()
+    )
+
+
 def _prepare(
     name: str, data: bytes, replace_dealers: bool
 ) -> tuple[dict, MergeResult, SummaryResult | None]:
@@ -170,9 +186,15 @@ async def apply_source(
         payload, merged, summary = _prepare(name, data, replace_dealers)
         if payload["version"] != expected_version:
             raise HTTPException(409, "source changed after preview; preview this upload again")
-        if merged.added == 0 and merged.replaced == 0:
+        store = source_store()
+        active_version = store.version(name)
+        metadata_changed = _snapshot_metadata_changed(
+            name, stock_snapshot_as_of, active_version["metadata"]
+        )
+        if merged.added == 0 and merged.replaced == 0 and not metadata_changed:
             return {**payload, "applied": False, "refresh_started": False}
         metadata = {
+            **active_version["metadata"],
             "incoming": merged.incoming,
             "added": merged.added,
             "replaced": merged.replaced,
@@ -184,7 +206,6 @@ async def apply_source(
         if stock_snapshot_as_of and name == "current_stock.xlsx":
             metadata["stock_snapshot_as_of"] = stock_snapshot_as_of.isoformat()
         digest = hashlib.sha256(data).hexdigest()
-        store = source_store()
         sheet_name = next(iter(store.read(name)))
         store.publish(name, {sheet_name: merged.frame}, upload_sha256=digest, metadata=metadata)
         if summary:

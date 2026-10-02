@@ -26,13 +26,13 @@ const COLOR_TEXT: Record<string, string> = {
 
 export function KpiCard({ label, value, sub, color = "blue", icon }: Props) {
   return (
-    <div className={`bg-white rounded-xl shadow-sm p-5 border-l-4 ${COLOR_BORDER[color]} flex flex-col gap-1`}>
+    <div className={`min-w-0 bg-white rounded-xl shadow-sm p-5 border-l-4 ${COLOR_BORDER[color]} flex flex-col gap-1`}>
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{label}</span>
+        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide break-words">{label}</span>
         {icon && <span className={`text-lg ${COLOR_TEXT[color]}`}>{icon}</span>}
       </div>
       <span className={`text-2xl font-bold ${COLOR_TEXT[color]}`}>{value}</span>
-      {sub && <span className="text-xs text-slate-400">{sub}</span>}
+      {sub && <span className="text-xs text-slate-400 break-words">{sub}</span>}
     </div>
   );
 }

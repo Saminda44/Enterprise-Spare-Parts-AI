@@ -25,7 +25,10 @@ export default function App() {
     <BrowserRouter>
       <div className="flex h-screen w-full font-sans bg-surface overflow-hidden">
         <Sidebar />
-        <main className="flex-1 flex flex-col overflow-hidden">
+        <main className="min-w-0 flex-1 flex flex-col overflow-hidden">
+          <div className="md:hidden h-12 shrink-0 border-b border-slate-200 bg-white pl-14 pr-4 flex items-center">
+            <span className="text-sm font-semibold text-slate-800">Inventory Optimisation</span>
+          </div>
           <RefreshBanner />
           <Routes>
             <Route path="/"               element={all(<Overview />)} />

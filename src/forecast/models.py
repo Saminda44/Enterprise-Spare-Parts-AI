@@ -124,13 +124,11 @@ BENCHMARKS: dict[str, Forecaster] = {"naive": naive, "mean": mean_forecast}
 #: so they are dropped rather than allowed to fit noise. TFT needs a long, wide panel.
 CANDIDATES: dict[str, dict[str, Forecaster]] = {
     "smooth": {
-        "moving_average_3": moving_average(3),
         "moving_average_6": fallback_forecaster,
         "ses_0.3": simple_exponential_smoothing(0.3),
         "linear_trend": linear_trend,
     },
     "erratic": {
-        "moving_average_3": moving_average(3),
         "moving_average_6": fallback_forecaster,
         "ses_0.3": simple_exponential_smoothing(0.3),
     },
@@ -152,7 +150,7 @@ CANDIDATES: dict[str, dict[str, Forecaster]] = {
 
 #: Parts with too little history: short recent-rate models only.
 INSUFFICIENT_HISTORY_CANDIDATES: dict[str, Forecaster] = {
-    "moving_average_3": moving_average(3),
+    "moving_average_6": fallback_forecaster,
     "ses_0.3": simple_exponential_smoothing(0.3),
     "tsb": tsb(),
 }

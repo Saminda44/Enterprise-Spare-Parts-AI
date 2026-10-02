@@ -378,11 +378,16 @@ def run(ctx: PlanningContext) -> StageResult:
             "mart_order_review_scenario",
             write_table(review, "marts", "mart_order_review_scenario"),
         )
-        result.warn(
-            "PROVISIONAL / DO NOT PLACE: stock was projected and incoming orders after the "
-            "last supplied arrival month are unverified; refresh actual stock and open orders "
-            "before releasing purchase quantities"
-        )
+        if incoming_verified:
+            result.warn(
+                "PROVISIONAL / DO NOT PLACE: open orders passed coverage checks, but stock was "
+                "projected; refresh the actual month-end stock before releasing quantities"
+            )
+        else:
+            result.warn(
+                "PROVISIONAL / DO NOT PLACE: stock was projected and incoming orders are "
+                "unverified; refresh actual stock and open orders before releasing quantities"
+            )
     else:
         result.artifact("mart_monthly_order", write_table(triggered, "marts", "mart_monthly_order"))
         result.artifact("mart_order_review", write_table(review, "marts", "mart_order_review"))

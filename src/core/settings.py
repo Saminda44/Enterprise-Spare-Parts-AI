@@ -44,9 +44,10 @@ class Settings(BaseSettings):
     # printed in every run report.
     # Owner confirmed 2026-09-30: these are expected arrival months, not PO dates.
     on_order_interpretation: Literal["arrival", "raised"] = "arrival"
-    # Owner-confirmed current_stock.xlsx snapshot. A later live cycle requires this
-    # date to advance with a newly supplied stock file.
-    stock_snapshot_as_of: date = date(2026, 8, 31)
+    # Owner confirmed 2026-10-02 that the supplied current_stock.xlsx is the
+    # September 30 closing snapshot. A later live cycle requires this date to advance
+    # with a newly supplied stock file.
+    stock_snapshot_as_of: date = date(2026, 9, 30)
     # Owner confirmed 2026-10-01 that the dated On_Orders export lists all open POs.
     on_orders_verified_complete: bool = True
 

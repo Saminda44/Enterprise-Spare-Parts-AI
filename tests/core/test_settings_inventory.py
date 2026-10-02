@@ -13,5 +13,5 @@ def test_lead_and_on_order_arrival_defaults(monkeypatch) -> None:
     assert settings.lead_time_months == 4
     assert settings.review_period_months == 1
     assert settings.on_order_interpretation == "arrival"
-    assert settings.stock_snapshot_as_of == date(2026, 8, 31)
+    assert settings.stock_snapshot_as_of == date(2026, 9, 30)
     assert settings.on_orders_verified_complete is True

@@ -81,6 +81,11 @@ export interface ForecastData {
   all_skus?: number;               // parts forecast, before filters
   monthly_forecast_units?: number; // forecast demand per month, all parts
   fleet_share_pct?: number;        // share of that demand from the fleet term
+  forecast_start?: string | null;
+  forecast_end?: string | null;
+  forecast_month_count?: number;
+  forecast_months?: string[];
+  validation?: { model: string; rmsse: number; bias: number; stability: number; parts: number }[];
   planning: PlanningInfo;
 }
 
@@ -164,14 +169,17 @@ export interface ForecastRow {
   history_weight?: number;         // share of the blend from own history
   protection_demand?: number;      // expected demand over lead time plus review period
   protection_p90?: number;         // 90th percentile of that demand
+  monthly_forecast?: (number | null)[]; // aligned with ForecastData.forecast_months
 }
 
 export interface MonthlyPoint {
   year_month_str: string;
-  issue_qty: number;
-  issue_value_lkr: number;
-  return_qty: number;
-  net_demand: number;
+  issue_qty: number | null;
+  issue_value_lkr: number | null;
+  return_qty: number | null;
+  net_demand: number | null;
+  forecast_qty?: number | null;
+  is_forecast?: boolean;
 }
 
 export interface InventoryRow {

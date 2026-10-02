@@ -302,9 +302,51 @@ def test_trend_does_not_mix_other_sku_returns(workspace: Path) -> None:
         "facts",
         "returns_history",
     )
-    row = TestClient(app).get("/api/v1/forecast/trend?sku=A").json()[0]
-    assert row["return_qty"] == 2.0
-    assert row["net_demand"] == 10.0  # C-order demand stays gross; returns are separate.
+    write_table(
+        pd.DataFrame(
+            [
+                {"active_sku_id": "A", "month": "2026-01", "forecast_quantity": 12.0},
+                {"active_sku_id": "B", "month": "2026-01", "forecast_quantity": 99.0},
+            ]
+        ),
+        "facts",
+        "forecast_monthly_live",
+    )
+    rows = TestClient(app).get("/api/v1/forecast/trend?sku=A").json()
+    actual = next(row for row in rows if not row["is_forecast"])
+    future = next(row for row in rows if row["is_forecast"])
+    assert actual["return_qty"] == 2.0
+    assert actual["net_demand"] == 10.0  # C-order demand stays gross; returns are separate.
+    assert future["year_month_str"] == "2026-01"
+    assert future["forecast_qty"] == 12.0
+    assert future["net_demand"] is None
+
+
+def test_forecast_table_returns_each_part_through_next_year(
+    published_sku: pd.DataFrame,
+) -> None:
+    months = [str(month) for month in pd.period_range("2026-10", "2027-12", freq="M")]
+    write_table(
+        pd.DataFrame(
+            [
+                {
+                    "active_sku_id": sku,
+                    "month": month,
+                    "forecast_quantity": float(index + 1) if sku == "SYNTHETIC-PART" else 999.0,
+                }
+                for sku in ("SYNTHETIC-PART", "OTHER-PART")
+                for index, month in enumerate(months)
+            ]
+        ),
+        "facts",
+        "forecast_monthly_live",
+    )
+
+    result = TestClient(app).get("/api/v1/forecast?limit=1").json()
+    assert result["forecast_months"] == months
+    assert result["forecast_month_count"] == 15
+    assert result["rows"][0]["monthly_forecast"] == [float(index + 1) for index in range(15)]
+    assert result["rows"][0]["monthly_forecast"][-1] == 15.0
 
 
 def test_cache_observes_republished_mart(workspace: Path) -> None:

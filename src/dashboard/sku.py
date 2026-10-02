@@ -273,8 +273,8 @@ def build(ctx: PlanningContext, result: StageResult) -> pd.DataFrame:
     # rather than false — the UI renders it as a tri-state.
     frame["in_ssop"] = None
 
-    # The forecast is a mean rate over the protection interval, not a month-by-month
-    # path, so m1..m3 are the same number. Saying so beats inventing a shape.
+    # These legacy wide fields carry the next-month rate used by the order plan. The
+    # dated reporting path is published separately as forecast_monthly_live.
     frame["forecast_m1"] = frame["mu_month"].fillna(0.0)
     frame["forecast_m2"] = frame["forecast_m1"]
     frame["forecast_m3"] = frame["forecast_m1"]

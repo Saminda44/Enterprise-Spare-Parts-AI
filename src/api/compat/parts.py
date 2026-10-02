@@ -6,6 +6,7 @@ import json
 from collections.abc import Iterable
 from typing import Any
 
+import numpy as np
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Query
 from src.api.compat.context import planning_context, published_order_hold_reason
@@ -90,6 +91,19 @@ def _planned_f(row: pd.Series, column: str) -> float | None:
     return f(row[column]) if row["has_planning"] else None
 
 
+def _monthly_forecast_path(sku: str | None = None) -> pd.DataFrame:
+    """Published future path narrowed to the request's MC/OBM/category scope."""
+    if not table_exists("facts", "forecast_monthly_live"):
+        return pd.DataFrame()
+    frame = read_table("facts", "forecast_monthly_live")
+    scope = segment_skus()
+    if scope is not None:
+        frame = frame[frame["active_sku_id"].astype(str).isin(scope)]
+    if sku:
+        frame = frame[frame["active_sku_id"].astype(str).str.upper() == sku.strip().upper()]
+    return frame
+
+
 @router.get("/forecast")
 def forecast(
     method: str | None = None,
@@ -119,6 +133,35 @@ def forecast(
     parc = pd.to_numeric(everything["mu_month_parc"], errors="coerce").fillna(0.0)
     monthly = float(everything["forecast_m1"].sum())
     fleet_units = float(((1.0 - weight) * parc).sum())
+    path = _monthly_forecast_path()
+    path_months = sorted(path["month"].astype(str).unique()) if not path.empty else []
+    monthly_by_sku: dict[str, list[float | None]] = {}
+    if path_months and not page.empty:
+        page_skus = page["active_sku_id"].astype(str).tolist()
+        page_path = path[path["active_sku_id"].astype(str).isin(page_skus)]
+        monthly_path = page_path.pivot(
+            index="active_sku_id", columns="month", values="forecast_quantity"
+        ).reindex(index=page_skus, columns=path_months)
+        monthly_by_sku = {
+            str(sku): [f(value) if pd.notna(value) else None for value in values]
+            for sku, values in monthly_path.iterrows()
+        }
+    validation: list[dict[str, Any]] = []
+    accuracy = mart("mart_forecast_accuracy")
+    required_accuracy = {"model", "score", "bias", "stability", "parts"}
+    if not accuracy.empty and required_accuracy <= set(accuracy.columns):
+        for model_name, group in accuracy.dropna(subset=["score"]).groupby("model"):
+            weights = pd.to_numeric(group["parts"], errors="coerce").fillna(1.0).clip(lower=1.0)
+            validation.append(
+                {
+                    "model": s(model_name),
+                    "rmsse": float(np.average(group["score"], weights=weights)),
+                    "bias": float(np.average(group["bias"], weights=weights)),
+                    "stability": float(np.average(group["stability"], weights=weights)),
+                    "parts": int(weights.sum()),
+                }
+            )
+        validation.sort(key=lambda row: (row["rmsse"], row["stability"]))
     rows = [
         {
             "material_9": s(r["material_9"]),
@@ -146,6 +189,7 @@ def forecast(
             else 1.0,
             "protection_demand": f(r.get("mu_p")),
             "protection_p90": f(r.get("p90")),
+            "monthly_forecast": monthly_by_sku.get(s(r["active_sku_id"]), []),
         }
         for _, r in page.iterrows()
     ]
@@ -158,53 +202,79 @@ def forecast(
         "all_skus": int(len(everything)),
         "monthly_forecast_units": monthly,
         "fleet_share_pct": fleet_units / monthly * 100.0 if monthly else 0.0,
+        "forecast_start": path_months[0] if path_months else None,
+        "forecast_end": path_months[-1] if path_months else None,
+        "forecast_month_count": len(path_months),
+        "forecast_months": path_months,
+        "validation": validation,
         "planning": planning_context(),
     }
 
 
 @router.get("/forecast/trend")
 def trend(sku: str | None = None) -> list[dict[str, Any]]:
-    """Monthly demand history — one SKU, or the whole book when none is named."""
-    if not table_exists("facts", "demand_history"):
-        return []
-    history = read_table("facts", "demand_history")
+    """Monthly actual demand followed by the dated MC/OBM forecast path."""
+    rows: list[dict[str, Any]] = []
     scope = segment_skus()
-    if scope is not None:
-        history = history[history["active_sku_id"].astype(str).isin(scope)]
-    if sku:
-        history = history[history["active_sku_id"].astype(str).str.upper() == sku.strip().upper()]
-    grouped = history.groupby("month", as_index=False).agg(
-        issue_qty=("confirmed_quantity", "sum"),
-        issue_value_lkr=("order_value", "sum"),
-        ordered_qty=("ordered_quantity", "sum"),
-    )
-    if table_exists("facts", "returns_history"):
-        returns = read_table("facts", "returns_history")
+    if table_exists("facts", "demand_history"):
+        history = read_table("facts", "demand_history")
         if scope is not None:
-            returns = returns[returns["active_sku_id"].astype(str).isin(scope)]
+            history = history[history["active_sku_id"].astype(str).isin(scope)]
         if sku:
-            returns = returns[
-                returns["active_sku_id"].astype(str).str.upper() == sku.strip().upper()
+            history = history[
+                history["active_sku_id"].astype(str).str.upper() == sku.strip().upper()
             ]
-        by_month = (
-            returns.groupby("month", as_index=False)["ordered_quantity"]
-            .sum()
-            .rename(columns={"ordered_quantity": "return_quantity"})
+        grouped = history.groupby("month", as_index=False).agg(
+            issue_qty=("confirmed_quantity", "sum"),
+            issue_value_lkr=("order_value", "sum"),
+            ordered_qty=("ordered_quantity", "sum"),
         )
-        grouped = grouped.merge(by_month, on="month", how="outer")
-    grouped["return_quantity"] = grouped.get(
-        "return_quantity", pd.Series(0.0, index=grouped.index)
-    ).fillna(0.0)
-    return [
-        {
-            "year_month_str": s(r["month"]),
-            "issue_qty": f(r["issue_qty"]),
-            "issue_value_lkr": f(r["issue_value_lkr"]),
-            "return_qty": f(r["return_quantity"]),
-            "net_demand": f(r["ordered_qty"]),
-        }
-        for _, r in grouped.sort_values("month").iterrows()
-    ]
+        if table_exists("facts", "returns_history"):
+            returns = read_table("facts", "returns_history")
+            if scope is not None:
+                returns = returns[returns["active_sku_id"].astype(str).isin(scope)]
+            if sku:
+                returns = returns[
+                    returns["active_sku_id"].astype(str).str.upper() == sku.strip().upper()
+                ]
+            by_month = (
+                returns.groupby("month", as_index=False)["ordered_quantity"]
+                .sum()
+                .rename(columns={"ordered_quantity": "return_quantity"})
+            )
+            grouped = grouped.merge(by_month, on="month", how="outer")
+        grouped["return_quantity"] = grouped.get(
+            "return_quantity", pd.Series(0.0, index=grouped.index)
+        ).fillna(0.0)
+        rows.extend(
+            {
+                "year_month_str": s(r["month"]),
+                "issue_qty": f(r["issue_qty"]),
+                "issue_value_lkr": f(r["issue_value_lkr"]),
+                "return_qty": f(r["return_quantity"]),
+                "net_demand": f(r["ordered_qty"]),
+                "forecast_qty": None,
+                "is_forecast": False,
+            }
+            for _, r in grouped.sort_values("month").iterrows()
+        )
+
+    future = _monthly_forecast_path(sku)
+    if not future.empty:
+        future = future.groupby("month", as_index=False)["forecast_quantity"].sum()
+        rows.extend(
+            {
+                "year_month_str": s(r["month"]),
+                "issue_qty": None,
+                "issue_value_lkr": None,
+                "return_qty": None,
+                "net_demand": None,
+                "forecast_qty": f(r["forecast_quantity"]),
+                "is_forecast": True,
+            }
+            for _, r in future.sort_values("month").iterrows()
+        )
+    return sorted(rows, key=lambda row: (row["year_month_str"], row["is_forecast"]))
 
 
 @router.get("/forecast/sales-check")

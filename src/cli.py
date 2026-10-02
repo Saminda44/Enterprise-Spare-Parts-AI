@@ -167,7 +167,13 @@ def run_provisional(
     shutil.copytree(settings.facts_dir, scenario_root / "data" / "facts")
     shutil.copytree(settings.source_parquet_dir, scenario_root / "data" / "staging" / "sources")
 
-    rerun = {"08_forecast", "12_stock", "13_policy", "14_monthly_order"}
+    rerun = {
+        "07_model_selection",
+        "08_forecast",
+        "12_stock",
+        "13_policy",
+        "14_monthly_order",
+    }
     stage_order = REGISTRY.order(["14_monthly_order"])
     if stage_order.index("08_forecast") > stage_order.index("12_stock"):
         raise typer.BadParameter("scenario requires the forecast before stock projection")

@@ -110,8 +110,8 @@ def in_scope_skus(part_master: pd.DataFrame) -> set[str]:
 def validate_live_snapshot(cycle_as_of: date, snapshot_as_of: date) -> None:
     """Require a real month-end stock snapshot immediately before a live cycle.
 
-    Business meaning: a later order cannot silently reuse August stock after sales
-    and receipts have changed the physical inventory position.
+    Business meaning: a later order cannot silently reuse an earlier stock snapshot
+    after sales and receipts have changed the physical inventory position.
     """
     if cycle_as_of.day != 1 or snapshot_as_of != cycle_as_of - timedelta(days=1):
         raise SourceDataError(
