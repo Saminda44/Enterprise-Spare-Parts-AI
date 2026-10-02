@@ -17,8 +17,14 @@ from src.core.settings import get_settings
 from src.io.excel import file_digest
 
 WORKBOOKS = (
-    "orders.xlsx", "sales.xlsx", "MCSI.xlsx", "current_stock.xlsx",
-    "On_Orders.xlsx", "PN_Yamaha.xlsx", "dealers.xlsx", "Sales_Summery.xlsx",
+    "orders.xlsx",
+    "sales.xlsx",
+    "MCSI.xlsx",
+    "current_stock.xlsx",
+    "On_Orders.xlsx",
+    "PN_Yamaha.xlsx",
+    "dealers.xlsx",
+    "Sales_Summery.xlsx",
 )
 ALIASES = {"Sales_Summery.xlsx": ("Sales Summery.xlsx",)}
 
@@ -95,8 +101,12 @@ class SourceStore(ABC):
 
     @abstractmethod
     def publish(
-        self, name: str, sheets: dict[str, pd.DataFrame], *,
-        upload_sha256: str, metadata: dict[str, Any],
+        self,
+        name: str,
+        sheets: dict[str, pd.DataFrame],
+        *,
+        upload_sha256: str,
+        metadata: dict[str, Any],
     ) -> dict[str, Any]:
         """Atomically select an immutable new source version."""
 
@@ -126,8 +136,12 @@ class ExcelSourceStore(SourceStore):
         }
 
     def publish(
-        self, name: str, sheets: dict[str, pd.DataFrame], *,
-        upload_sha256: str, metadata: dict[str, Any],
+        self,
+        name: str,
+        sheets: dict[str, pd.DataFrame],
+        *,
+        upload_sha256: str,
+        metadata: dict[str, Any],
     ) -> dict[str, Any]:
         if name not in WORKBOOKS:
             raise SourceDataError(f"unsupported workbook: {name}")
@@ -138,7 +152,9 @@ class ExcelSourceStore(SourceStore):
         _write_excel(temporary, sheets)
         try:
             saved = _read_excel(temporary, name)
-            if set(saved) != set(sheets) or any(len(saved[key]) != len(value) for key, value in sheets.items()):
+            if set(saved) != set(sheets) or any(
+                len(saved[key]) != len(value) for key, value in sheets.items()
+            ):
                 raise SourceDataError(f"{name}: published workbook failed its row-count round trip")
             if target.exists():
                 archive = target_dir / "archive" / name.removesuffix(".xlsx")
@@ -153,7 +169,9 @@ class ExcelSourceStore(SourceStore):
             "applied_at": datetime.now(UTC).isoformat(timespec="seconds"),
             "rows_by_sheet": {key: len(frame) for key, frame in sheets.items()},
         }
-        target.with_suffix(".upload.json").write_text(json.dumps(record, indent=2), encoding="utf-8")
+        target.with_suffix(".upload.json").write_text(
+            json.dumps(record, indent=2), encoding="utf-8"
+        )
         return self.version(name)
 
 
@@ -189,7 +207,8 @@ class PostgresSourceStore(SourceStore):
         row = conn.execute(
             "SELECT v.version_id, v.upload_sha256, v.created_at, v.metadata "
             "FROM planning_source_heads h JOIN planning_source_versions v "
-            "ON v.version_id = h.version_id WHERE h.workbook = %s", (name,),
+            "ON v.version_id = h.version_id WHERE h.workbook = %s",
+            (name,),
         ).fetchone()
         return row if row else None
 
@@ -197,7 +216,12 @@ class PostgresSourceStore(SourceStore):
         path = raw_workbook_path(name)
         if not path.is_file():
             raise SourceDataError(f"{name}: no PostgreSQL version or original workbook to import")
-        self.publish(name, _read_excel(path, name), upload_sha256=file_digest(path), metadata={"bootstrap": True})
+        self.publish(
+            name,
+            _read_excel(path, name),
+            upload_sha256=file_digest(path),
+            metadata={"bootstrap": True},
+        )
 
     def version(self, name: str) -> dict[str, Any]:
         if name not in WORKBOOKS:
@@ -210,8 +234,10 @@ class PostgresSourceStore(SourceStore):
             return self.version(name)
         version_id, digest, created, metadata = head
         return {
-            "version_id": version_id, "sha256": version_id,
-            "upload_sha256": digest, "source_modified": created.isoformat(),
+            "version_id": version_id,
+            "sha256": version_id,
+            "upload_sha256": digest,
+            "source_modified": created.isoformat(),
             "metadata": metadata,
         }
 
@@ -220,7 +246,8 @@ class PostgresSourceStore(SourceStore):
         with self._connect() as conn:
             rows = conn.execute(
                 "SELECT sheet, ordinal, payload FROM planning_source_rows "
-                "WHERE version_id = %s ORDER BY sheet, ordinal", (version["version_id"],),
+                "WHERE version_id = %s ORDER BY sheet, ordinal",
+                (version["version_id"],),
             ).fetchall()
         columns = version["metadata"]["columns_by_sheet"]
         grouped: dict[str, list[dict[str, Any]]] = {sheet: [] for sheet in columns}
@@ -232,8 +259,12 @@ class PostgresSourceStore(SourceStore):
         }
 
     def publish(
-        self, name: str, sheets: dict[str, pd.DataFrame], *,
-        upload_sha256: str, metadata: dict[str, Any],
+        self,
+        name: str,
+        sheets: dict[str, pd.DataFrame],
+        *,
+        upload_sha256: str,
+        metadata: dict[str, Any],
     ) -> dict[str, Any]:
         if name not in WORKBOOKS:
             raise SourceDataError(f"unsupported workbook: {name}")
@@ -248,8 +279,8 @@ class PostgresSourceStore(SourceStore):
         with self._connect() as conn:
             self._ensure(conn)
             conn.execute(
-                "INSERT INTO planning_source_versions(version_id, workbook, upload_sha256, metadata) "
-                "VALUES (%s, %s, %s, %s)",
+                "INSERT INTO planning_source_versions"
+                "(version_id, workbook, upload_sha256, metadata) VALUES (%s, %s, %s, %s)",
                 (version_id, name, upload_sha256, Jsonb(record)),
             )
             for sheet, frame in sheets.items():
@@ -258,7 +289,10 @@ class PostgresSourceStore(SourceStore):
                     cursor.executemany(
                         "INSERT INTO planning_source_rows(version_id, sheet, ordinal, payload) "
                         "VALUES (%s, %s, %s, %s)",
-                        ((version_id, sheet, index, Jsonb(payload)) for index, payload in enumerate(payloads)),
+                        (
+                            (version_id, sheet, index, Jsonb(payload))
+                            for index, payload in enumerate(payloads)
+                        ),
                     )
             conn.execute(
                 "INSERT INTO planning_source_heads(workbook, version_id) VALUES (%s, %s) "
@@ -270,7 +304,9 @@ class PostgresSourceStore(SourceStore):
 
 def source_store() -> SourceStore:
     """Select the source of record without changing any planning stage."""
-    return PostgresSourceStore() if get_settings().data_backend == "postgres" else ExcelSourceStore()
+    return (
+        PostgresSourceStore() if get_settings().data_backend == "postgres" else ExcelSourceStore()
+    )
 
 
 def stock_snapshot_date() -> date:

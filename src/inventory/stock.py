@@ -223,7 +223,8 @@ def run(ctx: PlanningContext) -> StageResult:
 
     on_orders_source = active_excel_path("On_Orders.xlsx")
     on_orders_vintage = source_vintage("on_orders")
-    if get_settings().data_backend == "excel" and file_digest(on_orders_source) != on_orders_vintage["sha256"]:
+    excel_backend = get_settings().data_backend == "excel"
+    if excel_backend and file_digest(on_orders_source) != on_orders_vintage["sha256"]:
         raise SourceDataError("On_Orders source mirror is stale; ingest the updated workbook first")
     modified_at = pd.to_datetime(
         on_orders_vintage.get("source_modified"), utc=True, errors="coerce"

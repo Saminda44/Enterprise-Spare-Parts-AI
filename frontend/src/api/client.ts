@@ -394,15 +394,39 @@ export const fetchSalesCheck = (params?: { check?: string; search?: string; limi
   api.get<SalesCheckData>("/forecast/sales-check", { params }).then(r => r.data);
 
 export interface OrderPlanRow {
-  part_no: string; description: string; status: "to order" | "held for review";
+  part_no: string; description: string; status: "to order" | "held for review" | "expedite";
   abc: string; abc_source: string | null; fsn: string; demand_category: string | null;
   behaviour_class: string | null; system: string | null; policy: string; fill_target: number;
   forecast_month: number; history_forecast: number | null; fleet_forecast: number | null;
   history_weight: number; fleet_share: number; protection_demand: number | null;
-  safety_stock: number; target_level: number; on_hand: number; on_order: number; position: number;
+  safety_stock: number; reorder_level: number; target_level: number; on_hand: number; on_order: number; position: number;
+  /** Stock projected for the month this order lands (on hand + dated arrivals − forecast). */
+  /** On hand + everything on order: what the reorder level is checked against. */
+  stock_checked: number | null; landing_month: string | null;
+  needs_check: boolean; check_reasons: string | null;
+  recommendation: "release" | "trim" | "drop" | "review" | null; suggested_qty: number | null;
+  suggested_value: number | null; recommendation_reason: string | null;
+  recent_monthly_demand: number | null; last_order_month: string | null;
   gap_to_target: number; eoq: number; q_final: number; q_review: number; unit_cost: number;
   value: number; value_review: number; recent_demand_6m: number; trigger_reason: string; flags: string | null;
+  /** Dated incoming stock (On_Orders) until the new order lands; display only. */
+  incoming_by_month: IncomingMonth[]; run_out_month: string | null; below_buffer_month: string | null;
+  expedite: boolean; stock_at_order_arrival: number | null;
+  /** Each month's reorder level against that month's stock position (first = this month). */
+  monthly_rol: MonthlyRol[]; reorder_due_month: string | null;
 }
+export interface MonthlyRol {
+  month: string; stock_start: number; incoming: number; position: number; rol: number; at_or_below: boolean;
+}
+export interface IncomingMonth { month: string; qty: number; }
+export interface IncomingWatchRow {
+  part_no: string; description: string; abc: string | null; forecast_month: number; safety_stock: number;
+  on_hand: number; on_order: number; incoming_by_month: IncomingMonth[]; run_out_month: string;
+  next_arrival_month: string; next_arrival_qty: number; short_units: number; in_order_plan: boolean;
+}
+export interface IncomingWatchData { total: number; window: { from: string; to: string } | null; rows: IncomingWatchRow[]; }
+export const fetchIncomingWatch = (limit = 500) =>
+  api.get<IncomingWatchData>("/order-plan/incoming-watch", { params: { limit } }).then(r => r.data);
 export interface OrderPlanGroup { name: string; lines: number; value: number; }
 export interface OrderPlanData {
   total: number; cycle_month: string; expected_arrival: string;
@@ -410,6 +434,8 @@ export interface OrderPlanData {
   summary: {
     lines: number; value: number; units: number; held_lines: number; held_value: number;
     fleet_linked_lines: number; fleet_value_share_pct: number; stock_on_hand: number; stock_on_order: number;
+    expedite_lines?: number; watch_parts?: number; check_lines?: number; check_value?: number;
+    held_recommendations?: { recommendation: string; lines: number; held_value: number; suggested_value: number }[];
   };
   by_abc: OrderPlanGroup[]; by_system: OrderPlanGroup[]; by_behaviour: OrderPlanGroup[];
   assumptions: {

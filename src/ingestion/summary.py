@@ -26,10 +26,16 @@ def _text(value: object) -> str:
     return "" if pd.isna(value) else str(value).strip()
 
 
-def _pivot(rows: pd.DataFrame, indexes: list[str], years: list[str], columns: list[str]) -> pd.DataFrame:
+def _pivot(
+    rows: pd.DataFrame, indexes: list[str], years: list[str], columns: list[str]
+) -> pd.DataFrame:
     result = rows.pivot_table(
-        index=indexes, columns="Year", values="Vehicle Units (ZVOR)",
-        aggfunc="sum", fill_value=0, dropna=False,
+        index=indexes,
+        columns="Year",
+        values="Vehicle Units (ZVOR)",
+        aggfunc="sum",
+        fill_value=0,
+        dropna=False,
     ).reset_index()
     result.columns = [str(column) for column in result.columns]
     for year in years:
@@ -40,7 +46,8 @@ def _pivot(rows: pd.DataFrame, indexes: list[str], years: list[str], columns: li
 
 
 def rebuild_sales_summary(
-    current: dict[str, pd.DataFrame], mcsi: pd.DataFrame,
+    current: dict[str, pd.DataFrame],
+    mcsi: pd.DataFrame,
 ) -> SummaryResult:
     """Replace 2025+ billing views, retaining historical years and curated mappings.
 
@@ -67,9 +74,11 @@ def rebuild_sales_summary(
     source["Net Sales"] = pd.to_numeric(source["Net Sales"], errors="coerce")
     for field in ("Model", "Model Name", "Color"):
         source[field] = source[field].map(_text)
-    grouped = source.groupby(["Year", "Model", "Model Name", "Color"], dropna=False).agg(
-        Units=("SlsVolQty", "sum"), Net_Value=("Net Sales", "sum")
-    ).reset_index()
+    grouped = (
+        source.groupby(["Year", "Model", "Model Name", "Color"], dropna=False)
+        .agg(Units=("SlsVolQty", "sum"), Net_Value=("Net Sales", "sum"))
+        .reset_index()
+    )
 
     classification = current["Model Classification"].copy()
     classification["_model"] = classification["Model"].map(_text)
@@ -95,10 +104,13 @@ def rebuild_sales_summary(
         if color_meta is None:
             unknown_colors.add(color)
         record: dict[str, object] = {
-            "Year": str(int(year)), "Model": model or None, "Model Name": name or None,
+            "Year": str(int(year)),
+            "Model": model or None,
+            "Model Name": name or None,
             "Color (SAP)": color or None,
             "Color (Correct)": color_meta["Color"] if color_meta is not None else None,
-            "Vehicle Units (ZVOR)": units, "Basis": BILLING_BASIS,
+            "Vehicle Units (ZVOR)": units,
+            "Basis": BILLING_BASIS,
         }
         for field in MODEL_FIELDS:
             record[field] = meta[field] if meta is not None else None
@@ -116,8 +128,13 @@ def rebuild_sales_summary(
     joined = pd.concat([historical, billing], ignore_index=True)
     total = {column: None for column in all_years.columns}
     total["Year"] = "TOTAL"
-    for column in ("Vehicle Units (ZVOR)", "Net Value (ZVOR)", "Gross Sell.Pr (ZVOR)",
-                   "Discount (ZVOR)", "All Order Lines"):
+    for column in (
+        "Vehicle Units (ZVOR)",
+        "Net Value (ZVOR)",
+        "Gross Sell.Pr (ZVOR)",
+        "Discount (ZVOR)",
+        "All Order Lines",
+    ):
         total[column] = pd.to_numeric(joined[column], errors="coerce").sum()
     joined = pd.concat([joined, pd.DataFrame([total])], ignore_index=True)
     output = dict(current)
@@ -125,45 +142,60 @@ def rebuild_sales_summary(
     years = sorted(billing["Year"].unique())
     for year in years:
         rows = billing[billing["Year"].eq(year)].copy()
-        frame = pd.DataFrame({
-            "Model": rows["Model"], "Model Name": rows["Model Name"],
-            **{field: rows[field] for field in MODEL_FIELDS},
-            "Color": rows["Color (Correct)"],
-            "Abbreviation": rows["Abbreviation"], "Color Code": rows["Color Code"],
-            "Color Family": rows["Color Family"], "Units": rows["Vehicle Units (ZVOR)"],
-        })
+        frame = pd.DataFrame(
+            {
+                "Model": rows["Model"],
+                "Model Name": rows["Model Name"],
+                **{field: rows[field] for field in MODEL_FIELDS},
+                "Color": rows["Color (Correct)"],
+                "Abbreviation": rows["Abbreviation"],
+                "Color Code": rows["Color Code"],
+                "Color Family": rows["Color Family"],
+                "Units": rows["Vehicle Units (ZVOR)"],
+            }
+        )
         frame = frame.reindex(columns=current[year].columns if year in current else frame.columns)
         total_row = {column: None for column in frame}
         total_row["Units"] = frame["Units"].sum()
         output[year] = pd.concat([frame, pd.DataFrame([total_row])], ignore_index=True)
 
     summary = current["Summary"]
-    summary_old = summary[
-        ~summary["Year sheet"].astype(str).isin([*years, "TOTAL"])
-    ].copy()
+    summary_old = summary[~summary["Year sheet"].astype(str).isin([*years, "TOTAL"])].copy()
     summary_rows = []
     for year in years:
         subset = source[source["Year"].eq(int(year))]
         groups = grouped[grouped["Year"].eq(int(year))]
-        summary_rows.append({
-            "Year sheet": int(year), "Basis": BILLING_BASIS,
-            "Source rows": len(subset), "Vehicle Units": subset["SlsVolQty"].sum(),
-            "Net Value": subset["Net Sales"].sum(),
-            "Model x Name x Color rows": len(groups),
-            "Distinct Models (4-char)": subset["Model"].replace("", pd.NA).nunique(),
-            "Distinct Model Names": subset["Model Name"].replace("", pd.NA).nunique(),
-            "Distinct Colors": subset["Color"].replace("", pd.NA).nunique(),
-        })
+        summary_rows.append(
+            {
+                "Year sheet": int(year),
+                "Basis": BILLING_BASIS,
+                "Source rows": len(subset),
+                "Vehicle Units": subset["SlsVolQty"].sum(),
+                "Net Value": subset["Net Sales"].sum(),
+                "Model x Name x Color rows": len(groups),
+                "Distinct Models (4-char)": subset["Model"].replace("", pd.NA).nunique(),
+                "Distinct Model Names": subset["Model Name"].replace("", pd.NA).nunique(),
+                "Distinct Colors": subset["Color"].replace("", pd.NA).nunique(),
+            }
+        )
     summary_data = pd.concat([summary_old, pd.DataFrame(summary_rows)], ignore_index=True)
     summary_total = {column: None for column in summary.columns}
     summary_total["Year sheet"] = "TOTAL"
-    for column in ("Source rows", "Vehicle Units", "Net Value", "Other order lines",
-                   "Model x Name x Color rows"):
+    for column in (
+        "Source rows",
+        "Vehicle Units",
+        "Net Value",
+        "Other order lines",
+        "Model x Name x Color rows",
+    ):
         summary_total[column] = pd.to_numeric(summary_data[column], errors="coerce").sum()
-    output["Summary"] = pd.concat([
-        summary_data.reindex(columns=summary.columns),
-        pd.DataFrame([summary_total]).reindex(columns=summary.columns),
-    ], ignore_index=True)
+    output["Summary"] = pd.concat(
+        [
+            summary_data.reindex(columns=summary.columns),
+            pd.DataFrame([summary_total]).reindex(columns=summary.columns),
+        ],
+        ignore_index=True,
+    )
 
     classification_out = current["Model Classification"].copy()
     classified_rows = joined[joined["Year"].ne("TOTAL")].copy()
@@ -173,8 +205,13 @@ def rebuild_sales_summary(
     totals = classified_rows.groupby(["_model", "_name"], dropna=False).agg(
         total=("Vehicle Units (ZVOR)", "sum"), first=("_year", "min"), last=("_year", "max")
     )
-    known_pairs = set(zip(classification_out["Model"].map(_text),
-                          classification_out["Model Name"].map(_text), strict=True))
+    known_pairs = set(
+        zip(
+            classification_out["Model"].map(_text),
+            classification_out["Model Name"].map(_text),
+            strict=True,
+        )
+    )
     new_classifications = []
     for (model, model_name), values in totals.iterrows():
         match = classification_out["Model"].map(_text).eq(model) & (
@@ -185,24 +222,34 @@ def rebuild_sales_summary(
             classification_out.loc[match, "First Year Sold"] = values["first"]
             classification_out.loc[match, "Last Year Sold"] = values["last"]
         elif (model, model_name) not in known_pairs and (model, model_name) in unknown_models:
-            new_classifications.append({
-                "Model": model or None, "Model Name": model_name or None,
-                "Status": "Review", "First Year Sold": values["first"],
-                "Last Year Sold": values["last"], "Total Units": values["total"],
-                "Source": "MCSI upload; classification required",
-            })
+            new_classifications.append(
+                {
+                    "Model": model or None,
+                    "Model Name": model_name or None,
+                    "Status": "Review",
+                    "First Year Sold": values["first"],
+                    "Last Year Sold": values["last"],
+                    "Total Units": values["total"],
+                    "Source": "MCSI upload; classification required",
+                }
+            )
     if new_classifications:
-        classification_out = pd.concat([
-            classification_out,
-            pd.DataFrame(new_classifications).reindex(columns=classification_out.columns),
-        ], ignore_index=True)
+        classification_out = pd.concat(
+            [
+                classification_out,
+                pd.DataFrame(new_classifications).reindex(columns=classification_out.columns),
+            ],
+            ignore_index=True,
+        )
     output["Model Classification"] = classification_out
 
     pivot_rows = joined[joined["Year"].ne("TOTAL")]
-    all_year_labels = sorted({
-        *(str(column) for column in current["Type x Year"].columns if str(column).isdigit()),
-        *years,
-    })
+    all_year_labels = sorted(
+        {
+            *(str(column) for column in current["Type x Year"].columns if str(column).isdigit()),
+            *years,
+        }
+    )
     for sheet, indexes in (
         ("Type x Year", ["Motorcycle Type"]),
         ("Segment x Year", ["Motorcycle Type", "Segment"]),

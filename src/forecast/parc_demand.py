@@ -25,7 +25,12 @@ from scipy.optimize import nnls
 from src.core.context import PlanningContext
 from src.core.registry import REGISTRY
 from src.core.result import StageResult
-from src.forecast.models import CANDIDATES, INSUFFICIENT_HISTORY_CANDIDATES, naive
+from src.forecast.models import (
+    CANDIDATES,
+    FALLBACK_MODEL,
+    INSUFFICIENT_HISTORY_CANDIDATES,
+    fallback_forecaster,
+)
 from src.io.parquet import append_columns, read_table, table_exists, write_table
 
 FORECAST_HORIZON_MONTHS = 12
@@ -278,13 +283,17 @@ def _forecast(
             str(info.get("abc", "C")),
             str(info.get("behaviour_class", "unclassified")),
         )
-        model_name = champion.get(key) or quadrant_default.get(quadrant, "naive")
+        model_name = champion.get(key) or quadrant_default.get(quadrant, FALLBACK_MODEL)
         pool = (
             INSUFFICIENT_HISTORY_CANDIDATES
             if bool(info.get("insufficient_history", False))
             else CANDIDATES.get(quadrant, CANDIDATES["no demand"])
         )
-        forecaster = pool.get(model_name, naive)
+        if model_name not in pool:
+            # The group's champion is not open to this part (short history, say): fall
+            # back to its recent order rate, never to last month alone.
+            model_name = FALLBACK_MODEL
+        forecaster = pool.get(model_name, fallback_forecaster)
         values = series.to_numpy(dtype=float)
         baseline = float(np.asarray(forecaster(values, 1), dtype=float)[0])
         fitted = np.asarray(forecaster(values[:-1], 1), dtype=float)[0] if values.size > 1 else 0.0

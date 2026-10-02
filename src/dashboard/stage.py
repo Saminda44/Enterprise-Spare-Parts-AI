@@ -14,6 +14,7 @@ from loguru import logger
 from src.core.context import PlanningContext
 from src.core.registry import REGISTRY
 from src.core.result import StageResult
+from src.core.settings import get_settings
 from src.dashboard import eda, forecast_check, order_plan, sales_abc, sku, vehicles
 from src.dashboard.compatibility import service_plan, validate_output
 from src.dashboard.segments import SEGMENT_MC, part_category, sku_segments
@@ -91,12 +92,33 @@ def run(ctx: PlanningContext) -> StageResult:
         f"{int(billed_audit.at[0, 'return_only_skus']):,} linked SKUs have returns only"
     )
     written["mart_ui_service_plan"] = service_plan(per_sku)
+    schedule = (
+        read_table("facts", "on_order_schedule")
+        if table_exists("facts", "on_order_schedule")
+        else None
+    )
     written["mart_ui_order_plan"] = order_plan.build(
         read_table("facts", "monthly_order_proposal"),
         per_sku,
         read_table("facts", "part_behaviour") if table_exists("facts", "part_behaviour") else None,
+        schedule,
+        order_plan.recent_demand(read_table("facts", "demand_history")),
+        cap_months=get_settings().buffer_cap_months,
     )
     plan = written["mart_ui_order_plan"]
+    to_order = plan[plan["status"] == order_plan.STATUS_ORDER]
+    held_plan = plan[plan["status"] == order_plan.STATUS_REVIEW]
+    result.warn(
+        f"order plan audit: {int(to_order['needs_check'].sum()):,} of {len(to_order):,} lines to "
+        f"order need a second look; held lines: "
+        f"{held_plan['recommendation'].value_counts().to_dict()}; "
+        f"{int((plan['status'] == order_plan.STATUS_EXPEDITE).sum()):,} expedite-only part(s)"
+    )
+    written["mart_ui_incoming_watch"] = order_plan.incoming_watch(per_sku, schedule, plan)
+    result.warn(
+        f"incoming watch: {len(written['mart_ui_incoming_watch']):,} part(s) run out before "
+        "their incoming stock lands (shown for expediting; order quantities unchanged)"
+    )
     result.warn(
         f"order plan: {int((plan['status'] == order_plan.STATUS_ORDER).sum()):,} lines to order "
         f"({plan['value'].sum():,.0f} LKR), "

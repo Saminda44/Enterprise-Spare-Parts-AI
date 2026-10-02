@@ -13,10 +13,9 @@ from zipfile import BadZipFile, ZipFile
 import pandas as pd
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from pandera.errors import SchemaError, SchemaErrors
-
 from src.core.errors import SourceDataError
 from src.core.settings import get_settings
-from src.ingestion.merge import SNAPSHOT_KEYS, UPLOADABLE, MergeResult, merge_upload
+from src.ingestion.merge import UPDATE_KEYS, UPLOADABLE, MergeResult, merge_upload
 from src.ingestion.store import source_store
 from src.ingestion.summary import SummaryResult, rebuild_sales_summary
 
@@ -54,7 +53,9 @@ def _read_upload(data: bytes) -> pd.DataFrame:
         raise HTTPException(422, "Excel workbook could not be read") from exc
 
 
-def _preview_payload(name: str, result: MergeResult, version: str, summary: SummaryResult | None) -> dict:
+def _preview_payload(
+    name: str, result: MergeResult, version: str, summary: SummaryResult | None
+) -> dict:
     warnings = list(result.warnings)
     if summary:
         if summary.unknown_models:
@@ -62,29 +63,44 @@ def _preview_payload(name: str, result: MergeResult, version: str, summary: Summ
         if summary.unknown_colors:
             warnings.append(f"{summary.unknown_colors} color(s) need mapping review")
     return {
-        "name": name, "version": version, "incoming": result.incoming,
-        "added": result.added, "replaced": result.replaced,
-        "unchanged": result.unchanged, "conflicts": result.conflicts,
-        "result_rows": len(result.frame), "warnings": warnings,
+        "name": name,
+        "version": version,
+        "incoming": result.incoming,
+        "added": result.added,
+        "replaced": result.replaced,
+        "unchanged": result.unchanged,
+        "conflicts": result.conflicts,
+        "result_rows": len(result.frame),
+        "warnings": warnings,
+        "notes": list(result.notes),
         "summary_updated": summary is not None,
     }
 
 
-def _prepare(name: str, data: bytes, replace_dealers: bool) -> tuple[dict, MergeResult, SummaryResult | None]:
+def _prepare(
+    name: str, data: bytes, replace_dealers: bool
+) -> tuple[dict, MergeResult, SummaryResult | None]:
     if name not in UPLOADABLE:
         raise HTTPException(422, "unsupported source workbook")
     store = source_store()
     version = store.version(name)
     incoming = _read_upload(data)
     current = next(iter(store.read(name).values()))
+    # Stock and on-order lines find their row through the supersession chain too.
+    pn_yamaha = next(iter(store.read("PN_Yamaha.xlsx").values())) if name in UPDATE_KEYS else None
     try:
-        merged = merge_upload(name, current, incoming, replace_dealers=replace_dealers)
+        merged = merge_upload(
+            name, current, incoming, replace_dealers=replace_dealers, pn_yamaha=pn_yamaha
+        )
         summary = (
             rebuild_sales_summary(store.read("Sales_Summery.xlsx"), merged.frame)
-            if name == "MCSI.xlsx" and merged.added > 0 else None
+            if name == "MCSI.xlsx" and merged.added > 0
+            else None
         )
     except (SchemaError, SchemaErrors) as exc:
-        raise HTTPException(422, "source schema validation failed; check required numeric columns") from exc
+        raise HTTPException(
+            422, "source schema validation failed; check required numeric columns"
+        ) from exc
     except SourceDataError as exc:
         raise HTTPException(422, str(exc)) from exc
     return _preview_payload(name, merged, version["version_id"], summary), merged, summary
@@ -98,12 +114,15 @@ def list_sources(request: Request) -> dict:
     items = []
     for name in UPLOADABLE:
         version = store.version(name)
-        items.append({
-            "name": name, "version": version["version_id"],
-            "source_modified": version["source_modified"],
-            "metadata": version["metadata"],
-            "managed": not version.get("path") or "working_sources" in str(version["path"]),
-        })
+        items.append(
+            {
+                "name": name,
+                "version": version["version_id"],
+                "source_modified": version["source_modified"],
+                "metadata": version["metadata"],
+                "managed": not version.get("path") or "working_sources" in str(version["path"]),
+            }
+        )
     return {"backend": get_settings().data_backend, "sources": items}
 
 
@@ -132,8 +151,9 @@ async def apply_source(
 ) -> dict:
     """Publish an approved version and refresh the dependent planning stages."""
     _authorize(request)
-    if name in SNAPSHOT_KEYS and not confirm_snapshot:
-        raise HTTPException(422, "confirm that this is the complete current snapshot")
+    # Stock and open orders are updated per material, so no complete-snapshot
+    # confirmation is needed (confirm_snapshot is accepted for older clients).
+    del confirm_snapshot
     if name == "current_stock.xlsx" and stock_snapshot_as_of is None:
         raise HTTPException(422, "stock snapshot date is required")
     if name == "current_stock.xlsx" and stock_snapshot_as_of > date.today():
@@ -150,12 +170,16 @@ async def apply_source(
         payload, merged, summary = _prepare(name, data, replace_dealers)
         if payload["version"] != expected_version:
             raise HTTPException(409, "source changed after preview; preview this upload again")
-        if name not in SNAPSHOT_KEYS and merged.added == 0 and merged.replaced == 0:
+        if merged.added == 0 and merged.replaced == 0:
             return {**payload, "applied": False, "refresh_started": False}
         metadata = {
-            "incoming": merged.incoming, "added": merged.added,
-            "replaced": merged.replaced, "unchanged": merged.unchanged,
-            "conflicts": merged.conflicts, "warnings": payload["warnings"],
+            "incoming": merged.incoming,
+            "added": merged.added,
+            "replaced": merged.replaced,
+            "unchanged": merged.unchanged,
+            "conflicts": merged.conflicts,
+            "warnings": payload["warnings"],
+            "notes": payload["notes"],
         }
         if stock_snapshot_as_of and name == "current_stock.xlsx":
             metadata["stock_snapshot_as_of"] = stock_snapshot_as_of.isoformat()
@@ -165,9 +189,12 @@ async def apply_source(
         store.publish(name, {sheet_name: merged.frame}, upload_sha256=digest, metadata=metadata)
         if summary:
             store.publish(
-                "Sales_Summery.xlsx", summary.sheets,
-                upload_sha256=digest, metadata={
-                    "derived_from": "MCSI.xlsx", "mcsi_version": store.version(name)["version_id"],
+                "Sales_Summery.xlsx",
+                summary.sheets,
+                upload_sha256=digest,
+                metadata={
+                    "derived_from": "MCSI.xlsx",
+                    "mcsi_version": store.version(name)["version_id"],
                     "unknown_models": summary.unknown_models,
                     "unknown_colors": summary.unknown_colors,
                 },

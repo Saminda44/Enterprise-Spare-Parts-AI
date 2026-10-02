@@ -110,37 +110,49 @@ def tsb(alpha: float = 0.1, beta: float = 0.1) -> Forecaster:
     return _forecast
 
 
-#: Candidates routed by Syntetos-Boylan quadrant. Seasonal models (SARIMA, Prophet) need
-#: two full seasonal cycles; with a 24-month file there is only one, so they are dropped
-#: at runtime rather than allowed to fit noise. TFT needs a long, wide panel and is out.
+#: The recent-rate model every fallback uses: the last six months' average order rate.
+FALLBACK_MODEL = "moving_average_6"
+fallback_forecaster = moving_average(6)
+
+#: Benchmarks only — scored and reported, never chosen (owner, 2026-10-02). ``naive``
+#: copies last month alone (zero after any month without orders) and ``mean`` averages
+#: everything since the file began; both sat far below the parts' current order rate.
+BENCHMARKS: dict[str, Forecaster] = {"naive": naive, "mean": mean_forecast}
+
+#: Candidates routed by Syntetos-Boylan quadrant — recent-rate models only. Seasonal models
+#: (SARIMA, Prophet) need two full seasonal cycles; with a 24-month file there is only one,
+#: so they are dropped rather than allowed to fit noise. TFT needs a long, wide panel.
 CANDIDATES: dict[str, dict[str, Forecaster]] = {
     "smooth": {
-        "naive": naive,
         "moving_average_3": moving_average(3),
-        "moving_average_6": moving_average(6),
+        "moving_average_6": fallback_forecaster,
         "ses_0.3": simple_exponential_smoothing(0.3),
         "linear_trend": linear_trend,
     },
     "erratic": {
-        "naive": naive,
-        "mean": mean_forecast,
-        "moving_average_6": moving_average(6),
+        "moving_average_3": moving_average(3),
+        "moving_average_6": fallback_forecaster,
         "ses_0.3": simple_exponential_smoothing(0.3),
     },
     "intermittent": {
         "croston": croston(),
         "sba": sba(),
         "tsb": tsb(),
-        "mean": mean_forecast,
+        "moving_average_6": fallback_forecaster,
     },
     "lumpy": {
         "sba": sba(),
         "tsb": tsb(),
         "croston": croston(),
-        "mean": mean_forecast,
+        "moving_average_6": fallback_forecaster,
     },
-    "no demand": {"naive": naive},
+    # No demand in the selection window: the recent rate (zero unless orders resumed).
+    "no demand": {"moving_average_6": fallback_forecaster},
 }
 
-#: Parts with too little history get the conservative path only.
-INSUFFICIENT_HISTORY_CANDIDATES = {"naive": naive, "mean": mean_forecast}
+#: Parts with too little history: short recent-rate models only.
+INSUFFICIENT_HISTORY_CANDIDATES: dict[str, Forecaster] = {
+    "moving_average_3": moving_average(3),
+    "ses_0.3": simple_exponential_smoothing(0.3),
+    "tsb": tsb(),
+}

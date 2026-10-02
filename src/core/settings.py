@@ -67,6 +67,13 @@ class Settings(BaseSettings):
     order_cost: float = 5000.0  # LKR per purchase order line
     default_moq: float = 1.0
     default_pack_size: float = 1.0
+    # No part's buffer (safety) stock exceeds this many months of its forecast demand
+    # (owner, 2026-10-02): with ROL = 1 month + buffer and a 4-month lead time, the reorder
+    # level then tops out at the lead time's demand.
+    buffer_cap_months: float = 3.0
+    # The EOQ floor never asks for more than this many months of a part's demand (owner,
+    # 2026-10-02): with the assumed order cost it raised cheap parts to ~10 months.
+    eoq_cap_months: float = 3.0
     use_eoq: bool = True
     # q / beta_hat is a feedback loop: if beta_hat is low because we over-order,
     # inflating lowers it further. Off by default; the simulator must match.
@@ -173,6 +180,8 @@ class Settings(BaseSettings):
             "fill_rate_targets (ASSUMED)": self.fill_rate_targets,
             "annual_holding_rate (ASSUMED)": self.annual_holding_rate,
             "order_cost (ASSUMED)": self.order_cost,
+            "buffer_cap_months": self.buffer_cap_months,
+            "eoq_cap_months": self.eoq_cap_months,
             "use_eoq": self.use_eoq,
             "use_supply_inflation": self.use_supply_inflation,
         }

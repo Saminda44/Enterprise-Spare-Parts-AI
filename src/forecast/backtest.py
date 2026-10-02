@@ -16,7 +16,13 @@ from loguru import logger
 from src.core.context import PlanningContext
 from src.core.registry import REGISTRY
 from src.core.result import StageResult
-from src.forecast.models import CANDIDATES, INSUFFICIENT_HISTORY_CANDIDATES, Forecaster
+from src.forecast.models import (
+    BENCHMARKS,
+    CANDIDATES,
+    FALLBACK_MODEL,
+    INSUFFICIENT_HISTORY_CANDIDATES,
+    Forecaster,
+)
 from src.io.parquet import read_table, write_table
 
 #: The final months are split off and sealed here, opened once in Step 13, never
@@ -56,8 +62,25 @@ def pinball(actual: np.ndarray, predicted: np.ndarray, quantile: float) -> float
     return float(np.mean(np.maximum(quantile * delta, (quantile - 1) * delta)))
 
 
-def metric_for(quadrant: str) -> str:
-    return "mase" if quadrant in {"smooth", "erratic"} else "pinball"
+def rmsse(actual: np.ndarray, predicted: np.ndarray, train: np.ndarray) -> float:
+    """Root mean squared scaled error.
+
+    Business meaning: squared error is smallest for the true average rate, so it does not
+    reward forecasting low (MASE's absolute error favours the median, which is zero for
+    sparse parts) or high (pinball at the service quantile). The order sizes buffer stock
+    separately; the forecast itself should be the expected monthly demand (owner,
+    2026-10-02). The scale makes parts of different sizes comparable.
+    """
+    if train.size < 2:
+        return float("nan")
+    scale = float(np.mean(np.diff(train) ** 2))
+    if scale <= 0:
+        scale = float(np.mean(train) ** 2) or 1.0
+    return float(np.sqrt(np.mean((actual - predicted) ** 2) / scale))
+
+
+def metric_for(quadrant: str) -> str:  # noqa: ARG001 - one metric for every quadrant now
+    return "rmsse"
 
 
 def rolling_origin_score(
@@ -71,10 +94,7 @@ def rolling_origin_score(
         predicted = np.asarray(forecaster(train, horizon), dtype=float)
         if predicted.size != actual.size:
             continue
-        if metric_for(quadrant) == "mase":
-            score = mase(actual, predicted, train)
-        else:
-            score = pinball(actual, predicted, SERVICE_QUANTILE)
+        score = rmsse(actual, predicted, train)
         if not np.isnan(score):
             scores.append(score)
     if not scores:
@@ -128,7 +148,8 @@ def run(ctx: PlanningContext) -> StageResult:
     if selection_panel.shape[1] < min_train + horizon:
         result.warn(
             f"selection window has {selection_panel.shape[1]} months, fewer than the "
-            f"{min_train + horizon} a rolling-origin fold needs — every segment falls back to naive"
+            f"{min_train + horizon} a rolling-origin fold needs — every segment falls back to "
+            f"{FALLBACK_MODEL}"
         )
 
     meta = classification.set_index("active_sku_id")
@@ -144,7 +165,9 @@ def run(ctx: PlanningContext) -> StageResult:
             else CANDIDATES.get(quadrant, CANDIDATES["no demand"])
         )
         values = series.to_numpy(dtype=float)
-        for name, forecaster in candidates.items():
+        pool = [(name, f, False) for name, f in candidates.items()]
+        pool += [(name, f, True) for name, f in BENCHMARKS.items() if name not in candidates]
+        for name, forecaster, benchmark in pool:
             score, folds = rolling_origin_score(values, forecaster, horizon, quadrant, min_train)
             if folds == 0:
                 continue
@@ -158,12 +181,15 @@ def run(ctx: PlanningContext) -> StageResult:
                     "metric": metric_for(quadrant),
                     "score": score,
                     "folds": folds,
+                    "benchmark": benchmark,
                 }
             )
 
     backtest = pd.DataFrame(rows)
     if backtest.empty:
-        result.warn("no backtest folds could be scored — every segment defaults to naive")
+        result.warn(
+            f"no backtest folds could be scored — every segment defaults to {FALLBACK_MODEL}"
+        )
         registry = pd.DataFrame(
             [
                 {
@@ -171,7 +197,7 @@ def run(ctx: PlanningContext) -> StageResult:
                     "quadrant": "ALL",
                     "abc": "ALL",
                     "behaviour_class": "ALL",
-                    "model": "naive",
+                    "model": FALLBACK_MODEL,
                     "score": np.nan,
                     "runner_up": None,
                     "runner_up_score": np.nan,
@@ -207,7 +233,13 @@ def run(ctx: PlanningContext) -> StageResult:
 
 
 def _select(backtest: pd.DataFrame, ctx: PlanningContext, result: StageResult) -> pd.DataFrame:
-    """Champion per (quadrant × ABC × behaviour), falling back to the parent quadrant."""
+    """Champion per (quadrant × ABC × behaviour), falling back to the parent quadrant.
+
+    Benchmarks (naive, mean) are scored for comparison only and never chosen.
+    """
+    is_benchmark = backtest.get("benchmark", pd.Series(False, index=backtest.index)).astype(bool)
+    benchmarks = backtest[is_benchmark]
+    backtest = backtest[~is_benchmark]
     quadrant_champion: dict[str, str] = {}
     for quadrant, group in backtest.groupby("quadrant"):
         ranked = group.groupby("model")["score"].mean().sort_values()
@@ -221,7 +253,7 @@ def _select(backtest: pd.DataFrame, ctx: PlanningContext, result: StageResult) -
         ranked = group.groupby("model")["score"].mean().sort_values()
         inherited = parts < MIN_PARTS_PER_COMBINATION or ranked.empty
         if inherited:
-            model = quadrant_champion.get(str(quadrant), "naive")
+            model = quadrant_champion.get(str(quadrant), FALLBACK_MODEL)
             best_score = float(ranked.iloc[0]) if len(ranked) else np.nan
             runner_up, runner_score = None, np.nan
         else:
@@ -229,11 +261,13 @@ def _select(backtest: pd.DataFrame, ctx: PlanningContext, result: StageResult) -
             best_score = float(ranked.iloc[0])
             runner_up = str(ranked.index[1]) if len(ranked) > 1 else None
             runner_score = float(ranked.iloc[1]) if len(ranked) > 1 else np.nan
-            # If the champion cannot beat naive, use naive and record it.
-            if "naive" in ranked.index and model != "naive":
-                naive_score = float(ranked.loc["naive"])
-                if best_score > naive_score * (1 - HYSTERESIS_MARGIN):
-                    model, best_score = "naive", naive_score
+        naive_rows = benchmarks[
+            (benchmarks["quadrant"] == quadrant)
+            & (benchmarks["abc"] == abc)
+            & (benchmarks["behaviour_class"] == behaviour)
+            & (benchmarks["model"] == "naive")
+        ]
+        naive_score = float(naive_rows["score"].mean()) if len(naive_rows) else np.nan
 
         rows.append(
             {
@@ -245,6 +279,7 @@ def _select(backtest: pd.DataFrame, ctx: PlanningContext, result: StageResult) -
                 "score": best_score,
                 "runner_up": runner_up,
                 "runner_up_score": runner_score,
+                "naive_score": naive_score,
                 "parts": int(parts),
                 "metric": str(group["metric"].iloc[0]),
                 "inherited": bool(inherited),
@@ -259,4 +294,10 @@ def _select(backtest: pd.DataFrame, ctx: PlanningContext, result: StageResult) -
         f"champion for having fewer than {MIN_PARTS_PER_COMBINATION} parts"
     )
     result.warn(f"champions by quadrant: {quadrant_champion}")
+    comparable = registry.dropna(subset=["score", "naive_score"])
+    beats = int((comparable["score"] < comparable["naive_score"]).sum())
+    result.warn(
+        f"benchmark: the chosen model beats last-month-only (naive) in {beats} of "
+        f"{len(comparable)} combination(s); naive and mean are reported, never chosen"
+    )
     return registry

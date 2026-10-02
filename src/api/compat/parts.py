@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable
 from typing import Any
 
@@ -389,8 +390,15 @@ def order_plan(
     whole = frame
     to_order = whole[whole["status"] == "to order"]
     held = whole[whole["status"] == "held for review"]
+    # One table, filtered (owner, 2026-10-02): "check" = lines to order that need a second
+    # look; "expedite" = any part whose stock runs out before its incoming stock lands.
+    if status == "check" and "needs_check" in frame:
+        frame = frame[frame["needs_check"].fillna(False).astype(bool)]
+    elif status == "expedite" and "expedite" in frame:
+        frame = frame[frame["expedite"].fillna(False).astype(bool)]
+    elif status:
+        frame = frame[frame["status"].astype(str).str.lower() == status.lower()]
     for column, value in (
-        ("status", status),
         ("abc", abc),
         ("behaviour_class", behaviour),
         ("system", system),
@@ -438,6 +446,29 @@ def order_plan(
             ),
             "stock_on_hand": f(to_order["on_hand"].sum()),
             "stock_on_order": f(to_order["on_order"].sum()),
+            "expedite_lines": int(whole["expedite"].fillna(False).astype(bool).sum())
+            if "expedite" in whole
+            else 0,
+            "watch_parts": int(len(mart("mart_ui_incoming_watch"))),
+            "check_lines": int(to_order["needs_check"].fillna(False).astype(bool).sum())
+            if "needs_check" in to_order
+            else 0,
+            "check_value": f(
+                to_order.loc[to_order["needs_check"].fillna(False).astype(bool), "value"].sum()
+            )
+            if "needs_check" in to_order
+            else 0.0,
+            "held_recommendations": [
+                {
+                    "recommendation": s(name),
+                    "lines": int(len(group)),
+                    "held_value": f(group["value_review"].sum()),
+                    "suggested_value": f(group["suggested_value"].fillna(0).sum()),
+                }
+                for name, group in (
+                    held.groupby("recommendation") if "recommendation" in held else []
+                )
+            ],
         },
         "by_abc": by("abc"),
         "by_system": by("system"),
@@ -476,7 +507,20 @@ def order_plan(
                 "fleet_share": f(r["fleet_share"]),
                 "protection_demand": number(r["protection_demand"]),
                 "safety_stock": f(r["safety_stock"]),
+                "reorder_level": f(r["reorder_level"]),
                 "target_level": f(r["target_level"]),
+                "stock_checked": number(r.get("stock_checked")),
+                "needs_check": bool(r.get("needs_check"))
+                if pd.notna(r.get("needs_check"))
+                else False,
+                "check_reasons": s(r.get("check_reasons")) or None,
+                "recommendation": s(r.get("recommendation")) or None,
+                "suggested_qty": number(r.get("suggested_qty")),
+                "suggested_value": number(r.get("suggested_value")),
+                "recommendation_reason": s(r.get("recommendation_reason")) or None,
+                "recent_monthly_demand": number(r.get("recent_monthly_demand")),
+                "last_order_month": s(r.get("last_order_month")) or None,
+                "landing_month": s(r.get("landing_month")) or None,
                 "on_hand": f(r["on_hand"]),
                 "on_order": f(r["on_order"]),
                 "position": f(r["position"]),
@@ -490,10 +534,77 @@ def order_plan(
                 "recent_demand_6m": f(r["recent_demand_6m"]),
                 "trigger_reason": s(r["trigger_reason"]),
                 "flags": s(r["flags"]) or None,
+                **_incoming_fields(r),
             }
             for _, r in page.iterrows()
         ],
     }
+
+
+def _incoming_fields(r: pd.Series) -> dict[str, Any]:
+    """A line's dated incoming stock and its month-by-month run-out check (display only)."""
+    raw = r.get("incoming_by_month")
+    try:
+        incoming = json.loads(raw) if isinstance(raw, str) and raw else []
+    except ValueError:
+        incoming = []
+    stock_at = r.get("stock_at_order_arrival")
+    raw_monthly = r.get("monthly_rol")
+    try:
+        monthly = json.loads(raw_monthly) if isinstance(raw_monthly, str) and raw_monthly else []
+    except ValueError:
+        monthly = []
+    return {
+        "monthly_rol": monthly,
+        "reorder_due_month": s(r.get("reorder_due_month")) or None,
+        "incoming_by_month": incoming,
+        "run_out_month": s(r.get("run_out_month")) or None,
+        "below_buffer_month": s(r.get("below_buffer_month")) or None,
+        "expedite": bool(r.get("expedite")) if pd.notna(r.get("expedite")) else False,
+        "stock_at_order_arrival": f(stock_at) if pd.notna(stock_at) else None,
+    }
+
+
+@router.get("/order-plan/incoming-watch")
+def incoming_watch(limit: int = Query(500, ge=1, le=50000)) -> dict[str, Any]:
+    """Parts whose stock runs out before their incoming stock lands — for expediting.
+
+    Business meaning: inventory position counts every incoming unit at once, so a part
+    with an empty shelf and a large arrival months away looks covered. Month by month
+    (on hand + arrivals − forecast) shows when it runs out and what is due after. Order
+    quantities are not changed by this (owner, 2026-10-02).
+    """
+    frame = mart("mart_ui_incoming_watch")
+    plan = mart("mart_ui_order_plan")
+    window = (
+        {"from": s(plan["cycle_month"].iloc[0]), "to": s(plan["expected_arrival"].iloc[0])}
+        if not plan.empty
+        else None
+    )
+    rows = []
+    for _, r in frame.head(limit).iterrows():
+        try:
+            incoming = json.loads(r["incoming_by_month"]) if r["incoming_by_month"] else []
+        except (TypeError, ValueError):
+            incoming = []
+        rows.append(
+            {
+                "part_no": s(r["active_sku_id"]),
+                "description": s(r["description"]),
+                "abc": s(r["abc"]) or None,
+                "forecast_month": f(r["forecast_month"]),
+                "safety_stock": f(r["safety_stock"]),
+                "on_hand": f(r["on_hand"]),
+                "on_order": f(r["on_order"]),
+                "incoming_by_month": incoming,
+                "run_out_month": s(r["run_out_month"]),
+                "next_arrival_month": s(r["next_arrival_month"]),
+                "next_arrival_qty": f(r["next_arrival_qty"]),
+                "short_units": f(r["short_units"]),
+                "in_order_plan": bool(r["in_order_plan"]),
+            }
+        )
+    return {"total": int(len(frame)), "window": window, "rows": rows}
 
 
 @router.get("/policy/review")

@@ -168,7 +168,13 @@ def build(ctx: PlanningContext, result: StageResult) -> pd.DataFrame:
                 "trigger_reason",
                 *[
                     c
-                    for c in ("q_proposed", "q_review", "value_review", "recent_demand_6m", "flags")
+                    for c in (
+                        "q_proposed",
+                        "q_review",
+                        "value_review",
+                        "recent_demand_6m",
+                        "flags",
+                    )
                     if c in proposal.columns
                 ],
             ]
@@ -311,6 +317,7 @@ def build(ctx: PlanningContext, result: StageResult) -> pd.DataFrame:
             strict=True,
         )
     ]
+    # The reorder level is checked against on hand + all on order (owner, 2026-10-02).
     frame["order_urgency"] = [
         classify_urgency(ip, rol, qty)
         for ip, rol, qty in zip(frame["ip"], frame["rol"], frame["roq"], strict=True)

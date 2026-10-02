@@ -29,15 +29,46 @@ from src.inventory.policy import policy_quantity
 from src.io.parquet import read_table, write_table
 
 
-def economic_order_quantity(annual_demand: float, order_cost: float, holding_cost: float) -> float:
-    """EOQ = sqrt(2DS/H).
+def economic_order_quantity(
+    annual_demand: float,
+    order_cost: float,
+    holding_cost: float,
+    cap_months: float | None = None,
+) -> float:
+    """EOQ = sqrt(2DS/H), never above ``cap_months`` of demand.
 
     Used as a **floor** on a triggered order, never as the order itself: EOQ assumes
-    constant deterministic demand, which no spare part has.
+    constant deterministic demand, which no spare part has. Business meaning (owner,
+    2026-10-02): with the assumed order cost, cheap parts were raised to about ten months
+    of demand; the floor is capped so a batch never exceeds ``cap_months``.
     """
     if annual_demand <= 0 or holding_cost <= 0 or order_cost <= 0:
         return 0.0
-    return float(np.sqrt(2.0 * annual_demand * order_cost / holding_cost))
+    eoq = float(np.sqrt(2.0 * annual_demand * order_cost / holding_cost))
+    if cap_months is not None:
+        eoq = min(eoq, annual_demand / 12.0 * cap_months)
+    return eoq
+
+
+def stock_checked(on_hand: float, on_order: float) -> float:
+    """The stock the reorder level is checked against: on hand + everything on order.
+
+    Business meaning (owner, 2026-10-02): today's PDC stock plus every On_Orders quantity
+    still to arrive, as one total, so nothing already on order is ordered again.
+    """
+    return max(float(on_hand), 0.0) + max(float(on_order), 0.0)
+
+
+def reorder_quantity(policy: str, stock: float, rol: float, target: float) -> float:
+    """Order when the checked stock is at or below the ROL; fill it up to the target.
+
+    Business meaning (owner, 2026-10-02): the reorder level is one month's demand plus
+    buffer stock (buffer ≤ 3 months), checked against on hand + all on order. Non-stocking
+    policies keep their own rule.
+    """
+    if policy in {"RS", "RsS"}:
+        return max(0.0, target - stock) if stock <= rol else 0.0
+    return 0.0
 
 
 def order_quantity(
@@ -53,9 +84,15 @@ def order_quantity(
     use_eoq: bool,
     use_supply_inflation: bool,
     inflation_cap: float,
+    q_raw: float | None = None,
 ) -> dict[str, float]:
-    """The order function, step by step, so every quantity can be explained."""
-    q_raw = policy_quantity(policy, ip, order_up_to, reorder_point)
+    """The order function, step by step, so every quantity can be explained.
+
+    ``q_raw`` is the requirement already worked out (the owner's reorder rule); without
+    it the policy's inventory-position rule applies.
+    """
+    if q_raw is None:
+        q_raw = policy_quantity(policy, ip, order_up_to, reorder_point)
     q_econ = max(q_raw, eoq) if (q_raw > 0 and use_eoq) else q_raw
     q_moq = max(q_econ, moq) if q_econ > 0 else 0.0
     q_pack = math.ceil(q_moq / pack_size) * pack_size if (q_moq > 0 and pack_size > 0) else q_moq
@@ -76,6 +113,21 @@ def order_quantity(
         "q_pack": float(q_pack),
         "q_final": float(q_final),
     }
+
+
+def reorder_reason(policy: str, stock: float, rol: float, q_raw: float) -> str:
+    """Why a stocking line was (or was not) ordered under the owner's reorder rule."""
+    if policy not in {"RS", "RsS"}:
+        return trigger_reason(policy, 0.0, 0.0, q_raw)
+    if q_raw <= 0:
+        return (
+            f"on hand + on order {stock:,.0f} is above the reorder level {rol:,.0f} "
+            "(1 month + buffer)"
+        )
+    return (
+        f"on hand + on order {stock:,.0f} is at or below the reorder level {rol:,.0f} "
+        "(1 month + buffer) — ordered up to it"
+    )
 
 
 def trigger_reason(policy: str, ip: float, reorder_point: float, q_raw: float) -> str:
@@ -212,11 +264,31 @@ def run(ctx: PlanningContext) -> StageResult:
         f"{settings.annual_holding_rate:.0%}/yr — both assumed, and the answer moves with them"
     )
 
+    landing_period = pd.Period(ctx.as_of, freq="M") + ctx.lead_time_months
+    result.warn(
+        "REORDER RULE (owner, 2026-10-02): reorder level = 1 month demand + buffer "
+        f"(buffer ≤ {settings.buffer_cap_months:g} months), checked against on hand + all on "
+        f"order; order up to it (EOQ floor ≤ {settings.eoq_cap_months:g} months). "
+        f"An order placed now arrives {landing_period}"
+    )
+
     rows: list[dict[str, object]] = []
     for row in frame.itertuples(index=False):
         holding_cost_per_unit = float(row.unit_value) * settings.annual_holding_rate
         annual_demand = float(row.d_bar) * 12.0
-        eoq = economic_order_quantity(annual_demand, settings.order_cost, holding_cost_per_unit)
+        eoq = economic_order_quantity(
+            annual_demand,
+            settings.order_cost,
+            holding_cost_per_unit,
+            cap_months=settings.eoq_cap_months,
+        )
+        checked = stock_checked(float(row.on_hand), float(row.on_order))
+        target = float(getattr(row, "target_at_landing", row.rol))
+        q_rule = (
+            reorder_quantity(str(row.policy), checked, float(row.rol), target)
+            if str(row.policy) in {"RS", "RsS"}
+            else None
+        )
 
         quantities = order_quantity(
             policy=str(row.policy),
@@ -230,6 +302,7 @@ def run(ctx: PlanningContext) -> StageResult:
             use_eoq=settings.use_eoq,
             use_supply_inflation=settings.use_supply_inflation,
             inflation_cap=settings.supply_inflation_cap,
+            q_raw=q_rule,
         )
         recent_6m = float(recent.get(row.active_sku_id, 0.0))
         recent_p = recent_6m / max(len(recent_months), 1) * ctx.protection_interval_months
@@ -253,6 +326,9 @@ def run(ctx: PlanningContext) -> StageResult:
                 "ss": row.safety_stock,
                 "ss_strategy": row.ss_strategy,
                 "rol": row.rol,
+                "stock_checked": checked,
+                "target_at_landing": target,
+                "landing_month": str(landing_period),
                 "eoq": eoq,
                 **quantities,
                 "unit_cost": row.unit_value,
@@ -267,8 +343,8 @@ def run(ctx: PlanningContext) -> StageResult:
                 "expected_arrival": (
                     pd.Timestamp(ctx.as_of) + pd.DateOffset(months=ctx.lead_time_months)
                 ).strftime("%Y-%m"),
-                "trigger_reason": trigger_reason(
-                    str(row.policy), float(row.ip), float(row.s), quantities["q_raw"]
+                "trigger_reason": reorder_reason(
+                    str(row.policy), checked, float(row.rol), quantities["q_raw"]
                 ),
                 "criticality": row.criticality,
                 "abc_class": row.abc,

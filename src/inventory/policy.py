@@ -28,13 +28,29 @@ HYSTERESIS_COST_MARGIN = 0.05
 def _parameters(
     series: dict[str, object], targets: dict[str, float], protection: int, sigma_lead: float
 ) -> dict[str, object]:
-    """Safety stock, s, S and ROL for one SKU from its forecast row."""
+    """Safety stock, s, S and ROL for one SKU from its forecast row.
+
+    Business meaning (owner, 2026-10-02): the reorder level is **one month of demand plus
+    buffer stock**, checked against on hand + the current month's on order. ``rol`` is that
+    level and ``s`` the same threshold for the simulator (which, lacking dated arrivals,
+    compares it with inventory position). ``target_at_landing`` is what an order brings
+    the checked stock up to: the review month's demand plus buffer (S less lead-time
+    demand), which equals the reorder level with a one-month review.
+    """
     beta = targets.get(str(series.get("abc", "C")), targets["C"])
-    ss = safety_stock(pd.Series(series), beta, protection, sigma_lead)
+    ss = safety_stock(
+        pd.Series(series),
+        beta,
+        protection,
+        sigma_lead,
+        cap_months=get_settings().buffer_cap_months,
+    )
     mu_p = float(series.get("mu_p") or 0.0)
     d_bar = mu_p / protection if protection else 0.0
+    lead = max(protection - 1, 0)
     order_up_to = mu_p + ss.selected
-    reorder_point = ss.selected + d_bar * (protection - 1)
+    rol = d_bar + ss.selected
+    reorder_point = rol
     return {
         "active_sku_id": series["active_sku_id"],
         "abc": series.get("abc"),
@@ -50,7 +66,8 @@ def _parameters(
         "d_bar": d_bar,
         "S": order_up_to,
         "s": reorder_point,
-        "rol": d_bar * (protection - 1) + ss.selected,
+        "rol": rol,
+        "target_at_landing": order_up_to - d_bar * lead,
         "months_of_cover": order_up_to / d_bar if d_bar > 0 else np.nan,
         "unit_value": series.get("unit_value", 0.0),
         "beta_hat": series.get("beta_hat", 0.75),
@@ -95,9 +112,20 @@ class SafetyStock:
 
 
 def safety_stock(
-    row: pd.Series, beta: float, protection_months: int, sigma_lead_months: float
+    row: pd.Series,
+    beta: float,
+    protection_months: int,
+    sigma_lead_months: float,
+    cap_months: float | None = None,
 ) -> SafetyStock:
-    """Three strategies; bracketing is always computed as a cross-check."""
+    """Three strategies; bracketing is always computed as a cross-check.
+
+    Business meaning (owner, 2026-10-02): a part with demand in fewer than 12 months used
+    to get the bracketing buffer — its largest month × the lead time — which for a part
+    ordered twice in three years came to years of demand (median 74 months). Such parts
+    now take the empirical quantile of their protection-period demand, and no buffer
+    exceeds ``cap_months`` of the part's monthly forecast. Bracketing stays a cross-check.
+    """
     mu_p = float(row.get("mu_p", 0.0) or 0.0)
     sigma_p = float(row.get("sigma_p", 0.0) or 0.0)
     quadrant = str(row.get("quadrant", "no demand"))
@@ -116,17 +144,15 @@ def safety_stock(
     empirical = max(p_high - mu_p, 0.0)
 
     insufficient = bool(row.get("insufficient_history", False))
-    if insufficient:
-        selected, strategy = bracketing, "bracketing"
-    elif quadrant in {"intermittent", "lumpy"}:
+    if insufficient or quadrant in {"intermittent", "lumpy"}:
         # The normal assumption is simply false here: fitting a normal to 0,0,0,7,0,0,3
         # produces a negative lower tail and an understated upper one.
         selected, strategy = empirical, "empirical quantile"
     else:
         selected, strategy = normal, "normal approximation"
 
-    if insufficient:
-        selected = max(selected, bracketing)
+    if cap_months is not None and d_bar > 0 and selected > cap_months * d_bar:
+        selected, strategy = cap_months * d_bar, f"{strategy} (capped at {cap_months:g} months)"
     return SafetyStock(bracketing, normal, empirical, float(selected), strategy, float(z))
 
 
